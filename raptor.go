@@ -1,17 +1,19 @@
 package main
 
 import (
-	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/template/html/v2"
+	"github.com/lmittmann/tint"
 )
 
 type Raptor struct {
 	server *fiber.App
+	Log    *slog.Logger
 }
 
 func NewRaptor() *Raptor {
@@ -19,6 +21,7 @@ func NewRaptor() *Raptor {
 
 	return &Raptor{
 		server: server,
+		Log:    slog.New(tint.NewHandler(os.Stderr, nil)),
 	}
 }
 
@@ -39,7 +42,7 @@ func newServer() *fiber.App {
 }
 
 func (r *Raptor) Start() {
-	fmt.Println("=> Starting Raptor...")
+	r.Log.Info("====> Starting Raptor <====")
 	go func() {
 		if err := r.server.Listen("127.0.0.1:7000"); err != nil && err != http.ErrServerClosed {
 			panic(err)
@@ -50,17 +53,17 @@ func (r *Raptor) Start() {
 }
 
 func (r *Raptor) info() {
-	fmt.Println("=> Raptor is running!")
-	fmt.Println("* Listening on http://127.0.0.1:7000")
+	r.Log.Info("Raptor is running! 🎉")
+	r.Log.Info("Listening on http://127.0.0.1:7000")
 }
 
 func (r *Raptor) waitForShutdown() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
-	fmt.Println("=> Shutting down Raptor...")
+	r.Log.Warn("Shutting down Raptor...")
 	if err := r.server.Shutdown(); err != nil {
-		fmt.Println("Server Shutdown:", err)
+		r.Log.Error("Server Shutdown:", err)
 	}
-	fmt.Println("=> Raptor exited, bye bye!")
+	r.Log.Warn("Raptor exited, bye bye!")
 }
