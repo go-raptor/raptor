@@ -1,6 +1,7 @@
 package raptor
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -11,17 +12,59 @@ import (
 )
 
 type Raptor struct {
+	config   Config
 	server   *fiber.App
 	Services *Services
 }
 
-func NewRaptor() *Raptor {
+func NewRaptor(config ...Config) *Raptor {
 	server := newServer()
 
-	return &Raptor{
+	raptor := &Raptor{
+		config:   Config{},
 		server:   server,
 		Services: NewServices(),
 	}
+
+	if len(config) > 0 {
+		raptor.config = config[0]
+	}
+
+	if raptor.config.Address == "" {
+		raptor.config.Address = DefaultAddress
+	}
+	if raptor.config.Port == 0 {
+		raptor.config.Port = DefaultPort
+	}
+
+	return raptor
+}
+
+func (r *Raptor) Start() {
+	r.Services.Log.Info("====> Starting Raptor <====")
+	if r.checkPort() {
+		go func() {
+			if err := r.server.Listen(r.address()); err != nil && err != http.ErrServerClosed {
+				panic(err)
+			}
+		}()
+		r.info()
+		r.waitForShutdown()
+	} else {
+		r.Services.Log.Error(fmt.Sprintf("Unable to bind on address %s, already in use!", r.address()))
+	}
+}
+
+func (r *Raptor) address() string {
+	return r.config.Address + ":" + fmt.Sprint(r.config.Port)
+}
+
+func (r *Raptor) checkPort() bool {
+	ln, err := net.Listen("tcp", r.address())
+	if err == nil {
+		ln.Close()
+	}
+	return err == nil
 }
 
 func newServer() *fiber.App {
@@ -40,32 +83,9 @@ func newServer() *fiber.App {
 	return server
 }
 
-func (r *Raptor) Start() {
-	r.Services.Log.Info("====> Starting Raptor <====")
-	if r.checkPort("127.0.0.1:3000") {
-		go func() {
-			if err := r.server.Listen("127.0.0.1:3000"); err != nil && err != http.ErrServerClosed {
-				panic(err)
-			}
-		}()
-		r.info()
-		r.waitForShutdown()
-	} else {
-		r.Services.Log.Error("Port 3000 is already in use!")
-	}
-}
-
-func (r *Raptor) checkPort(addr string) bool {
-	ln, err := net.Listen("tcp", addr)
-	if err == nil {
-		ln.Close()
-	}
-	return err == nil
-}
-
 func (r *Raptor) info() {
 	r.Services.Log.Info("Raptor is running! 🎉")
-	r.Services.Log.Info("Listening on http://127.0.0.1:3000")
+	r.Services.Log.Info(fmt.Sprintf("Listening on http://%s", r.address()))
 }
 
 func (r *Raptor) waitForShutdown() {
