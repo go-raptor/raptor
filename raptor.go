@@ -6,7 +6,7 @@ import (
 	"os/signal"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/template/html/v2"
+	"github.com/gofiber/template/jet/v2"
 )
 
 type Raptor struct {
@@ -24,7 +24,7 @@ func NewRaptor() *Raptor {
 }
 
 func newServer() *fiber.App {
-	engine := html.New("app/views", ".html")
+	engine := jet.New("app/views", ".html.jet")
 
 	// TODO: add this to the config
 	engine.Reload(true)
