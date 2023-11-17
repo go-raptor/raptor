@@ -102,3 +102,7 @@ func (r *Raptor) waitForShutdown() {
 func (r *Raptor) Route(method string, path string, handler func(*Context) error) {
 	r.server.Get(path, wrapHandler(handler))
 }
+
+func (r *Raptor) RegisterController(c Controller) {
+	c.SetServices(r)
+}

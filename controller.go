@@ -1,9 +1,13 @@
 package raptor
 
-type Controller struct {
+type Controller interface {
+	SetServices(r *Raptor)
+}
+
+type DefaultController struct {
 	Services *Services
 }
 
-func (c *Controller) SetServices(r *Raptor) {
+func (c *DefaultController) SetServices(r *Raptor) {
 	c.Services = r.Services
 }
