@@ -1,6 +1,7 @@
 package raptor
 
 import (
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -41,13 +42,25 @@ func newServer() *fiber.App {
 
 func (r *Raptor) Start() {
 	r.Services.Log.Info("====> Starting Raptor <====")
-	go func() {
-		if err := r.server.Listen("127.0.0.1:3000"); err != nil && err != http.ErrServerClosed {
-			panic(err)
-		}
-	}()
-	r.info()
-	r.waitForShutdown()
+	if r.checkPort("127.0.0.1:3000") {
+		go func() {
+			if err := r.server.Listen("127.0.0.1:3000"); err != nil && err != http.ErrServerClosed {
+				panic(err)
+			}
+		}()
+		r.info()
+		r.waitForShutdown()
+	} else {
+		r.Services.Log.Error("Port 3000 is already in use!")
+	}
+}
+
+func (r *Raptor) checkPort(addr string) bool {
+	ln, err := net.Listen("tcp", addr)
+	if err == nil {
+		ln.Close()
+	}
+	return err == nil
 }
 
 func (r *Raptor) info() {
