@@ -42,7 +42,7 @@ func newServer() *fiber.App {
 func (r *Raptor) Start() {
 	r.Services.Log.Info("====> Starting Raptor <====")
 	go func() {
-		if err := r.server.Listen("127.0.0.1:7000"); err != nil && err != http.ErrServerClosed {
+		if err := r.server.Listen("127.0.0.1:3000"); err != nil && err != http.ErrServerClosed {
 			panic(err)
 		}
 	}()
@@ -52,7 +52,7 @@ func (r *Raptor) Start() {
 
 func (r *Raptor) info() {
 	r.Services.Log.Info("Raptor is running! 🎉")
-	r.Services.Log.Info("Listening on http://127.0.0.1:7000")
+	r.Services.Log.Info("Listening on http://127.0.0.1:3000")
 }
 
 func (r *Raptor) waitForShutdown() {
@@ -64,4 +64,8 @@ func (r *Raptor) waitForShutdown() {
 		r.Services.Log.Error("Server Shutdown:", err)
 	}
 	r.Services.Log.Warn("Raptor exited, bye bye!")
+}
+
+func (r *Raptor) Route(method string, path string, handler func(*Context) error) {
+	r.server.Get(path, wrapHandler(handler))
 }
