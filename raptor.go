@@ -15,6 +15,7 @@ type Raptor struct {
 	config   Config
 	server   *fiber.App
 	Services *Services
+	Router   *Router
 }
 
 func NewRaptor(config ...Config) *Raptor {
@@ -24,6 +25,7 @@ func NewRaptor(config ...Config) *Raptor {
 		config:   Config{},
 		server:   server,
 		Services: NewServices(),
+		Router:   NewRouter(),
 	}
 
 	if len(config) > 0 {
@@ -41,6 +43,7 @@ func NewRaptor(config ...Config) *Raptor {
 }
 
 func (r *Raptor) Start() {
+	r.RegisterRoutes(r.Router)
 	r.Services.Log.Info("====> Starting Raptor <====")
 	if r.checkPort() {
 		go func() {
@@ -99,10 +102,12 @@ func (r *Raptor) waitForShutdown() {
 	r.Services.Log.Warn("Raptor exited, bye bye!")
 }
 
-func (r *Raptor) Route(method string, path string, handler func(*Context) error) {
-	r.server.Get(path, wrapHandler(handler))
-}
-
 func (r *Raptor) RegisterController(c Controller) {
 	c.SetServices(r)
+}
+
+func (r *Raptor) RegisterRoutes(router *Router) {
+	for _, route := range router.Routes {
+		r.server.Add(route.Method, route.Path, wrapHandler(route.Handler))
+	}
 }
