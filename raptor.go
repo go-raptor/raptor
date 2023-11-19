@@ -106,10 +106,6 @@ func (r *Raptor) SetRouter(router *Router) {
 	r.registerRoutes()
 }
 
-func (r *Raptor) registerController(c Controller) {
-	c.SetServices(r)
-}
-
 func (r *Raptor) registerRoutes() {
 	for _, controllerRoute := range r.Router.ControllerRoutes {
 		r.registerController(controllerRoute.Controller)
@@ -118,4 +114,8 @@ func (r *Raptor) registerRoutes() {
 			r.server.Add(route.Method, route.Path, wrapHandler(route.Handler))
 		}
 	}
+}
+
+func (r *Raptor) registerController(c Controller) {
+	c.SetServices(r)
 }
