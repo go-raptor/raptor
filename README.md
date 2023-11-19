@@ -1,4 +1,4 @@
-![Raptor](https://kruno.husak.me/img/raptor.png)
+![Raptor](https://kruno.husak.me/img/raptor2.png)
 
 # Raptor
 
