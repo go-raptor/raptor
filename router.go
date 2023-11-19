@@ -1,7 +1,13 @@
 package raptor
 
 type Router struct {
-	Routes []Route
+	ControllerRoutes []ControllerRoute
+}
+
+type ControllerRoute struct {
+	Name       string
+	Controller Controller
+	Routes     []Route
 }
 
 type Route struct {
@@ -12,15 +18,15 @@ type Route struct {
 
 func NewRouter() *Router {
 	return &Router{
-		Routes: make([]Route, 0),
+		ControllerRoutes: make([]ControllerRoute, 0),
 	}
 }
 
 func (r *Router) AddRoute(method string, path string, handler func(*Context) error) {
-	route := Route{
+	/*route := Route{
 		Method:  method,
 		Path:    path,
 		Handler: handler,
-	}
-	r.Routes = append(r.Routes, route)
+	}*/
+	//r.Routes = append(r.Routes, route)
 }
