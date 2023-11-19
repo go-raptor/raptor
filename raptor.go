@@ -25,7 +25,7 @@ func NewRaptor(config ...Config) *Raptor {
 		config:   Config{},
 		server:   server,
 		Services: NewServices(),
-		Router:   NewRouter(),
+		Router:   nil,
 	}
 
 	if len(config) > 0 {
@@ -101,14 +101,19 @@ func (r *Raptor) waitForShutdown() {
 	r.Services.Log.Warn("Raptor exited, bye bye!")
 }
 
-func (r *Raptor) RegisterController(c Controller) {
+func (r *Raptor) SetRouter(router *Router) {
+	r.Router = router
+	r.registerRoutes()
+}
+
+func (r *Raptor) registerController(c Controller) {
 	c.SetServices(r)
 }
 
-func (r *Raptor) RegisterRoutes(routes []ControllerRoute) {
-	r.Router.ControllerRoutes = routes
+func (r *Raptor) registerRoutes() {
 	for _, controllerRoute := range r.Router.ControllerRoutes {
-		r.RegisterController(controllerRoute.Controller)
+		r.registerController(controllerRoute.Controller)
+
 		for _, route := range controllerRoute.Routes {
 			r.server.Add(route.Method, route.Path, wrapHandler(route.Handler))
 		}
