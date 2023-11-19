@@ -2,12 +2,15 @@
 
 # Raptor
 
-MVC Web Framework based on Fiber heavily influnced by Ruby on Rails, Buffalo and Revel.
+MVC Web Framework based on Fiber heavily influenced by Ruby on Rails, Buffalo, and Revel.
 
 ## Installation
 
 `go get -u github.com/h00s/raptor`
 
-## Usage
+## Example
 
-...
+Check out the [raptor-app](https://github.com/h00s/raptor-app) repository for an example.
+
+
+
