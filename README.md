@@ -1,6 +1,8 @@
+![Raptor](https://kruno.husak.me/img/raptor.png)
+
 # Raptor
 
-Web framework heavily influnced by Ruby on Rails and Revel.
+MVC Web Framework based on Fiber heavily influnced by Ruby on Rails, Buffalo and Revel.
 
 ## Installation
 
