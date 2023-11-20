@@ -18,25 +18,14 @@ type Raptor struct {
 	Router   *Router
 }
 
-func NewRaptor(config ...Config) *Raptor {
+func NewRaptor(userConfig ...Config) *Raptor {
 	server := newServer()
 
 	raptor := &Raptor{
-		config:   Config{},
+		config:   config(userConfig...),
 		server:   server,
 		Services: NewServices(),
 		Router:   nil,
-	}
-
-	if len(config) > 0 {
-		raptor.config = config[0]
-	}
-
-	if raptor.config.Address == "" {
-		raptor.config.Address = DefaultAddress
-	}
-	if raptor.config.Port == 0 {
-		raptor.config.Port = DefaultPort
 	}
 
 	return raptor
