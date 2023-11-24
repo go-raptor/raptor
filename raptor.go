@@ -46,7 +46,7 @@ func NewAPIRaptor(userConfig ...Config) *Raptor {
 	return raptor
 }
 
-func (r *Raptor) Start() {
+func (r *Raptor) Listen() {
 	r.Services.Log.Info("====> Starting Raptor <====")
 	if r.checkPort() {
 		go func() {
@@ -113,30 +113,20 @@ func (r *Raptor) waitForShutdown() {
 	r.Services.Log.Warn("Raptor exited, bye bye!")
 }
 
-/*func (r *Raptor) registerRoutes() {
-	for _, controllerRoute := range r.Router.ControllerRoutes {
-		r.registerController(controllerRoute.Controller)
-
-		for _, route := range controllerRoute.Routes {
-			r.server.Add(route.Method, route.Path, wrapHandler(route.Handler))
-		}
-	}
-}*/
-
-func (r *Raptor) RegisterControllers(controllers Controllers) {
+func (r *Raptor) Controllers(controllers Controllers) {
 	r.controllers = controllers
 	for _, controller := range r.controllers {
 		controller.SetServices(r)
 	}
 }
 
-func (r *Raptor) RegisterRoutes(routes Routes) {
+func (r *Raptor) Routes(routes Routes) {
 	r.routes = routes
 	for _, route := range r.routes {
-		r.Route(route.Method, route.Path, route.Controller, route.Action)
+		r.route(route.Method, route.Path, route.Controller, route.Action)
 	}
 }
 
-func (r *Raptor) Route(method, path, controller, action string) {
+func (r *Raptor) route(method, path, controller, action string) {
 	r.server.Add(method, path, wrapHandler(r.controllers[controller].Actions[action].Function))
 }
