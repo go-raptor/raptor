@@ -1,20 +1,16 @@
 package raptor
 
-type Routes []Route
+type Routes []route
 
-func RegisterRoutes(routes ...Route) []Route {
-	return routes
-}
-
-type Route struct {
+type route struct {
 	Method     string
 	Path       string
 	Controller string
 	Action     string
 }
 
-func NewRoute(method, path, controller, action string) Route {
-	return Route{
+func Route(method, path, controller, action string) route {
+	return route{
 		Method:     method,
 		Path:       path,
 		Controller: controller,
