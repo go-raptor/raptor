@@ -12,20 +12,22 @@ import (
 )
 
 type Raptor struct {
-	config   Config
-	server   *fiber.App
-	Services *Services
-	Router   *Router
+	config      Config
+	server      *fiber.App
+	controllers map[string]*Controller
+	routes      Routes
+	Services    *Services
 }
 
 func NewMVCRaptor(userConfig ...Config) *Raptor {
 	server := newMVCServer()
 
 	raptor := &Raptor{
-		config:   config(userConfig...),
-		server:   server,
-		Services: NewServices(),
-		Router:   nil,
+		config:      config(userConfig...),
+		server:      server,
+		controllers: make(map[string]*Controller),
+		Services:    NewServices(),
+		routes:      nil,
 	}
 
 	return raptor
@@ -38,7 +40,7 @@ func NewAPIRaptor(userConfig ...Config) *Raptor {
 		config:   config(userConfig...),
 		server:   server,
 		Services: NewServices(),
-		Router:   nil,
+		routes:   nil,
 	}
 
 	return raptor
@@ -111,12 +113,7 @@ func (r *Raptor) waitForShutdown() {
 	r.Services.Log.Warn("Raptor exited, bye bye!")
 }
 
-func (r *Raptor) SetRouter(router *Router) {
-	r.Router = router
-	r.registerRoutes()
-}
-
-func (r *Raptor) registerRoutes() {
+/*func (r *Raptor) registerRoutes() {
 	for _, controllerRoute := range r.Router.ControllerRoutes {
 		r.registerController(controllerRoute.Controller)
 
@@ -124,8 +121,22 @@ func (r *Raptor) registerRoutes() {
 			r.server.Add(route.Method, route.Path, wrapHandler(route.Handler))
 		}
 	}
+}*/
+
+func (r *Raptor) RegisterControllers(controllers Controllers) {
+	r.controllers = controllers
+	for _, controller := range r.controllers {
+		controller.SetServices(r)
+	}
 }
 
-func (r *Raptor) registerController(c Controller) {
-	c.SetServices(r)
+func (r *Raptor) RegisterRoutes(routes Routes) {
+	r.routes = routes
+	for _, route := range r.routes {
+		r.Route(route.Method, route.Path, route.Controller, route.Action)
+	}
+}
+
+func (r *Raptor) Route(method, path, controller, action string) {
+	r.server.Add(method, path, wrapHandler(r.controllers[controller].Actions[action].Function))
 }
