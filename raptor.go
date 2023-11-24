@@ -12,22 +12,20 @@ import (
 )
 
 type Raptor struct {
+	Services    *Services
 	config      Config
 	server      *fiber.App
 	controllers map[string]*Controller
 	routes      Routes
-	Services    *Services
 }
 
 func NewMVCRaptor(userConfig ...Config) *Raptor {
 	server := newMVCServer()
 
 	raptor := &Raptor{
-		config:      config(userConfig...),
-		server:      server,
-		controllers: make(map[string]*Controller),
-		Services:    NewServices(),
-		routes:      nil,
+		config:   config(userConfig...),
+		server:   server,
+		Services: NewServices(),
 	}
 
 	return raptor
@@ -40,7 +38,6 @@ func NewAPIRaptor(userConfig ...Config) *Raptor {
 		config:   config(userConfig...),
 		server:   server,
 		Services: NewServices(),
-		routes:   nil,
 	}
 
 	return raptor
@@ -113,8 +110,8 @@ func (r *Raptor) waitForShutdown() {
 	r.Services.Log.Warn("Raptor exited, bye bye!")
 }
 
-func (r *Raptor) Controllers(controllers Controllers) {
-	r.controllers = controllers
+func (r *Raptor) Controllers(c Controllers) {
+	r.controllers = c
 	for _, controller := range r.controllers {
 		controller.SetServices(r)
 	}
