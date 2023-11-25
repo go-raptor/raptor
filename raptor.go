@@ -19,8 +19,8 @@ type Raptor struct {
 	routes      Routes
 }
 
-func NewMVCRaptor(userConfig ...Config) *Raptor {
-	server := newMVCServer()
+func NewRaptorMVC(userConfig ...Config) *Raptor {
+	server := newServerMVC()
 
 	raptor := &Raptor{
 		config:   config(userConfig...),
@@ -31,8 +31,8 @@ func NewMVCRaptor(userConfig ...Config) *Raptor {
 	return raptor
 }
 
-func NewAPIRaptor(userConfig ...Config) *Raptor {
-	server := newAPIServer()
+func NewRaptorAPI(userConfig ...Config) *Raptor {
+	server := newServerAPI()
 
 	raptor := &Raptor{
 		config:   config(userConfig...),
@@ -70,7 +70,7 @@ func (r *Raptor) checkPort() bool {
 	return err == nil
 }
 
-func newMVCServer() *fiber.App {
+func newServerMVC() *fiber.App {
 	engine := jet.New("app/views", ".html.jet")
 
 	// TODO: add this to the config
@@ -86,7 +86,7 @@ func newMVCServer() *fiber.App {
 	return server
 }
 
-func newAPIServer() *fiber.App {
+func newServerAPI() *fiber.App {
 	server := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 	})
