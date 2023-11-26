@@ -15,7 +15,7 @@ type Raptor struct {
 	Services    *Services
 	config      Config
 	server      *fiber.App
-	controllers map[string]*Controller
+	controllers Controllers
 	routes      Routes
 }
 
