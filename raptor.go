@@ -120,6 +120,14 @@ func (r *Raptor) Controllers(c Controllers) {
 func (r *Raptor) Routes(routes Routes) {
 	r.routes = routes
 	for _, route := range r.routes {
+		if _, ok := r.controllers[route.Controller]; !ok {
+			r.Services.Log.Error(fmt.Sprintf("Controller %s not found for path %s!", route.Controller, route.Path))
+			os.Exit(1)
+		}
+		if _, ok := r.controllers[route.Controller].Actions[route.Action]; !ok {
+			r.Services.Log.Error(fmt.Sprintf("Action %s not found in controller %s for path %s!", route.Action, route.Controller, route.Path))
+			os.Exit(1)
+		}
 		r.route(route.Method, route.Path, route.Controller, route.Action)
 	}
 }
