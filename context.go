@@ -8,6 +8,9 @@ type Context struct {
 	*fiber.Ctx
 }
 
-func (c *Context) JSON(status int, data interface{}) error {
-	return c.Ctx.Status(status).JSON(data)
+func (c *Context) JSON(data interface{}, status ...int) error {
+	if len(status) == 0 {
+		status = append(status, fiber.StatusOK)
+	}
+	return c.Ctx.Status(status[0]).JSON(data)
 }
