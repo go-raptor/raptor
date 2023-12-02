@@ -10,12 +10,6 @@ func (c *Controller) SetServices(r *Raptor) {
 	c.Services = r.Services
 }
 
-func RegisterController(name string, c *Controller, actions ...action) *Controller {
-	c.Name = name
-	c.registerActions(actions...)
-	return c
-}
-
 func (c *Controller) registerActions(actions ...action) {
 	if c.Actions == nil {
 		c.Actions = make(map[string]action)
@@ -26,6 +20,12 @@ func (c *Controller) registerActions(actions ...action) {
 }
 
 type Controllers map[string]*Controller
+
+func RegisterController(name string, c *Controller, actions ...action) *Controller {
+	c.Name = name
+	c.registerActions(actions...)
+	return c
+}
 
 func RegisterControllers(controller ...*Controller) Controllers {
 	controllers := make(Controllers)
