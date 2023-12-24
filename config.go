@@ -12,6 +12,7 @@ type Config struct {
 	General    General
 	Server     Server
 	Templating Templating
+	CORS       CORS
 }
 
 type General struct {
@@ -28,6 +29,11 @@ type Templating struct {
 	Reload  bool
 }
 
+type CORS struct {
+	Origins     []string
+	Credentials bool
+}
+
 const (
 	DefaultGeneralDevelopment = false
 
@@ -36,6 +42,9 @@ const (
 
 	DefaultTemplatingEnabled = true
 	DefaultTemplatingReload  = true
+
+	DefaultCORSOrigins     = "*"
+	DefaultCORSCredentials = false
 )
 
 func NewConfig() *Config {
@@ -60,6 +69,10 @@ func NewConfigDefaults() *Config {
 		Templating: Templating{
 			Enabled: DefaultTemplatingEnabled,
 		},
+		CORS: CORS{
+			Origins:     []string{DefaultCORSOrigins},
+			Credentials: DefaultCORSCredentials,
+		},
 	}
 }
 
@@ -79,6 +92,9 @@ func (c *Config) applyEnvirontmentVariables() {
 
 	applyEnvirontmentVariable("TEMPLATING_ENABLED", &c.Templating.Enabled)
 	applyEnvirontmentVariable("TEMPLATING_RELOAD", &c.Templating.Reload)
+
+	applyEnvirontmentVariable("CORS_ORIGINS", &c.CORS.Origins)
+	applyEnvirontmentVariable("CORS_CREDENTIALS", &c.CORS.Credentials)
 }
 
 func applyEnvirontmentVariable(key string, value interface{}) {
@@ -96,6 +112,9 @@ func applyEnvirontmentVariable(key string, value interface{}) {
 			if number, err := strconv.Atoi(env); err == nil {
 				*v = number
 			}
+		case *[]string:
+			*v = make([]string, 1)
+			(*v)[0] = env
 		}
 	}
 }

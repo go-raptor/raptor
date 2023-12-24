@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/template/jet/v2"
 )
 
@@ -59,11 +61,19 @@ func (r *Raptor) checkPort() bool {
 }
 
 func newServer(config *Config) *fiber.App {
+	var server *fiber.App
 	if config.Templating.Enabled {
-		return newServerMVC(config)
+		server = newServerMVC(config)
+	} else {
+		server = newServerAPI(config)
 	}
 
-	return newServerAPI(config)
+	server.Use(cors.New(cors.Config{
+		AllowOrigins:     strings.Join(config.CORS.Origins, ", "),
+		AllowCredentials: config.CORS.Credentials,
+	}))
+
+	return server
 }
 
 func newServerMVC(c *Config) *fiber.App {
