@@ -19,25 +19,13 @@ type Raptor struct {
 	routes      Routes
 }
 
-func NewRaptorMVC() *Raptor {
-	server := newServerMVC()
+func NewRaptor() *Raptor {
+	config := NewConfig()
 
 	raptor := &Raptor{
-		config:   NewConfig(),
-		server:   server,
-		Services: NewServices(),
-	}
-
-	return raptor
-}
-
-func NewRaptorAPI() *Raptor {
-	server := newServerAPI()
-
-	raptor := &Raptor{
-		config:   NewConfig(),
-		server:   server,
-		Services: NewServices(),
+		config:   config,
+		server:   newServer(config),
+		Services: newServices(),
 	}
 
 	return raptor
@@ -70,11 +58,18 @@ func (r *Raptor) checkPort() bool {
 	return err == nil
 }
 
-func newServerMVC() *fiber.App {
+func newServer(config *Config) *fiber.App {
+	if config.Templating.Enabled {
+		return newServerMVC(config)
+	}
+
+	return newServerAPI(config)
+}
+
+func newServerMVC(c *Config) *fiber.App {
 	engine := jet.New("app/views", ".html.jet")
 
-	// TODO: add this to the config
-	engine.Reload(true)
+	engine.Reload(c.Templating.Reload)
 
 	server := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
@@ -86,7 +81,7 @@ func newServerMVC() *fiber.App {
 	return server
 }
 
-func newServerAPI() *fiber.App {
+func newServerAPI(c *Config) *fiber.App {
 	server := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 	})

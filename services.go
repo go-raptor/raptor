@@ -11,7 +11,7 @@ type Services struct {
 	Log *slog.Logger
 }
 
-func NewServices() *Services {
+func newServices() *Services {
 	return &Services{
 		Log: slog.New(tint.NewHandler(os.Stderr, nil)),
 	}

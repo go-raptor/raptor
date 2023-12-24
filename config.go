@@ -9,7 +9,8 @@ import (
 )
 
 type Config struct {
-	Server Server
+	Server     Server
+	Templating Templating
 }
 
 type Server struct {
@@ -17,9 +18,16 @@ type Server struct {
 	Port    int
 }
 
+type Templating struct {
+	Enabled bool
+	Reload  bool
+}
+
 const (
-	DefaultServerAddress = "127.0.0.1"
-	DefaultServerPort    = 3000
+	DefaultServerAddress     = "127.0.0.1"
+	DefaultServerPort        = 3000
+	DefaultTemplatingEnabled = true
+	DefaultTemplatingReload  = true
 )
 
 func NewConfig() *Config {
@@ -38,6 +46,9 @@ func NewConfigDefaults() *Config {
 			Address: DefaultServerAddress,
 			Port:    DefaultServerPort,
 		},
+		Templating: Templating{
+			Enabled: DefaultTemplatingEnabled,
+		},
 	}
 }
 
@@ -52,6 +63,9 @@ func (c *Config) loadConfigFromFile(path string) error {
 func (c *Config) applyEnvirontmentVariables() {
 	applyEnvirontmentVariable("SERVER_ADDRESS", &c.Server.Address)
 	applyEnvirontmentVariable("SERVER_PORT", &c.Server.Port)
+
+	applyEnvirontmentVariable("TEMPLATING_ENABLED", &c.Templating.Enabled)
+	applyEnvirontmentVariable("TEMPLATING_RELOAD", &c.Templating.Reload)
 }
 
 func applyEnvirontmentVariable(key string, value interface{}) {
