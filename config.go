@@ -1,29 +1,74 @@
 package raptor
 
+import (
+	"log"
+	"os"
+	"strconv"
+
+	"github.com/BurntSushi/toml"
+)
+
 type Config struct {
+	Server Server
+}
+
+type Server struct {
 	Address string
 	Port    int
-	Reload  bool
 }
 
 const (
-	DefaultAddress = "127.0.0.1"
-	DefaultPort    = 3000
-	DefaultReload  = true
+	DefaultServerAddress = "127.0.0.1"
+	DefaultServerPort    = 3000
 )
 
-func config(userConfig ...Config) Config {
-	config := Config{}
+func NewConfig() *Config {
+	c := NewConfigDefaults()
+	if err := c.loadConfigFromFile(".raptor.toml"); err != nil {
+		log.Println("Unable to load configuration file, loaded defaults...")
+	}
+	c.applyEnvirontmentVariables()
 
-	if len(userConfig) > 0 {
-		config = userConfig[0]
+	return c
+}
+
+func NewConfigDefaults() *Config {
+	return &Config{
+		Server: Server{
+			Address: DefaultServerAddress,
+			Port:    DefaultServerPort,
+		},
+	}
+}
+
+func (c *Config) loadConfigFromFile(path string) error {
+	if _, err := toml.DecodeFile(path, c); err != nil {
+		return err
 	}
 
-	if config.Address == "" {
-		config.Address = DefaultAddress
+	return nil
+}
+
+func (c *Config) applyEnvirontmentVariables() {
+	applyEnvirontmentVariable("SERVER_ADDRESS", &c.Server.Address)
+	applyEnvirontmentVariable("SERVER_PORT", &c.Server.Port)
+}
+
+func applyEnvirontmentVariable(key string, value interface{}) {
+	if env, ok := os.LookupEnv(key); ok {
+		switch v := value.(type) {
+		case *string:
+			*v = env
+		case *bool:
+			if env == "true" || env == "1" {
+				*v = true
+			} else if env == "false" || env == "0" {
+				*v = false
+			}
+		case *int:
+			if number, err := strconv.Atoi(env); err == nil {
+				*v = number
+			}
+		}
 	}
-	if config.Port == 0 {
-		config.Port = DefaultPort
-	}
-	return config
 }

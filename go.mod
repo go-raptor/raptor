@@ -3,6 +3,7 @@ module github.com/h00s/raptor
 go 1.21.3
 
 require (
+	github.com/BurntSushi/toml v1.3.2
 	github.com/gofiber/fiber/v2 v2.51.0
 	github.com/gofiber/template/jet/v2 v2.1.6
 	github.com/lmittmann/tint v1.0.3

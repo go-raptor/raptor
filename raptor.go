@@ -13,17 +13,17 @@ import (
 
 type Raptor struct {
 	Services    *Services
-	config      Config
+	config      *Config
 	server      *fiber.App
 	controllers Controllers
 	routes      Routes
 }
 
-func NewRaptorMVC(userConfig ...Config) *Raptor {
+func NewRaptorMVC() *Raptor {
 	server := newServerMVC()
 
 	raptor := &Raptor{
-		config:   config(userConfig...),
+		config:   NewConfig(),
 		server:   server,
 		Services: NewServices(),
 	}
@@ -31,11 +31,11 @@ func NewRaptorMVC(userConfig ...Config) *Raptor {
 	return raptor
 }
 
-func NewRaptorAPI(userConfig ...Config) *Raptor {
+func NewRaptorAPI() *Raptor {
 	server := newServerAPI()
 
 	raptor := &Raptor{
-		config:   config(userConfig...),
+		config:   NewConfig(),
 		server:   server,
 		Services: NewServices(),
 	}
@@ -59,7 +59,7 @@ func (r *Raptor) Listen() {
 }
 
 func (r *Raptor) address() string {
-	return r.config.Address + ":" + fmt.Sprint(r.config.Port)
+	return r.config.Server.Address + ":" + fmt.Sprint(r.config.Server.Port)
 }
 
 func (r *Raptor) checkPort() bool {
