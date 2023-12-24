@@ -9,8 +9,13 @@ import (
 )
 
 type Config struct {
+	General    General
 	Server     Server
 	Templating Templating
+}
+
+type General struct {
+	Development bool
 }
 
 type Server struct {
@@ -24,8 +29,11 @@ type Templating struct {
 }
 
 const (
-	DefaultServerAddress     = "127.0.0.1"
-	DefaultServerPort        = 3000
+	DefaultGeneralDevelopment = false
+
+	DefaultServerAddress = "127.0.0.1"
+	DefaultServerPort    = 3000
+
 	DefaultTemplatingEnabled = true
 	DefaultTemplatingReload  = true
 )
@@ -42,6 +50,9 @@ func NewConfig() *Config {
 
 func NewConfigDefaults() *Config {
 	return &Config{
+		General: General{
+			Development: DefaultGeneralDevelopment,
+		},
 		Server: Server{
 			Address: DefaultServerAddress,
 			Port:    DefaultServerPort,
@@ -61,6 +72,8 @@ func (c *Config) loadConfigFromFile(path string) error {
 }
 
 func (c *Config) applyEnvirontmentVariables() {
+	applyEnvirontmentVariable("RAPTOR_DEVELOPMENT", &c.General.Development)
+
 	applyEnvirontmentVariable("SERVER_ADDRESS", &c.Server.Address)
 	applyEnvirontmentVariable("SERVER_PORT", &c.Server.Port)
 

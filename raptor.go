@@ -93,7 +93,11 @@ func newServerAPI(c *Config) *fiber.App {
 }
 
 func (r *Raptor) info() {
-	r.Services.Log.Info("Raptor is running! 🎉")
+	if r.config.General.Development {
+		r.Services.Log.Info("Raptor is running (development)! 🎉")
+	} else {
+		r.Services.Log.Info("Raptor is running (production)! 🎉")
+	}
 	r.Services.Log.Info(fmt.Sprintf("Listening on http://%s", r.address()))
 }
 
