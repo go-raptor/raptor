@@ -99,6 +99,7 @@ func (c *Config) applyEnvirontmentVariables() {
 
 func applyEnvirontmentVariable(key string, value interface{}) {
 	if env, ok := os.LookupEnv(key); ok {
+		log.Println("Applying environment variable", key)
 		switch v := value.(type) {
 		case *string:
 			*v = env
