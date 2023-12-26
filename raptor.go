@@ -95,9 +95,7 @@ func newServerAPI(c *Config) *fiber.App {
 	server := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 	})
-	if _, err := os.Stat("./public"); os.IsExist(err) {
-		server.Static("/public", "./public")
-	}
+	server.Static("/", "./public")
 
 	return server
 }
