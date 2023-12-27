@@ -20,8 +20,11 @@ type General struct {
 }
 
 type Server struct {
-	Address string
-	Port    int
+	Address      string
+	Port         int
+	Static       bool
+	StaticPrefix string
+	StaticRoot   string
 }
 
 type Templating struct {
@@ -45,6 +48,10 @@ const (
 
 	DefaultCORSOrigins     = "*"
 	DefaultCORSCredentials = false
+
+	DefaultStatic       = true
+	DefaultStaticPrefix = "/public"
+	DefaultStaticRoot   = "./public"
 )
 
 func NewConfig() *Config {
@@ -63,8 +70,11 @@ func NewConfigDefaults() *Config {
 			Development: DefaultGeneralDevelopment,
 		},
 		Server: Server{
-			Address: DefaultServerAddress,
-			Port:    DefaultServerPort,
+			Address:      DefaultServerAddress,
+			Port:         DefaultServerPort,
+			Static:       DefaultStatic,
+			StaticPrefix: DefaultStaticPrefix,
+			StaticRoot:   DefaultStaticRoot,
 		},
 		Templating: Templating{
 			Enabled: DefaultTemplatingEnabled,
@@ -89,6 +99,9 @@ func (c *Config) applyEnvirontmentVariables() {
 
 	applyEnvirontmentVariable("SERVER_ADDRESS", &c.Server.Address)
 	applyEnvirontmentVariable("SERVER_PORT", &c.Server.Port)
+	applyEnvirontmentVariable("SERVER_STATIC", &c.Server.Static)
+	applyEnvirontmentVariable("SERVER_STATIC_PREFIX", &c.Server.StaticPrefix)
+	applyEnvirontmentVariable("SERVER_STATIC_ROOT", &c.Server.StaticRoot)
 
 	applyEnvirontmentVariable("TEMPLATING_ENABLED", &c.Templating.Enabled)
 	applyEnvirontmentVariable("TEMPLATING_RELOAD", &c.Templating.Reload)

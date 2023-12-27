@@ -73,6 +73,10 @@ func newServer(config *Config) *fiber.App {
 		AllowCredentials: config.CORS.Credentials,
 	}))
 
+	if config.Server.Static {
+		server.Static(config.Server.StaticPrefix, config.Server.StaticRoot)
+	}
+
 	return server
 }
 
@@ -86,7 +90,6 @@ func newServerMVC(c *Config) *fiber.App {
 		Views:                 engine,
 		ViewsLayout:           "layouts/main",
 	})
-	server.Static("/public", "./public")
 
 	return server
 }
@@ -95,7 +98,6 @@ func newServerAPI(c *Config) *fiber.App {
 	server := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 	})
-	server.Static("/", "./public")
 
 	return server
 }
