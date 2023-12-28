@@ -1,7 +1,6 @@
 package raptor
 
 import (
-	"log"
 	"os"
 	"strconv"
 
@@ -9,6 +8,8 @@ import (
 )
 
 type Config struct {
+	services *Services
+
 	General    General
 	Server     Server
 	Templating Templating
@@ -54,17 +55,18 @@ const (
 	DefaultStaticRoot   = "./public"
 )
 
-func NewConfig() *Config {
-	c := NewConfigDefaults()
+func newConfig(s *Services) *Config {
+	c := newConfigDefaults()
+	c.services = s
 	if err := c.loadConfigFromFile(".raptor.toml"); err != nil {
-		log.Println("Unable to load configuration file, loaded defaults...")
+		c.services.Log.Warn("Unable to load configuration file, loaded defaults...")
 	}
 	c.applyEnvirontmentVariables()
 
 	return c
 }
 
-func NewConfigDefaults() *Config {
+func newConfigDefaults() *Config {
 	return &Config{
 		General: General{
 			Development: DefaultGeneralDevelopment,
@@ -95,24 +97,24 @@ func (c *Config) loadConfigFromFile(path string) error {
 }
 
 func (c *Config) applyEnvirontmentVariables() {
-	applyEnvirontmentVariable("RAPTOR_DEVELOPMENT", &c.General.Development)
+	c.applyEnvirontmentVariable("RAPTOR_DEVELOPMENT", &c.General.Development)
 
-	applyEnvirontmentVariable("SERVER_ADDRESS", &c.Server.Address)
-	applyEnvirontmentVariable("SERVER_PORT", &c.Server.Port)
-	applyEnvirontmentVariable("SERVER_STATIC", &c.Server.Static)
-	applyEnvirontmentVariable("SERVER_STATIC_PREFIX", &c.Server.StaticPrefix)
-	applyEnvirontmentVariable("SERVER_STATIC_ROOT", &c.Server.StaticRoot)
+	c.applyEnvirontmentVariable("SERVER_ADDRESS", &c.Server.Address)
+	c.applyEnvirontmentVariable("SERVER_PORT", &c.Server.Port)
+	c.applyEnvirontmentVariable("SERVER_STATIC", &c.Server.Static)
+	c.applyEnvirontmentVariable("SERVER_STATIC_PREFIX", &c.Server.StaticPrefix)
+	c.applyEnvirontmentVariable("SERVER_STATIC_ROOT", &c.Server.StaticRoot)
 
-	applyEnvirontmentVariable("TEMPLATING_ENABLED", &c.Templating.Enabled)
-	applyEnvirontmentVariable("TEMPLATING_RELOAD", &c.Templating.Reload)
+	c.applyEnvirontmentVariable("TEMPLATING_ENABLED", &c.Templating.Enabled)
+	c.applyEnvirontmentVariable("TEMPLATING_RELOAD", &c.Templating.Reload)
 
-	applyEnvirontmentVariable("CORS_ORIGINS", &c.CORS.Origins)
-	applyEnvirontmentVariable("CORS_CREDENTIALS", &c.CORS.Credentials)
+	c.applyEnvirontmentVariable("CORS_ORIGINS", &c.CORS.Origins)
+	c.applyEnvirontmentVariable("CORS_CREDENTIALS", &c.CORS.Credentials)
 }
 
-func applyEnvirontmentVariable(key string, value interface{}) {
+func (c *Config) applyEnvirontmentVariable(key string, value interface{}) {
 	if env, ok := os.LookupEnv(key); ok {
-		log.Println("Applying environment variable", key)
+		c.services.Log.Info("Applying environment variable", key, env)
 		switch v := value.(type) {
 		case *string:
 			*v = env
@@ -129,6 +131,8 @@ func applyEnvirontmentVariable(key string, value interface{}) {
 		case *[]string:
 			*v = make([]string, 1)
 			(*v)[0] = env
+		default:
+
 		}
 	}
 }

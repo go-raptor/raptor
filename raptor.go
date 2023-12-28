@@ -22,12 +22,13 @@ type Raptor struct {
 }
 
 func NewRaptor() *Raptor {
-	config := NewConfig()
+	services := newServices()
+	config := newConfig(services)
 
 	raptor := &Raptor{
 		config:   config,
 		server:   newServer(config),
-		Services: newServices(),
+		Services: services,
 	}
 
 	return raptor
