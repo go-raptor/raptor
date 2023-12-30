@@ -3,6 +3,9 @@ package raptor
 import (
 	"fmt"
 	"net/http"
+	"reflect"
+	"runtime"
+	"strings"
 	"time"
 )
 
@@ -35,21 +38,43 @@ func (c *Controller) logFinish(ctx *Context, startTime time.Time) {
 	c.Utils.Log.Info(fmt.Sprintf("Completed %d %s in %dms", ctx.Response().StatusCode(), http.StatusText(ctx.Response().StatusCode()), time.Since(startTime).Milliseconds()))
 }
 
-func (c *Controller) registerActions(actions ...action) {
+func (c *Controller) registerActions(functions ...func(*Context) error) {
 	if c.Actions == nil {
 		c.Actions = make(map[string]action)
 	}
-	for _, action := range actions {
-		c.Actions[action.Name] = action
+	for _, function := range functions {
+		fullName := runtime.FuncForPC(reflect.ValueOf(function).Pointer()).Name()
+		parts := strings.Split(fullName, ".")
+		name := parts[len(parts)-1]
+
+		if strings.HasSuffix(name, "-fm") {
+			name = strings.TrimSuffix(name, "-fm")
+		}
+
+		c.Actions[name] = action{
+			Name:     name,
+			Function: function,
+		}
 	}
 }
 
 type Controllers map[string]*Controller
 
-func RegisterController(name string, c *Controller, actions ...action) *Controller {
-	c.Name = name
-	c.registerActions(actions...)
-	return c
+func RegisterController(c interface{}, functions ...func(*Context) error) *Controller {
+	val := reflect.ValueOf(c)
+
+	if val.Kind() == reflect.Ptr && val.Elem().FieldByName("Controller").Type() == reflect.TypeOf(Controller{}) {
+		name := val.Elem().Type().Name()
+		if strings.HasSuffix(name, "Controller") {
+			name = strings.TrimSuffix(name, "Controller")
+		}
+		controller := val.Elem().FieldByName("Controller").Addr().Interface().(*Controller)
+		controller.Name = name
+		controller.registerActions(functions...)
+		return controller
+	} else {
+		panic("Controller must be a pointer to a struct that embeds raptor.Controller")
+	}
 }
 
 func RegisterControllers(controller ...*Controller) Controllers {
