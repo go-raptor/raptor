@@ -7,12 +7,12 @@ import (
 	"github.com/lmittmann/tint"
 )
 
-type Services struct {
+type Utils struct {
 	Log *slog.Logger
 }
 
-func newServices() *Services {
-	return &Services{
+func newUtils() *Utils {
+	return &Utils{
 		Log: slog.New(tint.NewHandler(os.Stderr, nil)),
 	}
 }

@@ -7,13 +7,13 @@ import (
 )
 
 type Controller struct {
-	Name     string
-	Services *Services
-	Actions  map[string]action
+	Name    string
+	Utils   *Utils
+	Actions map[string]action
 }
 
-func (c *Controller) SetServices(r *Raptor) {
-	c.Services = r.Services
+func (c *Controller) SetUtils(r *Raptor) {
+	c.Utils = r.Utils
 }
 
 func (c *Controller) Action(ctx *Context) error {
@@ -27,12 +27,12 @@ func (c *Controller) Action(ctx *Context) error {
 
 func (c *Controller) logStart(ctx *Context) {
 	action := ctx.Locals("Action").(string)
-	c.Services.Log.Info(fmt.Sprintf("Started %s \"%s\" for %s", ctx.Method(), ctx.OriginalURL(), ctx.IP()))
-	c.Services.Log.Info(fmt.Sprintf("Processing by %sController#%s", c.Name, action))
+	c.Utils.Log.Info(fmt.Sprintf("Started %s \"%s\" for %s", ctx.Method(), ctx.OriginalURL(), ctx.IP()))
+	c.Utils.Log.Info(fmt.Sprintf("Processing by %sController#%s", c.Name, action))
 }
 
 func (c *Controller) logFinish(ctx *Context, startTime time.Time) {
-	c.Services.Log.Info(fmt.Sprintf("Completed %d %s in %dms", ctx.Response().StatusCode(), http.StatusText(ctx.Response().StatusCode()), time.Since(startTime).Milliseconds()))
+	c.Utils.Log.Info(fmt.Sprintf("Completed %d %s in %dms", ctx.Response().StatusCode(), http.StatusText(ctx.Response().StatusCode()), time.Since(startTime).Milliseconds()))
 }
 
 func (c *Controller) registerActions(actions ...action) {

@@ -8,7 +8,7 @@ import (
 )
 
 type Config struct {
-	services *Services
+	utils *Utils
 
 	General    General
 	Server     Server
@@ -55,11 +55,11 @@ const (
 	DefaultStaticRoot   = "./public"
 )
 
-func newConfig(s *Services) *Config {
+func newConfig(u *Utils) *Config {
 	c := newConfigDefaults()
-	c.services = s
+	c.utils = u
 	if err := c.loadConfigFromFile(".raptor.toml"); err != nil {
-		c.services.Log.Warn("Unable to load configuration file, loaded defaults...")
+		c.utils.Log.Warn("Unable to load configuration file, loaded defaults...")
 	}
 	c.applyEnvirontmentVariables()
 
@@ -114,7 +114,7 @@ func (c *Config) applyEnvirontmentVariables() {
 
 func (c *Config) applyEnvirontmentVariable(key string, value interface{}) {
 	if env, ok := os.LookupEnv(key); ok {
-		c.services.Log.Info("Applying environment variable", key, env)
+		c.utils.Log.Info("Applying environment variable", key, env)
 		switch v := value.(type) {
 		case *string:
 			*v = env

@@ -14,7 +14,7 @@ import (
 )
 
 type Raptor struct {
-	Services    *Services
+	Utils       *Utils
 	config      *Config
 	server      *fiber.App
 	controllers Controllers
@@ -22,20 +22,20 @@ type Raptor struct {
 }
 
 func NewRaptor() *Raptor {
-	services := newServices()
-	config := newConfig(services)
+	utils := newUtils()
+	config := newConfig(utils)
 
 	raptor := &Raptor{
-		config:   config,
-		server:   newServer(config),
-		Services: services,
+		config: config,
+		server: newServer(config),
+		Utils:  utils,
 	}
 
 	return raptor
 }
 
 func (r *Raptor) Listen() {
-	r.Services.Log.Info("====> Starting Raptor <====")
+	r.Utils.Log.Info("====> Starting Raptor <====")
 	if r.checkPort() {
 		go func() {
 			if err := r.server.Listen(r.address()); err != nil && err != http.ErrServerClosed {
@@ -45,7 +45,7 @@ func (r *Raptor) Listen() {
 		r.info()
 		r.waitForShutdown()
 	} else {
-		r.Services.Log.Error(fmt.Sprintf("Unable to bind on address %s, already in use!", r.address()))
+		r.Utils.Log.Error(fmt.Sprintf("Unable to bind on address %s, already in use!", r.address()))
 	}
 }
 
@@ -105,28 +105,28 @@ func newServerAPI(c *Config) *fiber.App {
 
 func (r *Raptor) info() {
 	if r.config.General.Development {
-		r.Services.Log.Info("Raptor is running (development)! 🎉")
+		r.Utils.Log.Info("Raptor is running (development)! 🎉")
 	} else {
-		r.Services.Log.Info("Raptor is running (production)! 🎉")
+		r.Utils.Log.Info("Raptor is running (production)! 🎉")
 	}
-	r.Services.Log.Info(fmt.Sprintf("Listening on http://%s", r.address()))
+	r.Utils.Log.Info(fmt.Sprintf("Listening on http://%s", r.address()))
 }
 
 func (r *Raptor) waitForShutdown() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
-	r.Services.Log.Warn("Shutting down Raptor...")
+	r.Utils.Log.Warn("Shutting down Raptor...")
 	if err := r.server.Shutdown(); err != nil {
-		r.Services.Log.Error("Server Shutdown:", err)
+		r.Utils.Log.Error("Server Shutdown:", err)
 	}
-	r.Services.Log.Warn("Raptor exited, bye bye!")
+	r.Utils.Log.Warn("Raptor exited, bye bye!")
 }
 
 func (r *Raptor) Controllers(c Controllers) {
 	r.controllers = c
 	for _, controller := range r.controllers {
-		controller.SetServices(r)
+		controller.SetUtils(r)
 	}
 }
 
@@ -134,11 +134,11 @@ func (r *Raptor) Routes(routes Routes) {
 	r.routes = routes
 	for _, route := range r.routes {
 		if _, ok := r.controllers[route.Controller]; !ok {
-			r.Services.Log.Error(fmt.Sprintf("Controller %s not found for path %s!", route.Controller, route.Path))
+			r.Utils.Log.Error(fmt.Sprintf("Controller %s not found for path %s!", route.Controller, route.Path))
 			os.Exit(1)
 		}
 		if _, ok := r.controllers[route.Controller].Actions[route.Action]; !ok {
-			r.Services.Log.Error(fmt.Sprintf("Action %s not found in controller %s for path %s!", route.Action, route.Controller, route.Path))
+			r.Utils.Log.Error(fmt.Sprintf("Action %s not found in controller %s for path %s!", route.Action, route.Controller, route.Path))
 			os.Exit(1)
 		}
 		r.route(route.Method, route.Path, route.Controller, route.Action)
