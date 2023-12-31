@@ -56,7 +56,7 @@ func registerController(c interface{}) *Controller {
 
 		for i := 0; i < val.NumMethod(); i++ {
 			method := val.Method(i)
-			if method.Type().NumIn() == 1 && method.Type().In(0) == reflect.TypeOf(&Context{}) {
+			if method.Type().NumIn() == 1 && method.Type().In(0) == reflect.TypeOf(&Context{}) && method.Type().NumOut() == 1 && method.Type().Out(0) == reflect.TypeOf((*error)(nil)).Elem() {
 				methodName := val.Type().Method(i).Name
 				if methodName != "Action" {
 					controller.registerAction(methodName, method.Interface().(func(*Context) error))
