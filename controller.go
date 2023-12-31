@@ -71,7 +71,7 @@ func (c *Controller) registerAction(name string, function func(*Context) error) 
 
 type Controllers map[string]*Controller
 
-func RegisterController(c interface{}) *Controller {
+func registerController(c interface{}) *Controller {
 	val := reflect.ValueOf(c)
 
 	if val.Kind() == reflect.Ptr && val.Elem().FieldByName("Controller").Type() == reflect.TypeOf(Controller{}) {
@@ -83,7 +83,6 @@ func RegisterController(c interface{}) *Controller {
 			if method.Type().NumIn() == 1 && method.Type().In(0) == reflect.TypeOf(&Context{}) {
 				methodName := val.Type().Method(i).Name
 				if methodName != "Action" {
-					fmt.Println("Method Name:", methodName)
 					controller.registerAction(methodName, method.Interface().(func(*Context) error))
 				}
 			}
@@ -94,10 +93,11 @@ func RegisterController(c interface{}) *Controller {
 	}
 }
 
-func RegisterControllers(controller ...*Controller) Controllers {
-	controllers := make(Controllers)
-	for _, c := range controller {
-		controllers[c.Name] = c
+func RegisterControllers(controllers ...interface{}) Controllers {
+	c := make(Controllers)
+	for _, controller := range controllers {
+		registeredController := registerController(controller)
+		c[registeredController.Name] = registeredController
 	}
-	return controllers
+	return c
 }
