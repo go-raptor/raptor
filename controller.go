@@ -29,7 +29,7 @@ func (c *Controller) Action(ctx *Context) error {
 func (c *Controller) logStart(ctx *Context) {
 	action := ctx.Locals("Action").(string)
 	c.Utils.Log.Info(fmt.Sprintf("Started %s \"%s\" for %s", ctx.Method(), ctx.OriginalURL(), ctx.IP()))
-	c.Utils.Log.Info(fmt.Sprintf("Processing by %sController#%s", c.Name, action))
+	c.Utils.Log.Info(fmt.Sprintf("Processing by %s#%s", c.Name, action))
 }
 
 func (c *Controller) logFinish(ctx *Context, startTime time.Time) {
