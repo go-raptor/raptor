@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"runtime"
-	"strings"
 	"time"
 )
 
@@ -38,38 +36,16 @@ func (c *Controller) logFinish(ctx *Context, startTime time.Time) {
 	c.Utils.Log.Info(fmt.Sprintf("Completed %d %s in %dms", ctx.Response().StatusCode(), http.StatusText(ctx.Response().StatusCode()), time.Since(startTime).Milliseconds()))
 }
 
-func (c *Controller) registerActions(functions ...func(*Context) error) {
-	if c.Actions == nil {
-		c.Actions = make(map[string]action)
-	}
-	for _, function := range functions {
-		fullName := runtime.FuncForPC(reflect.ValueOf(function).Pointer()).Name()
-		fmt.Println(fullName)
-		parts := strings.Split(fullName, ".")
-		name := parts[len(parts)-1]
-
-		if strings.HasSuffix(name, "-fm") {
-			name = strings.TrimSuffix(name, "-fm")
-		}
-
-		c.Actions[name] = action{
-			Name:     name,
-			Function: function,
-		}
-	}
-}
-
-func (c *Controller) registerAction(name string, function func(*Context) error) {
-	if c.Actions == nil {
-		c.Actions = make(map[string]action)
-	}
-	c.Actions[name] = action{
-		Name:     name,
-		Function: function,
-	}
-}
-
 type Controllers map[string]*Controller
+
+func RegisterControllers(controllers ...interface{}) Controllers {
+	c := make(Controllers)
+	for _, controller := range controllers {
+		registeredController := registerController(controller)
+		c[registeredController.Name] = registeredController
+	}
+	return c
+}
 
 func registerController(c interface{}) *Controller {
 	val := reflect.ValueOf(c)
@@ -93,11 +69,12 @@ func registerController(c interface{}) *Controller {
 	}
 }
 
-func RegisterControllers(controllers ...interface{}) Controllers {
-	c := make(Controllers)
-	for _, controller := range controllers {
-		registeredController := registerController(controller)
-		c[registeredController.Name] = registeredController
+func (c *Controller) registerAction(name string, function func(*Context) error) {
+	if c.Actions == nil {
+		c.Actions = make(map[string]action)
 	}
-	return c
+	c.Actions[name] = action{
+		Name:     name,
+		Function: function,
+	}
 }
