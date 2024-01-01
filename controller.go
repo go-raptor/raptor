@@ -16,7 +16,7 @@ func (c *Controller) SetUtils(r *Raptor) {
 	c.Utils = r.Utils
 }
 
-func (c *Controller) Action(ctx *Context) error {
+func (c *Controller) action(ctx *Context) error {
 	startTime := time.Now()
 	c.logActionStart(ctx)
 	action := ctx.Locals("Action").(string)
