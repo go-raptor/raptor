@@ -141,10 +141,10 @@ func (r *Raptor) Routes(routes Routes) {
 			r.Utils.Log.Error(fmt.Sprintf("Action %s not found in controller %s for path %s!", route.Action, route.Controller, route.Path))
 			os.Exit(1)
 		}
-		r.route(route.Method, route.Path, route.Controller, route.Action)
+		r.route(route)
 	}
 }
 
-func (r *Raptor) route(method, path, controller, action string) {
-	r.server.Add(method, path, wrapHandler(action, r.controllers[controller].action))
+func (r *Raptor) route(route route) {
+	r.server.Add(route.Method, route.Path, wrapHandler(route.Action, r.controllers[route.Controller].action))
 }
