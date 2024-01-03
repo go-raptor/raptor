@@ -28,6 +28,17 @@ func registerController(c interface{}) *Controller {
 				controller.registerAction(val.Type().Method(i).Name, method.Interface().(func(*Context) error))
 			}
 		}
+
+		for i := 0; i < val.Elem().NumField(); i++ {
+			field := val.Elem().Field(i)
+			if field.Type().Implements(reflect.TypeOf((*ServiceInterface)(nil)).Elem()) {
+				utilsMethod := field.MethodByName("SetUtils")
+				if utilsMethod.IsValid() {
+					utilsMethod.Call([]reflect.Value{reflect.ValueOf(&controller.Utils)})
+				}
+			}
+		}
+
 		return controller
 	} else {
 		panic("Controller must be a pointer to a struct that embeds raptor.Controller")
