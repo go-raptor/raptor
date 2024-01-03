@@ -5,15 +5,13 @@ type ServiceInterface interface {
 }
 
 type Service struct {
-	Utils **Utils
-	Util  *Utils
+	utils **Utils
 }
 
 func (s *Service) SetUtils(u **Utils) {
-	s.Utils = u
-	s.Util = *s.Utils
+	s.utils = u
 }
 
-func (s *Service) GetUtils() *Utils {
-	return *s.Utils
+func (s *Service) Utils() *Utils {
+	return *s.utils
 }

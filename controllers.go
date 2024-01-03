@@ -34,7 +34,7 @@ func registerController(c interface{}) *Controller {
 			if field.Type().Implements(reflect.TypeOf((*ServiceInterface)(nil)).Elem()) {
 				utilsMethod := field.MethodByName("SetUtils")
 				if utilsMethod.IsValid() {
-					utilsMethod.Call([]reflect.Value{reflect.ValueOf(&controller.Utils)})
+					utilsMethod.Call([]reflect.Value{reflect.ValueOf(&controller.utils)})
 				}
 			}
 		}
