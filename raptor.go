@@ -10,7 +10,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/template/jet/v2"
+	"github.com/gofiber/template/html/v2"
 )
 
 type Raptor struct {
@@ -82,7 +82,7 @@ func newServer(config *Config) *fiber.App {
 }
 
 func newServerMVC(c *Config) *fiber.App {
-	engine := jet.New("app/views", ".html.jet")
+	engine := html.New("./app/views", ".html")
 
 	engine.Reload(c.Templating.Reload)
 
