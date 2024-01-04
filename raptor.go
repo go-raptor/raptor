@@ -124,6 +124,13 @@ func (r *Raptor) waitForShutdown() {
 	r.Utils.Log.Warn("Raptor exited, bye bye!")
 }
 
+func (r *Raptor) Middlewares(middlewares Middlewares) {
+	for _, middleware := range middlewares {
+		middleware.SetUtils(r.Utils)
+		r.server.Use(wrapHandler(middleware.New))
+	}
+}
+
 func (r *Raptor) Services(services Services) {
 	for _, service := range services {
 		service.SetUtils(r.Utils)
@@ -153,5 +160,5 @@ func (r *Raptor) Routes(routes Routes) {
 }
 
 func (r *Raptor) route(route route) {
-	r.server.Add(route.Method, route.Path, wrapHandler(route.Action, r.controllers[route.Controller].action))
+	r.server.Add(route.Method, route.Path, wrapActionHandler(route.Action, r.controllers[route.Controller].action))
 }
