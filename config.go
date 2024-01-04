@@ -21,11 +21,12 @@ type General struct {
 }
 
 type Server struct {
-	Address      string
-	Port         int
-	Static       bool
-	StaticPrefix string
-	StaticRoot   string
+	Address         string
+	Port            int
+	Static          bool
+	StaticPrefix    string
+	StaticRoot      string
+	ShutdownTimeout int
 }
 
 type Templating struct {
@@ -41,18 +42,18 @@ type CORS struct {
 const (
 	DefaultGeneralDevelopment = false
 
-	DefaultServerAddress = "127.0.0.1"
-	DefaultServerPort    = 3000
+	DefaultServerAddress   = "127.0.0.1"
+	DefaultServerPort      = 3000
+	DefaultStatic          = true
+	DefaultStaticPrefix    = "/public"
+	DefaultStaticRoot      = "./public"
+	DefaultShutdownTimeout = 3
 
 	DefaultTemplatingEnabled = true
 	DefaultTemplatingReload  = true
 
 	DefaultCORSOrigins     = "*"
 	DefaultCORSCredentials = false
-
-	DefaultStatic       = true
-	DefaultStaticPrefix = "/public"
-	DefaultStaticRoot   = "./public"
 )
 
 func newConfig(u *Utils) *Config {
@@ -104,6 +105,7 @@ func (c *Config) applyEnvirontmentVariables() {
 	c.applyEnvirontmentVariable("SERVER_STATIC", &c.Server.Static)
 	c.applyEnvirontmentVariable("SERVER_STATIC_PREFIX", &c.Server.StaticPrefix)
 	c.applyEnvirontmentVariable("SERVER_STATIC_ROOT", &c.Server.StaticRoot)
+	c.applyEnvirontmentVariable("SERVER_SHUTDOWN_TIMEOUT", &c.Server.ShutdownTimeout)
 
 	c.applyEnvirontmentVariable("TEMPLATING_ENABLED", &c.Templating.Enabled)
 	c.applyEnvirontmentVariable("TEMPLATING_RELOAD", &c.Templating.Reload)

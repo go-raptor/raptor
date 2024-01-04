@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -117,7 +118,7 @@ func (r *Raptor) waitForShutdown() {
 	signal.Notify(quit, os.Interrupt)
 	<-quit
 	r.Utils.Log.Warn("Shutting down Raptor...")
-	if err := r.server.Shutdown(); err != nil {
+	if err := r.server.ShutdownWithTimeout(time.Duration(r.config.Server.ShutdownTimeout) * time.Second); err != nil {
 		r.Utils.Log.Error("Server Shutdown:", err)
 	}
 	r.Utils.Log.Warn("Raptor exited, bye bye!")
