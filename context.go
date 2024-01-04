@@ -6,6 +6,8 @@ type Map map[string]interface{}
 
 type Context struct {
 	*fiber.Ctx
+	Controller string
+	Action     string
 }
 
 func (c *Context) JSON(data interface{}, status ...int) error {

@@ -19,16 +19,14 @@ func (c *Controller) SetUtils(r *Raptor) {
 func (c *Controller) action(ctx *Context) error {
 	startTime := time.Now()
 	c.logActionStart(ctx)
-	action := ctx.Locals("Action").(string)
-	err := c.Actions[action].Function(ctx)
+	err := c.Actions[ctx.Action].Function(ctx)
 	c.logActionFinish(ctx, startTime)
 	return err
 }
 
 func (c *Controller) logActionStart(ctx *Context) {
-	action := ctx.Locals("Action").(string)
 	c.Utils.Log.Info(fmt.Sprintf("Started %s \"%s\" for %s", ctx.Method(), ctx.OriginalURL(), ctx.IP()))
-	c.Utils.Log.Info(fmt.Sprintf("Processing by %s#%s", c.Name, action))
+	c.Utils.Log.Info(fmt.Sprintf("Processing by %s#%s", c.Name, ctx.Action))
 }
 
 func (c *Controller) logActionFinish(ctx *Context, startTime time.Time) {

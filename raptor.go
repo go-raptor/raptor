@@ -160,5 +160,5 @@ func (r *Raptor) Routes(routes Routes) {
 }
 
 func (r *Raptor) route(route route) {
-	r.server.Add(route.Method, route.Path, wrapActionHandler(route.Action, r.controllers[route.Controller].action))
+	r.server.Add(route.Method, route.Path, wrapActionHandler(route.Controller, route.Action, r.controllers[route.Controller].action))
 }
