@@ -23,15 +23,15 @@ type General struct {
 type Server struct {
 	Address         string
 	Port            int
-	Static          bool
-	StaticPrefix    string
-	StaticRoot      string
 	ShutdownTimeout int
 }
 
 type Templating struct {
-	Enabled bool
-	Reload  bool
+	Enabled      bool
+	Reload       bool
+	Static       bool
+	StaticPrefix string
+	StaticRoot   string
 }
 
 type CORS struct {
@@ -44,13 +44,13 @@ const (
 
 	DefaultServerAddress   = "127.0.0.1"
 	DefaultServerPort      = 3000
-	DefaultStatic          = true
-	DefaultStaticPrefix    = "/public"
-	DefaultStaticRoot      = "./public"
 	DefaultShutdownTimeout = 3
 
-	DefaultTemplatingEnabled = true
-	DefaultTemplatingReload  = true
+	DefaultTemplatingEnabled      = true
+	DefaultTemplatingReload       = true
+	DefaultTemplatingStatic       = true
+	DefaultTemplatingStaticPrefix = "/public"
+	DefaultTemplatingStaticRoot   = "./public"
 
 	DefaultCORSOrigins     = "*"
 	DefaultCORSCredentials = false
@@ -73,14 +73,16 @@ func newConfigDefaults() *Config {
 			Development: DefaultGeneralDevelopment,
 		},
 		Server: Server{
-			Address:      DefaultServerAddress,
-			Port:         DefaultServerPort,
-			Static:       DefaultStatic,
-			StaticPrefix: DefaultStaticPrefix,
-			StaticRoot:   DefaultStaticRoot,
+			Address:         DefaultServerAddress,
+			Port:            DefaultServerPort,
+			ShutdownTimeout: DefaultShutdownTimeout,
 		},
 		Templating: Templating{
-			Enabled: DefaultTemplatingEnabled,
+			Enabled:      DefaultTemplatingEnabled,
+			Reload:       DefaultTemplatingReload,
+			Static:       DefaultTemplatingStatic,
+			StaticPrefix: DefaultTemplatingStaticPrefix,
+			StaticRoot:   DefaultTemplatingStaticRoot,
 		},
 		CORS: CORS{
 			Origins:     []string{DefaultCORSOrigins},
@@ -102,13 +104,13 @@ func (c *Config) applyEnvirontmentVariables() {
 
 	c.applyEnvirontmentVariable("SERVER_ADDRESS", &c.Server.Address)
 	c.applyEnvirontmentVariable("SERVER_PORT", &c.Server.Port)
-	c.applyEnvirontmentVariable("SERVER_STATIC", &c.Server.Static)
-	c.applyEnvirontmentVariable("SERVER_STATIC_PREFIX", &c.Server.StaticPrefix)
-	c.applyEnvirontmentVariable("SERVER_STATIC_ROOT", &c.Server.StaticRoot)
 	c.applyEnvirontmentVariable("SERVER_SHUTDOWN_TIMEOUT", &c.Server.ShutdownTimeout)
 
 	c.applyEnvirontmentVariable("TEMPLATING_ENABLED", &c.Templating.Enabled)
 	c.applyEnvirontmentVariable("TEMPLATING_RELOAD", &c.Templating.Reload)
+	c.applyEnvirontmentVariable("TEMPLATING_STATIC", &c.Templating.Static)
+	c.applyEnvirontmentVariable("TEMPLATING_STATIC_PREFIX", &c.Templating.StaticPrefix)
+	c.applyEnvirontmentVariable("TEMPLATING_STATIC_ROOT", &c.Templating.StaticRoot)
 
 	c.applyEnvirontmentVariable("CORS_ORIGINS", &c.CORS.Origins)
 	c.applyEnvirontmentVariable("CORS_CREDENTIALS", &c.CORS.Credentials)
