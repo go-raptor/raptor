@@ -123,6 +123,12 @@ func (r *Raptor) waitForShutdown() {
 	r.Utils.Log.Warn("Raptor exited, bye bye!")
 }
 
+func (r *Raptor) Services(services Services) {
+	for _, service := range services {
+		service.SetUtils(r.Utils)
+	}
+}
+
 func (r *Raptor) Controllers(c Controllers) {
 	r.controllers = c
 	for _, controller := range r.controllers {

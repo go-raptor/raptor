@@ -8,16 +8,12 @@ import (
 
 type Controller struct {
 	Name    string
-	utils   *Utils
+	Utils   *Utils
 	Actions map[string]action
 }
 
 func (c *Controller) SetUtils(r *Raptor) {
-	c.utils = r.Utils
-}
-
-func (c *Controller) Utils() *Utils {
-	return c.utils
+	c.Utils = r.Utils
 }
 
 func (c *Controller) action(ctx *Context) error {
@@ -31,12 +27,12 @@ func (c *Controller) action(ctx *Context) error {
 
 func (c *Controller) logActionStart(ctx *Context) {
 	action := ctx.Locals("Action").(string)
-	c.Utils().Log.Info(fmt.Sprintf("Started %s \"%s\" for %s", ctx.Method(), ctx.OriginalURL(), ctx.IP()))
-	c.Utils().Log.Info(fmt.Sprintf("Processing by %s#%s", c.Name, action))
+	c.Utils.Log.Info(fmt.Sprintf("Started %s \"%s\" for %s", ctx.Method(), ctx.OriginalURL(), ctx.IP()))
+	c.Utils.Log.Info(fmt.Sprintf("Processing by %s#%s", c.Name, action))
 }
 
 func (c *Controller) logActionFinish(ctx *Context, startTime time.Time) {
-	c.Utils().Log.Info(fmt.Sprintf("Completed %d %s in %dms", ctx.Response().StatusCode(), http.StatusText(ctx.Response().StatusCode()), time.Since(startTime).Milliseconds()))
+	c.Utils.Log.Info(fmt.Sprintf("Completed %d %s in %dms", ctx.Response().StatusCode(), http.StatusText(ctx.Response().StatusCode()), time.Since(startTime).Milliseconds()))
 }
 
 func (c *Controller) registerAction(name string, function func(*Context) error) {
