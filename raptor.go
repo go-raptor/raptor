@@ -18,7 +18,7 @@ type Raptor struct {
 	Utils       *Utils
 	config      *Config
 	server      *fiber.App
-	controllers Controllers
+	coordinator *coordinator
 	routes      Routes
 }
 
@@ -27,9 +27,10 @@ func NewRaptor() *Raptor {
 	config := newConfig(utils)
 
 	raptor := &Raptor{
-		config: config,
-		server: newServer(config),
-		Utils:  utils,
+		config:      config,
+		server:      newServer(config),
+		coordinator: newCoordinator(utils),
+		Utils:       utils,
 	}
 
 	return raptor
@@ -138,20 +139,15 @@ func (r *Raptor) Services(services Services) {
 }
 
 func (r *Raptor) Controllers(c Controllers) {
-	r.controllers = c
-	for _, controller := range r.controllers {
-		controller.SetUtils(r)
+	for _, controller := range c {
+		r.coordinator.registerController(controller, r.Utils)
 	}
 }
 
 func (r *Raptor) Routes(routes Routes) {
 	r.routes = routes
 	for _, route := range r.routes {
-		if _, ok := r.controllers[route.Controller]; !ok {
-			r.Utils.Log.Error(fmt.Sprintf("Controller %s not found for path %s!", route.Controller, route.Path))
-			os.Exit(1)
-		}
-		if _, ok := r.controllers[route.Controller].Actions[route.Action]; !ok {
+		if _, ok := r.coordinator.actions[route.Controller][route.Action]; !ok {
 			r.Utils.Log.Error(fmt.Sprintf("Action %s not found in controller %s for path %s!", route.Action, route.Controller, route.Path))
 			os.Exit(1)
 		}
@@ -160,5 +156,5 @@ func (r *Raptor) Routes(routes Routes) {
 }
 
 func (r *Raptor) route(route route) {
-	r.server.Add(route.Method, route.Path, wrapActionHandler(route.Controller, route.Action, r.controllers[route.Controller].action))
+	r.server.Add(route.Method, route.Path, wrapActionHandler(route.Controller, route.Action, r.coordinator.action))
 }

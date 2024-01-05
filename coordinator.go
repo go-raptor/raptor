@@ -1,0 +1,59 @@
+package raptor
+
+import (
+	"fmt"
+	"net/http"
+	"reflect"
+	"time"
+)
+
+type coordinator struct {
+	Utils   *Utils
+	actions map[string]map[string]func(*Context) error
+}
+
+func newCoordinator(u *Utils) *coordinator {
+	return &coordinator{
+		Utils:   u,
+		actions: make(map[string]map[string]func(*Context) error),
+	}
+}
+
+func (c *coordinator) action(ctx *Context) error {
+	startTime := time.Now()
+	c.logActionStart(ctx)
+	err := c.actions[ctx.Controller][ctx.Action](ctx)
+	c.logActionFinish(ctx, startTime)
+	return err
+}
+
+func (c *coordinator) logActionStart(ctx *Context) {
+	c.Utils.Log.Info(fmt.Sprintf("Started %s \"%s\" for %s", ctx.Method(), ctx.OriginalURL(), ctx.IP()))
+	c.Utils.Log.Info(fmt.Sprintf("Processing by %s#%s", ctx.Controller, ctx.Action))
+}
+
+func (c *coordinator) logActionFinish(ctx *Context, startTime time.Time) {
+	c.Utils.Log.Info(fmt.Sprintf("Completed %d %s in %dms", ctx.Response().StatusCode(), http.StatusText(ctx.Response().StatusCode()), time.Since(startTime).Milliseconds()))
+}
+
+func (c *coordinator) registerController(controller interface{}, u *Utils) {
+	val := reflect.ValueOf(controller)
+
+	if val.Kind() == reflect.Ptr && val.Elem().FieldByName("Controller").Type() == reflect.TypeOf(Controller{}) {
+		ctr := val.Elem().FieldByName("Controller").Addr().Interface().(*Controller)
+		ctr.SetUtils(u)
+		controllerName := val.Elem().Type().Name()
+		if c.actions[controllerName] == nil {
+			c.actions[controllerName] = make(map[string]func(*Context) error)
+		}
+
+		for i := 0; i < val.NumMethod(); i++ {
+			method := val.Method(i)
+			if method.Type().NumIn() == 1 && method.Type().In(0) == reflect.TypeOf(&Context{}) && method.Type().NumOut() == 1 && method.Type().Out(0) == reflect.TypeOf((*error)(nil)).Elem() {
+				c.actions[controllerName][val.Type().Method(i).Name] = method.Interface().(func(*Context) error)
+			}
+		}
+	} else {
+		panic("Controller must be a pointer to a struct that embeds raptor.Controller")
+	}
+}
