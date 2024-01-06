@@ -125,20 +125,26 @@ func (r *Raptor) waitForShutdown() {
 	r.Utils.Log.Warn("Raptor exited, bye bye!")
 }
 
-func (r *Raptor) Middlewares(middlewares Middlewares) {
+func (r *Raptor) Init(app *AppInitializer) {
+	r.middlewares(app.Middlewares)
+	r.services(app.Services)
+	r.controllers(app.Controllers)
+}
+
+func (r *Raptor) middlewares(middlewares Middlewares) {
 	for _, middleware := range middlewares {
 		middleware.SetUtils(r.Utils)
 		r.server.Use(wrapHandler(middleware.New))
 	}
 }
 
-func (r *Raptor) Services(services Services) {
+func (r *Raptor) services(services Services) {
 	for _, service := range services {
 		service.SetUtils(r.Utils)
 	}
 }
 
-func (r *Raptor) Controllers(c Controllers) {
+func (r *Raptor) controllers(c Controllers) {
 	for _, controller := range c {
 		r.coordinator.registerController(controller, r.Utils)
 	}
