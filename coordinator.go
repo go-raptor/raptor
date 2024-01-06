@@ -8,13 +8,13 @@ import (
 )
 
 type coordinator struct {
-	Utils   *Utils
+	utils   *Utils
 	actions map[string]map[string]func(*Context) error
 }
 
 func newCoordinator(u *Utils) *coordinator {
 	return &coordinator{
-		Utils:   u,
+		utils:   u,
 		actions: make(map[string]map[string]func(*Context) error),
 	}
 }
@@ -28,20 +28,19 @@ func (c *coordinator) action(ctx *Context) error {
 }
 
 func (c *coordinator) logActionStart(ctx *Context) {
-	c.Utils.Log.Info(fmt.Sprintf("Started %s \"%s\" for %s", ctx.Method(), ctx.OriginalURL(), ctx.IP()))
-	c.Utils.Log.Info(fmt.Sprintf("Processing by %s#%s", ctx.Controller, ctx.Action))
+	c.utils.Log.Info(fmt.Sprintf("Started %s \"%s\" for %s", ctx.Method(), ctx.OriginalURL(), ctx.IP()))
+	c.utils.Log.Info(fmt.Sprintf("Processing by %s#%s", ctx.Controller, ctx.Action))
 }
 
 func (c *coordinator) logActionFinish(ctx *Context, startTime time.Time) {
-	c.Utils.Log.Info(fmt.Sprintf("Completed %d %s in %dms", ctx.Response().StatusCode(), http.StatusText(ctx.Response().StatusCode()), time.Since(startTime).Milliseconds()))
+	c.utils.Log.Info(fmt.Sprintf("Completed %d %s in %dms", ctx.Response().StatusCode(), http.StatusText(ctx.Response().StatusCode()), time.Since(startTime).Milliseconds()))
 }
 
 func (c *coordinator) registerController(controller interface{}, u *Utils) {
 	val := reflect.ValueOf(controller)
 
-	if val.Kind() == reflect.Ptr && val.Elem().FieldByName("Controller").Type() == reflect.TypeOf(Controller{}) {
-		ctr := val.Elem().FieldByName("Controller").Addr().Interface().(*Controller)
-		ctr.SetUtils(u)
+	if val.Kind() == reflect.Pointer && val.Elem().FieldByName("Controller").Type() == reflect.TypeOf(Controller{}) {
+		val.Elem().FieldByName("Controller").Addr().Interface().(*Controller).SetUtils(u)
 		controllerName := val.Elem().Type().Name()
 		if c.actions[controllerName] == nil {
 			c.actions[controllerName] = make(map[string]func(*Context) error)
