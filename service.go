@@ -1,10 +1,10 @@
 package raptor
 
+type Services []ServiceInterface
+
 type ServiceInterface interface {
 	SetUtils(u *Utils)
 }
-
-type Services []ServiceInterface
 
 type Service struct {
 	Utils *Utils

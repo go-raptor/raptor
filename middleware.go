@@ -1,11 +1,11 @@
 package raptor
 
+type Middlewares []MiddlewareInterface
+
 type MiddlewareInterface interface {
 	SetUtils(u *Utils)
 	New(*Context) error
 }
-
-type Middlewares []MiddlewareInterface
 
 type Middleware struct {
 	Utils *Utils
