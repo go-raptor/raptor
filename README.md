@@ -2,15 +2,14 @@
 
 # Raptor
 
-Go MVC web development eco-system based on Fiber and inspired by Ruby on Rails and Buffalo.
+Go MVC web development eco-system based on Fiber and heavily inspired by Ruby on Rails and Buffalo.
 
 ## Installation
 
-`go get -u github.com/h00s/raptor`
+`go get github.com/h00s/raptor`
 
 ## Example
 
-Check out the [raptor-app](https://github.com/h00s/raptor-app) repository for an example.
-
-
-
+Check out the repositories for an example:
+- [raptor-api](https://github.com/h00s/raptor-api)
+- [raptor-app](https://github.com/h00s/raptor-app)
