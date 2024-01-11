@@ -1,11 +1,11 @@
-module github.com/h00s/raptor
+module github.com/go-raptor/raptor
 
 go 1.21
 
 require (
 	github.com/BurntSushi/toml v1.3.2
 	github.com/gofiber/fiber/v2 v2.52.0
-	github.com/gofiber/template/html/v2 v2.0.5
+	github.com/gofiber/template/html/v2 v2.1.0
 	github.com/lmittmann/tint v1.0.3
 )
 
