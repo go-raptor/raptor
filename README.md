@@ -6,7 +6,7 @@ Go MVC web development eco-system based on Fiber and heavily inspired by Ruby on
 
 ## Installation
 
-`go get github.com/h00s/raptor`
+`go get github.com/go-raptor/raptor`
 
 ## Example
 
