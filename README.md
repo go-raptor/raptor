@@ -11,5 +11,5 @@ Go MVC web development eco-system based on Fiber and heavily inspired by Ruby on
 ## Example
 
 Check out the repositories for an example:
-- [raptor-api](https://github.com/h00s/raptor-api)
-- [raptor-app](https://github.com/h00s/raptor-app)
+- [example-api](https://github.com/go-raptor/example-api)
+- [example-app](https://github.com/go-raptor/example-app)
