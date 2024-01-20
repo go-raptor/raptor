@@ -76,8 +76,8 @@ func newServer(config *Config) *fiber.App {
 		AllowCredentials: config.CORS.Credentials,
 	}))
 
-	if config.Templating.Static {
-		server.Static(config.Templating.StaticPrefix, config.Templating.StaticRoot)
+	if config.Static.Enabled {
+		server.Static(config.Static.Prefix, config.Static.Root)
 	}
 
 	return server
