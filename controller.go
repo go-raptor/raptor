@@ -3,13 +3,21 @@ package raptor
 type Controllers []interface{}
 
 type ControllerInterface interface {
-	SetUtils(u *Utils)
+	Init(u *Utils)
 }
 
 type Controller struct {
-	Utils *Utils
+	Utils  *Utils
+	onInit func()
 }
 
-func (c *Controller) SetUtils(u *Utils) {
+func (c *Controller) Init(u *Utils) {
 	c.Utils = u
+	if c.onInit != nil {
+		c.onInit()
+	}
+}
+
+func (c *Controller) OnInit(callback func()) {
+	c.onInit = callback
 }

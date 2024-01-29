@@ -133,14 +133,14 @@ func (r *Raptor) Init(app *AppInitializer) {
 
 func (r *Raptor) middlewares(middlewares Middlewares) {
 	for _, middleware := range middlewares {
-		middleware.SetUtils(r.Utils)
+		middleware.Init(r.Utils)
 		r.server.Use(wrapHandler(middleware.New))
 	}
 }
 
 func (r *Raptor) services(services Services) {
 	for _, service := range services {
-		service.SetUtils(r.Utils)
+		service.Init(r.Utils)
 	}
 }
 

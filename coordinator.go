@@ -40,7 +40,7 @@ func (c *coordinator) registerController(controller interface{}, u *Utils) {
 	val := reflect.ValueOf(controller)
 
 	if val.Kind() == reflect.Pointer && val.Elem().FieldByName("Controller").Type() == reflect.TypeOf(Controller{}) {
-		val.Elem().FieldByName("Controller").Addr().Interface().(*Controller).SetUtils(u)
+		val.Elem().FieldByName("Controller").Addr().Interface().(*Controller).Init(u)
 		controllerName := val.Elem().Type().Name()
 		if c.actions[controllerName] == nil {
 			c.actions[controllerName] = make(map[string]func(*Context) error)
