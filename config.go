@@ -60,7 +60,7 @@ const (
 	DefaultServerPort      = 3000
 	DefaultShutdownTimeout = 3
 
-	DefaultDatabaseType = "postgres"
+	DefaultDatabaseType = "none"
 	DefaultDatabaseHost = "localhost"
 	DefaultDatabasePort = 5432
 	DefaultDatabaseUser = "app"

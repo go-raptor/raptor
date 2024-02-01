@@ -7,7 +7,7 @@ type ServiceInterface interface {
 }
 
 type Service struct {
-	Utils  *Utils
+	*Utils
 	onInit func()
 }
 

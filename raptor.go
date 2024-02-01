@@ -25,6 +25,12 @@ type Raptor struct {
 func NewRaptor() *Raptor {
 	utils := newUtils()
 	config := newConfig(utils)
+	db, err := newDatabase(&config.Database)
+	if err != nil {
+		utils.Log.Error("Database connection failed:", err)
+		os.Exit(1)
+	}
+	utils.SetDB(db)
 
 	raptor := &Raptor{
 		config:      config,
@@ -133,8 +139,8 @@ func (r *Raptor) Init(app *AppInitializer) {
 
 func (r *Raptor) middlewares(middlewares Middlewares) {
 	for _, middleware := range middlewares {
-		middleware.Init(r.Utils)
 		r.server.Use(wrapHandler(middleware.New))
+		middleware.Init(r.Utils)
 	}
 }
 
