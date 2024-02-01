@@ -12,6 +12,7 @@ type Config struct {
 
 	General    General
 	Server     Server
+	Database   Database
 	Templating Templating
 	Static     Static
 	CORS       CORS
@@ -25,6 +26,15 @@ type Server struct {
 	Address         string
 	Port            int
 	ShutdownTimeout int
+}
+
+type Database struct {
+	Type     string
+	Host     string
+	Port     int
+	Username string
+	Password string
+	Name     string
 }
 
 type Templating struct {
@@ -49,6 +59,13 @@ const (
 	DefaultServerAddress   = "127.0.0.1"
 	DefaultServerPort      = 3000
 	DefaultShutdownTimeout = 3
+
+	DefaultDatabaseType = "postgres"
+	DefaultDatabaseHost = "localhost"
+	DefaultDatabasePort = 5432
+	DefaultDatabaseUser = "app"
+	DefaultDatabasePass = ""
+	DefaultDatabaseName = "app"
 
 	DefaultTemplatingEnabled = true
 	DefaultTemplatingReload  = true
@@ -82,6 +99,14 @@ func newConfigDefaults() *Config {
 			Port:            DefaultServerPort,
 			ShutdownTimeout: DefaultShutdownTimeout,
 		},
+		Database: Database{
+			Type:     DefaultDatabaseType,
+			Host:     DefaultDatabaseHost,
+			Port:     DefaultDatabasePort,
+			Username: DefaultDatabaseUser,
+			Password: DefaultDatabasePass,
+			Name:     DefaultDatabaseName,
+		},
 		Templating: Templating{
 			Enabled: DefaultTemplatingEnabled,
 			Reload:  DefaultTemplatingReload,
@@ -112,6 +137,13 @@ func (c *Config) applyEnvirontmentVariables() {
 	c.applyEnvirontmentVariable("SERVER_ADDRESS", &c.Server.Address)
 	c.applyEnvirontmentVariable("SERVER_PORT", &c.Server.Port)
 	c.applyEnvirontmentVariable("SERVER_SHUTDOWN_TIMEOUT", &c.Server.ShutdownTimeout)
+
+	c.applyEnvirontmentVariable("DATABASE_TYPE", &c.Database.Type)
+	c.applyEnvirontmentVariable("DATABASE_HOST", &c.Database.Host)
+	c.applyEnvirontmentVariable("DATABASE_PORT", &c.Database.Port)
+	c.applyEnvirontmentVariable("DATABASE_USERNAME", &c.Database.Username)
+	c.applyEnvirontmentVariable("DATABASE_PASSWORD", &c.Database.Password)
+	c.applyEnvirontmentVariable("DATABASE_NAME", &c.Database.Name)
 
 	c.applyEnvirontmentVariable("TEMPLATING_ENABLED", &c.Templating.Enabled)
 	c.applyEnvirontmentVariable("TEMPLATING_RELOAD", &c.Templating.Reload)
