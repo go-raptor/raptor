@@ -5,12 +5,11 @@ import (
 	"os"
 
 	"github.com/lmittmann/tint"
-	"gorm.io/gorm"
 )
 
 type Utils struct {
 	Log *slog.Logger
-	DB  *gorm.DB
+	DB  *DB
 }
 
 func newUtils() *Utils {
@@ -19,6 +18,6 @@ func newUtils() *Utils {
 	}
 }
 
-func (u *Utils) SetDB(db *gorm.DB) {
+func (u *Utils) SetDB(db *DB) {
 	u.DB = db
 }

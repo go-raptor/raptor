@@ -25,12 +25,6 @@ type Raptor struct {
 func NewRaptor() *Raptor {
 	utils := newUtils()
 	config := newConfig(utils)
-	db, err := newDatabase(&config.Database)
-	if err != nil {
-		utils.Log.Error("Database connection failed:", err)
-		os.Exit(1)
-	}
-	utils.SetDB(db)
 
 	raptor := &Raptor{
 		config:      config,
@@ -132,9 +126,26 @@ func (r *Raptor) waitForShutdown() {
 }
 
 func (r *Raptor) Init(app *AppInitializer) {
+	r.db(newDB(app.Database))
 	r.middlewares(app.Middlewares)
 	r.services(app.Services)
 	r.controllers(app.Controllers)
+}
+
+func (r *Raptor) db(db *DB) {
+	if db != nil {
+		err := db.connect(&r.config.Database)
+		if err != nil {
+			r.Utils.Log.Error("Database connection failed:", err)
+			os.Exit(1)
+		}
+		err = db.migrate()
+		if err != nil {
+			r.Utils.Log.Error("Database migration failed:", err)
+			os.Exit(1)
+		}
+		r.Utils.SetDB(db)
+	}
 }
 
 func (r *Raptor) middlewares(middlewares Middlewares) {

@@ -2,20 +2,70 @@ package raptor
 
 import (
 	"fmt"
+	"reflect"
+	"runtime"
+	"strings"
+	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
-func newDatabase(db *Database) (*gorm.DB, error) {
-	switch db.Type {
+type Migration func(*DB) error
+
+type Migrations map[int]Migration
+
+type DB struct {
+	*gorm.DB
+	Migrations Migrations
+}
+
+type SchemaMigration struct {
+	Version    string
+	MigratedAt time.Time
+}
+
+func newDB(migrations Migrations) *DB {
+	return &DB{
+		Migrations: migrations,
+	}
+}
+
+func (db *DB) connect(config *Database) error {
+	var err error
+	switch config.Type {
 	case "postgres":
-		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable", db.Host, db.Username, db.Password, db.Name, db.Port)
-		return gorm.Open(postgres.Open(dsn), &gorm.Config{})
+		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable", config.Host, config.Username, config.Password, config.Name, config.Port)
+		db.DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	case "sqlite":
-		return gorm.Open(sqlite.Open(db.Name), &gorm.Config{})
+		db.DB, err = gorm.Open(sqlite.Open(config.Name), &gorm.Config{})
 	}
 
-	return nil, nil
+	return err
+}
+
+func (db *DB) migrate() error {
+	db.AutoMigrate(&SchemaMigration{})
+
+	result := db.Find(&SchemaMigration{})
+	if result.Error != nil {
+		return result.Error
+	}
+
+	for i := result.RowsAffected + 1; i <= int64(len(db.Migrations)); i++ {
+		db.Transaction(func(tx *gorm.DB) error {
+			funcName := strings.Split(runtime.FuncForPC(reflect.ValueOf(db.Migrations[int(i)]).Pointer()).Name(), "/")
+			migrationName := funcName[len(funcName)-1]
+			err := db.Migrations[int(i)](db)
+			if err == nil {
+				result := db.Create(&SchemaMigration{Version: migrationName, MigratedAt: time.Now()})
+				return result.Error
+			} else {
+				return err
+			}
+		})
+	}
+
+	return nil
 }

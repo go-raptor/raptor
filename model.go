@@ -1,4 +1,5 @@
 package raptor
 
-type Model struct {
-}
+import "gorm.io/gorm"
+
+type Model gorm.Model
