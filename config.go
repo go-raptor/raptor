@@ -81,11 +81,15 @@ const (
 func newConfig(u *Utils) *Config {
 	c := newConfigDefaults()
 	c.utils = u
-	if err := c.loadConfigFromFile(".raptor.dev.toml"); err != nil {
-		c.utils.Log.Warn("Unable to load dev configuration file...")
-	} else if err := c.loadConfigFromFile(".raptor.toml"); err != nil {
+
+	err := c.loadConfigFromFile(".raptor.toml")
+	if err != nil {
+		err = c.loadConfigFromFile(".raptor.dev.toml")
+	}
+	if err != nil {
 		c.utils.Log.Warn("Unable to load configuration file, loaded defaults...")
 	}
+
 	c.applyEnvirontmentVariables()
 
 	return c
