@@ -22,6 +22,7 @@ type DB struct {
 }
 
 type SchemaMigration struct {
+	gorm.Model
 	Version    string
 	MigratedAt time.Time
 }
@@ -48,12 +49,13 @@ func (db *DB) connect(config *Database) error {
 func (db *DB) migrate() error {
 	db.AutoMigrate(&SchemaMigration{})
 
-	result := db.Find(&SchemaMigration{})
+	var currentVersion int64
+	result := db.Find(&SchemaMigration{}).Count(&currentVersion)
 	if result.Error != nil {
 		return result.Error
 	}
 
-	for i := result.RowsAffected + 1; i <= int64(len(db.Migrations)); i++ {
+	for i := currentVersion + 1; i <= int64(len(db.Migrations)); i++ {
 		db.Transaction(func(tx *gorm.DB) error {
 			funcName := strings.Split(runtime.FuncForPC(reflect.ValueOf(db.Migrations[int(i)]).Pointer()).Name(), "/")
 			migrationName := funcName[len(funcName)-1]
