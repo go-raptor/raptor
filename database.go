@@ -55,23 +55,23 @@ func (db *DB) migrate() error {
 		return result.Error
 	}
 
-	db.Begin()
 	for i := currentVersion + 1; i <= int64(len(db.Migrations)); i++ {
 		funcName := strings.Split(runtime.FuncForPC(reflect.ValueOf(db.Migrations[int(i)]).Pointer()).Name(), "/")
 		migrationName := funcName[len(funcName)-1]
+		tx := db.Begin()
 		err := db.Migrations[int(i)](db)
 		if err == nil {
 			result = db.Create(&SchemaMigration{Version: migrationName, MigratedAt: time.Now()})
 			if result.Error != nil {
-				db.Rollback()
+				tx.Rollback()
 				return result.Error
 			}
 		} else {
-			db.Rollback()
+			tx.Rollback()
 			return err
 		}
+		tx.Commit()
 	}
-	db.Commit()
 
 	return nil
 }
