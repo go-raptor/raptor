@@ -55,19 +55,23 @@ func (db *DB) migrate() error {
 		return result.Error
 	}
 
+	db.Begin()
 	for i := currentVersion + 1; i <= int64(len(db.Migrations)); i++ {
-		db.Transaction(func(tx *gorm.DB) error {
-			funcName := strings.Split(runtime.FuncForPC(reflect.ValueOf(db.Migrations[int(i)]).Pointer()).Name(), "/")
-			migrationName := funcName[len(funcName)-1]
-			err := db.Migrations[int(i)](db)
-			if err == nil {
-				result := db.Create(&SchemaMigration{Version: migrationName, MigratedAt: time.Now()})
+		funcName := strings.Split(runtime.FuncForPC(reflect.ValueOf(db.Migrations[int(i)]).Pointer()).Name(), "/")
+		migrationName := funcName[len(funcName)-1]
+		err := db.Migrations[int(i)](db)
+		if err == nil {
+			result = db.Create(&SchemaMigration{Version: migrationName, MigratedAt: time.Now()})
+			if result.Error != nil {
+				db.Rollback()
 				return result.Error
-			} else {
-				return err
 			}
-		})
+		} else {
+			db.Rollback()
+			return err
+		}
 	}
+	db.Commit()
 
 	return nil
 }
