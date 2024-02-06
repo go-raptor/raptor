@@ -126,7 +126,9 @@ func (r *Raptor) waitForShutdown() {
 }
 
 func (r *Raptor) Init(app *AppInitializer) {
-	r.db(newDB(app.Database))
+	if r.config.Database.Type != "none" {
+		r.db(newDB(app.Database))
+	}
 	r.middlewares(app.Middlewares)
 	r.services(app.Services)
 	r.controllers(app.Controllers)
