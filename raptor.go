@@ -24,7 +24,7 @@ type Raptor struct {
 
 func NewRaptor() *Raptor {
 	utils := newUtils()
-	config := newConfig(utils)
+	config := newConfig(utils.Log)
 
 	raptor := &Raptor{
 		config:      config,
@@ -126,6 +126,7 @@ func (r *Raptor) waitForShutdown() {
 }
 
 func (r *Raptor) Init(app *AppInitializer) {
+	r.Utils.SetConfig(r.config)
 	if r.config.Database.Type != "none" {
 		r.db(newDB(app.Database))
 	}

@@ -1,6 +1,7 @@
 package raptor
 
 import (
+	"log/slog"
 	"os"
 	"strconv"
 
@@ -8,7 +9,7 @@ import (
 )
 
 type Config struct {
-	utils *Utils
+	log *slog.Logger
 
 	General    General
 	Server     Server
@@ -16,6 +17,7 @@ type Config struct {
 	Templating Templating
 	Static     Static
 	CORS       CORS
+	App        map[string]interface{}
 }
 
 type General struct {
@@ -78,16 +80,16 @@ const (
 	DefaultCORSCredentials = false
 )
 
-func newConfig(u *Utils) *Config {
+func newConfig(log *slog.Logger) *Config {
 	c := newConfigDefaults()
-	c.utils = u
+	c.log = log
 
 	err := c.loadConfigFromFile(".raptor.toml")
 	if err != nil {
 		err = c.loadConfigFromFile(".raptor.dev.toml")
 	}
 	if err != nil {
-		c.utils.Log.Warn("Unable to load configuration file, loaded defaults...")
+		log.Warn("Unable to load configuration file, loaded defaults...")
 	}
 
 	c.applyEnvirontmentVariables()
@@ -126,6 +128,7 @@ func newConfigDefaults() *Config {
 			Origins:     []string{DefaultCORSOrigins},
 			Credentials: DefaultCORSCredentials,
 		},
+		App: make(map[string]interface{}),
 	}
 }
 
@@ -164,7 +167,7 @@ func (c *Config) applyEnvirontmentVariables() {
 
 func (c *Config) applyEnvirontmentVariable(key string, value interface{}) {
 	if env, ok := os.LookupEnv(key); ok {
-		c.utils.Log.Info("Applying environment variable", key, env)
+		c.log.Info("Applying environment variable", key, env)
 		switch v := value.(type) {
 		case *string:
 			*v = env
@@ -182,7 +185,6 @@ func (c *Config) applyEnvirontmentVariable(key string, value interface{}) {
 			*v = make([]string, 1)
 			(*v)[0] = env
 		default:
-
 		}
 	}
 }

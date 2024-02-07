@@ -8,8 +8,9 @@ import (
 )
 
 type Utils struct {
-	Log *slog.Logger
-	DB  *DB
+	Config *Config
+	Log    *slog.Logger
+	DB     *DB
 }
 
 func newUtils() *Utils {
@@ -20,4 +21,8 @@ func newUtils() *Utils {
 
 func (u *Utils) SetDB(db *DB) {
 	u.DB = db
+}
+
+func (u *Utils) SetConfig(config *Config) {
+	u.Config = config
 }
