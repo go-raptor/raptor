@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"reflect"
 	"strings"
 	"time"
 
@@ -19,6 +20,7 @@ type Raptor struct {
 	config      *Config
 	server      *fiber.App
 	coordinator *coordinator
+	svcs        map[string]ServiceInterface
 	routes      Routes
 }
 
@@ -30,6 +32,7 @@ func NewRaptor() *Raptor {
 		config:      config,
 		server:      newServer(config),
 		coordinator: newCoordinator(utils),
+		svcs:        make(map[string]ServiceInterface),
 		Utils:       utils,
 	}
 
@@ -161,11 +164,13 @@ func (r *Raptor) middlewares(middlewares Middlewares) {
 func (r *Raptor) services(services Services) {
 	for _, service := range services {
 		service.Init(r.Utils)
+		r.svcs[reflect.TypeOf(service).Elem().Name()] = service
 	}
 }
 
 func (r *Raptor) controllers(c Controllers) {
 	for _, controller := range c {
+		controller.(ControllerInterface).SetServices(r.svcs)
 		r.coordinator.registerController(controller, r.Utils)
 	}
 }
