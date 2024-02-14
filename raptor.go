@@ -163,15 +163,14 @@ func (r *Raptor) middlewares(middlewares Middlewares) {
 
 func (r *Raptor) services(services Services) {
 	for _, service := range services {
-		service.Init(r.Utils)
+		service.Init(r.Utils, r.svcs)
 		r.svcs[reflect.TypeOf(service).Elem().Name()] = service
 	}
 }
 
 func (r *Raptor) controllers(c Controllers) {
 	for _, controller := range c {
-		controller.(ControllerInterface).SetServices(r.svcs)
-		r.coordinator.registerController(controller, r.Utils)
+		r.coordinator.registerController(controller, r.Utils, r.svcs)
 	}
 }
 

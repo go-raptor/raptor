@@ -36,11 +36,11 @@ func (c *coordinator) logActionFinish(ctx *Context, startTime time.Time) {
 	c.utils.Log.Info(fmt.Sprintf("Completed %d %s in %dms", ctx.Response().StatusCode(), http.StatusText(ctx.Response().StatusCode()), time.Since(startTime).Milliseconds()))
 }
 
-func (c *coordinator) registerController(controller interface{}, u *Utils) {
+func (c *coordinator) registerController(controller interface{}, u *Utils, s map[string]ServiceInterface) {
 	val := reflect.ValueOf(controller)
 
 	if val.Kind() == reflect.Pointer && val.Elem().FieldByName("Controller").Type() == reflect.TypeOf(Controller{}) {
-		val.Elem().FieldByName("Controller").Addr().Interface().(*Controller).Init(u)
+		val.Elem().FieldByName("Controller").Addr().Interface().(*Controller).Init(u, s)
 		controllerName := val.Elem().Type().Name()
 		if c.actions[controllerName] == nil {
 			c.actions[controllerName] = make(map[string]func(*Context) error)
