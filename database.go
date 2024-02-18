@@ -33,7 +33,7 @@ func newDB(migrations Migrations) *DB {
 	}
 }
 
-func (db *DB) connect(config *Database) error {
+func (db *DB) connect(config *DatabaseConfig) error {
 	var err error
 	switch config.Type {
 	case "postgres":

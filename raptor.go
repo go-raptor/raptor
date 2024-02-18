@@ -55,7 +55,7 @@ func (r *Raptor) Listen() {
 }
 
 func (r *Raptor) address() string {
-	return r.config.Server.Address + ":" + fmt.Sprint(r.config.Server.Port)
+	return r.config.ServerConfig.Address + ":" + fmt.Sprint(r.config.ServerConfig.Port)
 }
 
 func (r *Raptor) checkPort() bool {
@@ -68,19 +68,19 @@ func (r *Raptor) checkPort() bool {
 
 func newServer(config *Config) *fiber.App {
 	var server *fiber.App
-	if config.Templating.Enabled {
+	if config.TemplatingConfig.Enabled {
 		server = newServerMVC(config)
 	} else {
 		server = newServerAPI(config)
 	}
 
 	server.Use(cors.New(cors.Config{
-		AllowOrigins:     strings.Join(config.CORS.Origins, ", "),
-		AllowCredentials: config.CORS.Credentials,
+		AllowOrigins:     strings.Join(config.CORSConfig.Origins, ", "),
+		AllowCredentials: config.CORSConfig.Credentials,
 	}))
 
-	if config.Static.Enabled {
-		server.Static(config.Static.Prefix, config.Static.Root)
+	if config.StaticConfig.Enabled {
+		server.Static(config.StaticConfig.Prefix, config.StaticConfig.Root)
 	}
 
 	return server
@@ -89,7 +89,7 @@ func newServer(config *Config) *fiber.App {
 func newServerMVC(c *Config) *fiber.App {
 	engine := html.New("./app/views", ".html")
 
-	engine.Reload(c.Templating.Reload)
+	engine.Reload(c.TemplatingConfig.Reload)
 
 	server := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
@@ -109,7 +109,7 @@ func newServerAPI(c *Config) *fiber.App {
 }
 
 func (r *Raptor) info() {
-	if r.config.General.Development {
+	if r.config.GeneralConfig.Development {
 		r.Utils.Log.Info(fmt.Sprintf("Raptor %v is running (development)! 🎉", Version))
 	} else {
 		r.Utils.Log.Info(fmt.Sprintf("Raptor %v is running (production)! 🎉", Version))
@@ -122,7 +122,7 @@ func (r *Raptor) waitForShutdown() {
 	signal.Notify(quit, os.Interrupt)
 	<-quit
 	r.Utils.Log.Warn("Shutting down Raptor...")
-	if err := r.server.ShutdownWithTimeout(time.Duration(r.config.Server.ShutdownTimeout) * time.Second); err != nil {
+	if err := r.server.ShutdownWithTimeout(time.Duration(r.config.ServerConfig.ShutdownTimeout) * time.Second); err != nil {
 		r.Utils.Log.Error("Server Shutdown:", err)
 	}
 	r.Utils.Log.Warn("Raptor exited, bye bye!")
@@ -130,7 +130,7 @@ func (r *Raptor) waitForShutdown() {
 
 func (r *Raptor) Init(app *AppInitializer) {
 	r.Utils.SetConfig(r.config)
-	if r.config.Database.Type != "none" {
+	if r.config.DatabaseConfig.Type != "none" {
 		r.db(newDB(app.Database))
 	}
 	r.middlewares(app.Middlewares)
@@ -140,7 +140,7 @@ func (r *Raptor) Init(app *AppInitializer) {
 
 func (r *Raptor) db(db *DB) {
 	if db != nil {
-		err := db.connect(&r.config.Database)
+		err := db.connect(&r.config.DatabaseConfig)
 		if err != nil {
 			r.Utils.Log.Error("Database connection failed:", err)
 			os.Exit(1)

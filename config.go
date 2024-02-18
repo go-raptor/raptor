@@ -11,26 +11,26 @@ import (
 type Config struct {
 	log *slog.Logger
 
-	General    General
-	Server     Server
-	Database   Database
-	Templating Templating
-	Static     Static
-	CORS       CORS
-	App        map[string]interface{}
+	GeneralConfig    GeneralConfig          `toml:"General"`
+	ServerConfig     ServerConfig           `toml:"Server"`
+	DatabaseConfig   DatabaseConfig         `toml:"Database"`
+	TemplatingConfig TemplatingConfig       `toml:"Templating"`
+	StaticConfig     StaticConfig           `toml:"Static"`
+	CORSConfig       CORSConfig             `toml:"CORS"`
+	AppConfig        map[string]interface{} `toml:"App"`
 }
 
-type General struct {
+type GeneralConfig struct {
 	Development bool
 }
 
-type Server struct {
+type ServerConfig struct {
 	Address         string
 	Port            int
 	ShutdownTimeout int
 }
 
-type Database struct {
+type DatabaseConfig struct {
 	Type     string
 	Host     string
 	Port     int
@@ -39,45 +39,45 @@ type Database struct {
 	Name     string
 }
 
-type Templating struct {
+type TemplatingConfig struct {
 	Enabled bool
 	Reload  bool
 }
 
-type Static struct {
+type StaticConfig struct {
 	Enabled bool
 	Prefix  string
 	Root    string
 }
 
-type CORS struct {
+type CORSConfig struct {
 	Origins     []string
 	Credentials bool
 }
 
 const (
-	DefaultGeneralDevelopment = false
+	DefaultGeneralConfigDevelopment = false
 
-	DefaultServerAddress   = "127.0.0.1"
-	DefaultServerPort      = 3000
-	DefaultShutdownTimeout = 3
+	DefaultServerConfigAddress = "127.0.0.1"
+	DefaultServerConfigPort    = 3000
+	DefaultShutdownTimeout     = 3
 
-	DefaultDatabaseType = "none"
-	DefaultDatabaseHost = "localhost"
-	DefaultDatabasePort = 5432
-	DefaultDatabaseUser = "app"
-	DefaultDatabasePass = ""
-	DefaultDatabaseName = "app"
+	DefaultDatabaseConfigType = "none"
+	DefaultDatabaseConfigHost = "localhost"
+	DefaultDatabaseConfigPort = 5432
+	DefaultDatabaseConfigUser = "AppConfig"
+	DefaultDatabaseConfigPass = ""
+	DefaultDatabaseConfigName = "AppConfig"
 
-	DefaultTemplatingEnabled = true
-	DefaultTemplatingReload  = true
+	DefaultTemplatingConfigEnabled = true
+	DefaultTemplatingConfigReload  = true
 
-	DefaultStaticEnabled = true
-	DefaultStaticPrefix  = "/public"
-	DefaultStaticRoot    = "./public"
+	DefaultStaticConfigEnabled = true
+	DefaultStaticConfigPrefix  = "/public"
+	DefaultStaticConfigRoot    = "./public"
 
-	DefaultCORSOrigins     = "*"
-	DefaultCORSCredentials = false
+	DefaultCORSConfigOrigins     = "*"
+	DefaultCORSConfigCredentials = false
 )
 
 func newConfig(log *slog.Logger) *Config {
@@ -92,43 +92,43 @@ func newConfig(log *slog.Logger) *Config {
 		log.Warn("Unable to load configuration file, loaded defaults...")
 	}
 
-	c.applyEnvirontmentVariables()
+	c.AppConfiglyEnvirontmentVariables()
 
 	return c
 }
 
 func newConfigDefaults() *Config {
 	return &Config{
-		General: General{
-			Development: DefaultGeneralDevelopment,
+		GeneralConfig: GeneralConfig{
+			Development: DefaultGeneralConfigDevelopment,
 		},
-		Server: Server{
-			Address:         DefaultServerAddress,
-			Port:            DefaultServerPort,
+		ServerConfig: ServerConfig{
+			Address:         DefaultServerConfigAddress,
+			Port:            DefaultServerConfigPort,
 			ShutdownTimeout: DefaultShutdownTimeout,
 		},
-		Database: Database{
-			Type:     DefaultDatabaseType,
-			Host:     DefaultDatabaseHost,
-			Port:     DefaultDatabasePort,
-			Username: DefaultDatabaseUser,
-			Password: DefaultDatabasePass,
-			Name:     DefaultDatabaseName,
+		DatabaseConfig: DatabaseConfig{
+			Type:     DefaultDatabaseConfigType,
+			Host:     DefaultDatabaseConfigHost,
+			Port:     DefaultDatabaseConfigPort,
+			Username: DefaultDatabaseConfigUser,
+			Password: DefaultDatabaseConfigPass,
+			Name:     DefaultDatabaseConfigName,
 		},
-		Templating: Templating{
-			Enabled: DefaultTemplatingEnabled,
-			Reload:  DefaultTemplatingReload,
+		TemplatingConfig: TemplatingConfig{
+			Enabled: DefaultTemplatingConfigEnabled,
+			Reload:  DefaultTemplatingConfigReload,
 		},
-		Static: Static{
-			Enabled: DefaultStaticEnabled,
-			Prefix:  DefaultStaticPrefix,
-			Root:    DefaultStaticRoot,
+		StaticConfig: StaticConfig{
+			Enabled: DefaultStaticConfigEnabled,
+			Prefix:  DefaultStaticConfigPrefix,
+			Root:    DefaultStaticConfigRoot,
 		},
-		CORS: CORS{
-			Origins:     []string{DefaultCORSOrigins},
-			Credentials: DefaultCORSCredentials,
+		CORSConfig: CORSConfig{
+			Origins:     []string{DefaultCORSConfigOrigins},
+			Credentials: DefaultCORSConfigCredentials,
 		},
-		App: make(map[string]interface{}),
+		AppConfig: make(map[string]interface{}),
 	}
 }
 
@@ -140,34 +140,34 @@ func (c *Config) loadConfigFromFile(path string) error {
 	return nil
 }
 
-func (c *Config) applyEnvirontmentVariables() {
-	c.applyEnvirontmentVariable("RAPTOR_DEVELOPMENT", &c.General.Development)
+func (c *Config) AppConfiglyEnvirontmentVariables() {
+	c.AppConfiglyEnvirontmentVariable("RAPTOR_DEVELOPMENT", &c.GeneralConfig.Development)
 
-	c.applyEnvirontmentVariable("SERVER_ADDRESS", &c.Server.Address)
-	c.applyEnvirontmentVariable("SERVER_PORT", &c.Server.Port)
-	c.applyEnvirontmentVariable("SERVER_SHUTDOWN_TIMEOUT", &c.Server.ShutdownTimeout)
+	c.AppConfiglyEnvirontmentVariable("ServerConfig_ADDRESS", &c.ServerConfig.Address)
+	c.AppConfiglyEnvirontmentVariable("ServerConfig_PORT", &c.ServerConfig.Port)
+	c.AppConfiglyEnvirontmentVariable("ServerConfig_SHUTDOWN_TIMEOUT", &c.ServerConfig.ShutdownTimeout)
 
-	c.applyEnvirontmentVariable("DATABASE_TYPE", &c.Database.Type)
-	c.applyEnvirontmentVariable("DATABASE_HOST", &c.Database.Host)
-	c.applyEnvirontmentVariable("DATABASE_PORT", &c.Database.Port)
-	c.applyEnvirontmentVariable("DATABASE_USERNAME", &c.Database.Username)
-	c.applyEnvirontmentVariable("DATABASE_PASSWORD", &c.Database.Password)
-	c.applyEnvirontmentVariable("DATABASE_NAME", &c.Database.Name)
+	c.AppConfiglyEnvirontmentVariable("DatabaseConfig_TYPE", &c.DatabaseConfig.Type)
+	c.AppConfiglyEnvirontmentVariable("DatabaseConfig_HOST", &c.DatabaseConfig.Host)
+	c.AppConfiglyEnvirontmentVariable("DatabaseConfig_PORT", &c.DatabaseConfig.Port)
+	c.AppConfiglyEnvirontmentVariable("DatabaseConfig_USERNAME", &c.DatabaseConfig.Username)
+	c.AppConfiglyEnvirontmentVariable("DatabaseConfig_PASSWORD", &c.DatabaseConfig.Password)
+	c.AppConfiglyEnvirontmentVariable("DatabaseConfig_NAME", &c.DatabaseConfig.Name)
 
-	c.applyEnvirontmentVariable("TEMPLATING_ENABLED", &c.Templating.Enabled)
-	c.applyEnvirontmentVariable("TEMPLATING_RELOAD", &c.Templating.Reload)
+	c.AppConfiglyEnvirontmentVariable("TemplatingConfig_ENABLED", &c.TemplatingConfig.Enabled)
+	c.AppConfiglyEnvirontmentVariable("TemplatingConfig_RELOAD", &c.TemplatingConfig.Reload)
 
-	c.applyEnvirontmentVariable("STATIC_ENABLED", &c.Static.Enabled)
-	c.applyEnvirontmentVariable("STATIC_PREFIX", &c.Static.Prefix)
-	c.applyEnvirontmentVariable("STATIC_ROOT", &c.Static.Root)
+	c.AppConfiglyEnvirontmentVariable("StaticConfig_ENABLED", &c.StaticConfig.Enabled)
+	c.AppConfiglyEnvirontmentVariable("StaticConfig_PREFIX", &c.StaticConfig.Prefix)
+	c.AppConfiglyEnvirontmentVariable("StaticConfig_ROOT", &c.StaticConfig.Root)
 
-	c.applyEnvirontmentVariable("CORS_ORIGINS", &c.CORS.Origins)
-	c.applyEnvirontmentVariable("CORS_CREDENTIALS", &c.CORS.Credentials)
+	c.AppConfiglyEnvirontmentVariable("CORSConfig_ORIGINS", &c.CORSConfig.Origins)
+	c.AppConfiglyEnvirontmentVariable("CORSConfig_CREDENTIALS", &c.CORSConfig.Credentials)
 }
 
-func (c *Config) applyEnvirontmentVariable(key string, value interface{}) {
+func (c *Config) AppConfiglyEnvirontmentVariable(key string, value interface{}) {
 	if env, ok := os.LookupEnv(key); ok {
-		c.log.Info("Applying environment variable", key, env)
+		c.log.Info("AppConfiglying environment variable", key, env)
 		switch v := value.(type) {
 		case *string:
 			*v = env
