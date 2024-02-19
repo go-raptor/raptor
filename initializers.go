@@ -1,7 +1,7 @@
 package raptor
 
 type AppInitializer struct {
-	Database    Migrations
+	Database    Database
 	Middlewares Middlewares
 	Services    Services
 	Controllers Controllers

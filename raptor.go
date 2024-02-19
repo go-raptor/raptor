@@ -140,11 +140,12 @@ func (r *Raptor) Init(app *AppInitializer) {
 
 func (r *Raptor) db(db *DB) {
 	if db != nil {
-		err := db.connect(&r.config.DatabaseConfig)
+		gormDB, err := db.Connector.Connect(r.config.DatabaseConfig)
 		if err != nil {
 			r.Utils.Log.Error("Database connection failed:", err)
 			os.Exit(1)
 		}
+		db.DB = gormDB
 		err = db.migrate()
 		if err != nil {
 			r.Utils.Log.Error("Database migration failed:", err)

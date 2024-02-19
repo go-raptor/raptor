@@ -1,14 +1,11 @@
 package raptor
 
 import (
-	"fmt"
 	"reflect"
 	"runtime"
 	"strings"
 	"time"
 
-	"gorm.io/driver/postgres"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -18,6 +15,7 @@ type Migrations map[int]Migration
 
 type DB struct {
 	*gorm.DB
+	Connector  Connector
 	Migrations Migrations
 }
 
@@ -27,23 +25,20 @@ type SchemaMigration struct {
 	MigratedAt time.Time
 }
 
-func newDB(migrations Migrations) *DB {
+func newDB(db Database) *DB {
 	return &DB{
-		Migrations: migrations,
+		Connector:  db.Connector,
+		Migrations: db.Migrations,
 	}
 }
 
-func (db *DB) connect(config *DatabaseConfig) error {
-	var err error
-	switch config.Type {
-	case "postgres":
-		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable", config.Host, config.Username, config.Password, config.Name, config.Port)
-		db.DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	case "sqlite":
-		db.DB, err = gorm.Open(sqlite.Open(config.Name), &gorm.Config{})
-	}
+type Connector interface {
+	Connect(config interface{}) (*gorm.DB, error)
+}
 
-	return err
+type Database struct {
+	Connector  Connector
+	Migrations Migrations
 }
 
 func (db *DB) migrate() error {
