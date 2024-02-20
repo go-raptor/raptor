@@ -92,7 +92,7 @@ func newConfig(log *slog.Logger) *Config {
 		log.Warn("Unable to load configuration file, loaded defaults...")
 	}
 
-	c.AppConfiglyEnvirontmentVariables()
+	c.ApplyEnvirontmentVariables()
 
 	return c
 }
@@ -140,32 +140,32 @@ func (c *Config) loadConfigFromFile(path string) error {
 	return nil
 }
 
-func (c *Config) AppConfiglyEnvirontmentVariables() {
-	c.AppConfiglyEnvirontmentVariable("RAPTOR_DEVELOPMENT", &c.GeneralConfig.Development)
+func (c *Config) ApplyEnvirontmentVariables() {
+	c.ApplyEnvirontmentVariable("RAPTOR_DEVELOPMENT", &c.GeneralConfig.Development)
 
-	c.AppConfiglyEnvirontmentVariable("ServerConfig_ADDRESS", &c.ServerConfig.Address)
-	c.AppConfiglyEnvirontmentVariable("ServerConfig_PORT", &c.ServerConfig.Port)
-	c.AppConfiglyEnvirontmentVariable("ServerConfig_SHUTDOWN_TIMEOUT", &c.ServerConfig.ShutdownTimeout)
+	c.ApplyEnvirontmentVariable("SERVER_ADDRESS", &c.ServerConfig.Address)
+	c.ApplyEnvirontmentVariable("SERVER_PORT", &c.ServerConfig.Port)
+	c.ApplyEnvirontmentVariable("SERVER_SHUTDOWN_TIMEOUT", &c.ServerConfig.ShutdownTimeout)
 
-	c.AppConfiglyEnvirontmentVariable("DatabaseConfig_TYPE", &c.DatabaseConfig.Type)
-	c.AppConfiglyEnvirontmentVariable("DatabaseConfig_HOST", &c.DatabaseConfig.Host)
-	c.AppConfiglyEnvirontmentVariable("DatabaseConfig_PORT", &c.DatabaseConfig.Port)
-	c.AppConfiglyEnvirontmentVariable("DatabaseConfig_USERNAME", &c.DatabaseConfig.Username)
-	c.AppConfiglyEnvirontmentVariable("DatabaseConfig_PASSWORD", &c.DatabaseConfig.Password)
-	c.AppConfiglyEnvirontmentVariable("DatabaseConfig_NAME", &c.DatabaseConfig.Name)
+	c.ApplyEnvirontmentVariable("DATABASE_TYPE", &c.DatabaseConfig.Type)
+	c.ApplyEnvirontmentVariable("DATABASE_HOST", &c.DatabaseConfig.Host)
+	c.ApplyEnvirontmentVariable("DATABASE_PORT", &c.DatabaseConfig.Port)
+	c.ApplyEnvirontmentVariable("DATABASE_USERNAME", &c.DatabaseConfig.Username)
+	c.ApplyEnvirontmentVariable("DATABASE_PASSWORD", &c.DatabaseConfig.Password)
+	c.ApplyEnvirontmentVariable("DATABASE_NAME", &c.DatabaseConfig.Name)
 
-	c.AppConfiglyEnvirontmentVariable("TemplatingConfig_ENABLED", &c.TemplatingConfig.Enabled)
-	c.AppConfiglyEnvirontmentVariable("TemplatingConfig_RELOAD", &c.TemplatingConfig.Reload)
+	c.ApplyEnvirontmentVariable("TEMPLATING_ENABLED", &c.TemplatingConfig.Enabled)
+	c.ApplyEnvirontmentVariable("TEMPLATING_RELOAD", &c.TemplatingConfig.Reload)
 
-	c.AppConfiglyEnvirontmentVariable("StaticConfig_ENABLED", &c.StaticConfig.Enabled)
-	c.AppConfiglyEnvirontmentVariable("StaticConfig_PREFIX", &c.StaticConfig.Prefix)
-	c.AppConfiglyEnvirontmentVariable("StaticConfig_ROOT", &c.StaticConfig.Root)
+	c.ApplyEnvirontmentVariable("STATIC_ENABLED", &c.StaticConfig.Enabled)
+	c.ApplyEnvirontmentVariable("STATIC_PREFIX", &c.StaticConfig.Prefix)
+	c.ApplyEnvirontmentVariable("STATIC_ROOT", &c.StaticConfig.Root)
 
-	c.AppConfiglyEnvirontmentVariable("CORSConfig_ORIGINS", &c.CORSConfig.Origins)
-	c.AppConfiglyEnvirontmentVariable("CORSConfig_CREDENTIALS", &c.CORSConfig.Credentials)
+	c.ApplyEnvirontmentVariable("CORS_ORIGINS", &c.CORSConfig.Origins)
+	c.ApplyEnvirontmentVariable("CORS_CREDENTIALS", &c.CORSConfig.Credentials)
 }
 
-func (c *Config) AppConfiglyEnvirontmentVariable(key string, value interface{}) {
+func (c *Config) ApplyEnvirontmentVariable(key string, value interface{}) {
 	if env, ok := os.LookupEnv(key); ok {
 		c.log.Info("AppConfiglying environment variable", key, env)
 		switch v := value.(type) {
