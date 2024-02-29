@@ -134,14 +134,14 @@ func (r *Raptor) waitForShutdown() {
 func (r *Raptor) init() {
 	r.Utils.SetConfig(r.config)
 	if r.config.DatabaseConfig.Type != "none" {
-		r.db(newDB(r.app.Database))
+		r.initDB(newDB(r.app.Database))
 	}
-	r.middlewares(r.app.Middlewares)
-	r.services(r.app.Services)
-	r.controllers(r.app.Controllers)
+	r.registerMiddlewares()
+	r.registerServices()
+	r.registerControllers()
 }
 
-func (r *Raptor) db(db *DB) {
+func (r *Raptor) initDB(db *DB) {
 	if db != nil {
 		gormDB, err := db.Connector.Connect(r.config.DatabaseConfig)
 		if err != nil {
@@ -158,22 +158,22 @@ func (r *Raptor) db(db *DB) {
 	}
 }
 
-func (r *Raptor) middlewares(middlewares Middlewares) {
-	for _, middleware := range middlewares {
+func (r *Raptor) registerMiddlewares() {
+	for _, middleware := range r.app.Middlewares {
 		r.server.Use(wrapHandler(middleware.New))
 		middleware.Init(r.Utils)
 	}
 }
 
-func (r *Raptor) services(services Services) {
-	for _, service := range services {
+func (r *Raptor) registerServices() {
+	for _, service := range r.app.Services {
 		service.Init(r.Utils, r.svcs)
 		r.svcs[reflect.TypeOf(service).Elem().Name()] = service
 	}
 }
 
-func (r *Raptor) controllers(c Controllers) {
-	for _, controller := range c {
+func (r *Raptor) registerControllers() {
+	for _, controller := range r.app.Controllers {
 		r.coordinator.registerController(controller, r.Utils, r.svcs)
 	}
 }
@@ -184,10 +184,10 @@ func (r *Raptor) registerRoutes() {
 			r.Utils.Log.Error(fmt.Sprintf("Action %s not found in controller %s for path %s!", route.Action, route.Controller, route.Path))
 			os.Exit(1)
 		}
-		r.route(route)
+		r.registerRoute(route)
 	}
 }
 
-func (r *Raptor) route(route route) {
+func (r *Raptor) registerRoute(route route) {
 	r.server.Add(route.Method, route.Path, wrapActionHandler(route.Controller, route.Action, r.coordinator.action))
 }
