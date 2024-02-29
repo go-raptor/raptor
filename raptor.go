@@ -12,29 +12,32 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/template/html/v2"
 )
 
 type Raptor struct {
 	Utils       *Utils
 	config      *Config
+	app         *AppInitializer
 	server      *fiber.App
 	coordinator *coordinator
 	svcs        map[string]ServiceInterface
 	routes      Routes
 }
 
-func NewRaptor() *Raptor {
+func NewRaptor(app *AppInitializer) *Raptor {
 	utils := newUtils()
 	config := newConfig(utils.Log)
 
 	raptor := &Raptor{
 		config:      config,
-		server:      newServer(config),
+		app:         app,
+		server:      newServer(config, app),
 		coordinator: newCoordinator(utils),
 		svcs:        make(map[string]ServiceInterface),
 		Utils:       utils,
 	}
+
+	raptor.Init()
 
 	return raptor
 }
@@ -66,12 +69,12 @@ func (r *Raptor) checkPort() bool {
 	return err == nil
 }
 
-func newServer(config *Config) *fiber.App {
+func newServer(config *Config, app *AppInitializer) *fiber.App {
 	var server *fiber.App
 	if config.TemplatingConfig.Enabled {
-		server = newServerMVC(config)
+		server = newServerMVC(app)
 	} else {
-		server = newServerAPI(config)
+		server = newServerAPI()
 	}
 
 	server.Use(cors.New(cors.Config{
@@ -86,21 +89,19 @@ func newServer(config *Config) *fiber.App {
 	return server
 }
 
-func newServerMVC(c *Config) *fiber.App {
-	engine := html.New("./app/views", ".html")
-
-	engine.Reload(c.TemplatingConfig.Reload)
+func newServerMVC(app *AppInitializer) *fiber.App {
+	engine := app.Template.Engine
 
 	server := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 		Views:                 engine,
-		ViewsLayout:           "layouts/main",
+		ViewsLayout:           app.Template.Layout,
 	})
 
 	return server
 }
 
-func newServerAPI(_ *Config) *fiber.App {
+func newServerAPI() *fiber.App {
 	server := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 	})
@@ -128,14 +129,14 @@ func (r *Raptor) waitForShutdown() {
 	r.Utils.Log.Warn("Raptor exited, bye bye!")
 }
 
-func (r *Raptor) Init(app *AppInitializer) {
+func (r *Raptor) Init() {
 	r.Utils.SetConfig(r.config)
 	if r.config.DatabaseConfig.Type != "none" {
-		r.db(newDB(app.Database))
+		r.db(newDB(r.app.Database))
 	}
-	r.middlewares(app.Middlewares)
-	r.services(app.Services)
-	r.controllers(app.Controllers)
+	r.middlewares(r.app.Middlewares)
+	r.services(r.app.Services)
+	r.controllers(r.app.Controllers)
 }
 
 func (r *Raptor) db(db *DB) {

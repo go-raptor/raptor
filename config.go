@@ -69,8 +69,8 @@ const (
 	DefaultDatabaseConfigPass = ""
 	DefaultDatabaseConfigName = "AppConfig"
 
-	DefaultTemplatingConfigEnabled = true
-	DefaultTemplatingConfigReload  = true
+	DefaultTemplatingConfigEnabled = false
+	DefaultTemplatingConfigReload  = false
 
 	DefaultStaticConfigEnabled = true
 	DefaultStaticConfigPrefix  = "/public"
