@@ -24,20 +24,22 @@ type Raptor struct {
 	routes      Routes
 }
 
-func NewRaptor(app *AppInitializer) *Raptor {
+func NewRaptor(app *AppInitializer, routes Routes) *Raptor {
 	utils := newUtils()
 	config := newConfig(utils.Log)
 
 	raptor := &Raptor{
+		Utils:       utils,
 		config:      config,
 		app:         app,
 		server:      newServer(config, app),
 		coordinator: newCoordinator(utils),
 		svcs:        make(map[string]ServiceInterface),
-		Utils:       utils,
+		routes:      routes,
 	}
 
-	raptor.Init()
+	raptor.init()
+	raptor.registerRoutes()
 
 	return raptor
 }
@@ -129,7 +131,7 @@ func (r *Raptor) waitForShutdown() {
 	r.Utils.Log.Warn("Raptor exited, bye bye!")
 }
 
-func (r *Raptor) Init() {
+func (r *Raptor) init() {
 	r.Utils.SetConfig(r.config)
 	if r.config.DatabaseConfig.Type != "none" {
 		r.db(newDB(r.app.Database))
@@ -176,8 +178,7 @@ func (r *Raptor) controllers(c Controllers) {
 	}
 }
 
-func (r *Raptor) Routes(routes Routes) {
-	r.routes = routes
+func (r *Raptor) registerRoutes() {
 	for _, route := range r.routes {
 		if _, ok := r.coordinator.actions[route.Controller][route.Action]; !ok {
 			r.Utils.Log.Error(fmt.Sprintf("Action %s not found in controller %s for path %s!", route.Action, route.Controller, route.Path))
