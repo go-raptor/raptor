@@ -41,7 +41,6 @@ type DatabaseConfig struct {
 
 type TemplatingConfig struct {
 	Enabled bool
-	Reload  bool
 }
 
 type StaticConfig struct {
@@ -70,7 +69,6 @@ const (
 	DefaultDatabaseConfigName = "AppConfig"
 
 	DefaultTemplatingConfigEnabled = false
-	DefaultTemplatingConfigReload  = false
 
 	DefaultStaticConfigEnabled = true
 	DefaultStaticConfigPrefix  = "/public"
@@ -117,7 +115,6 @@ func newConfigDefaults() *Config {
 		},
 		TemplatingConfig: TemplatingConfig{
 			Enabled: DefaultTemplatingConfigEnabled,
-			Reload:  DefaultTemplatingConfigReload,
 		},
 		StaticConfig: StaticConfig{
 			Enabled: DefaultStaticConfigEnabled,
@@ -155,7 +152,6 @@ func (c *Config) ApplyEnvirontmentVariables() {
 	c.ApplyEnvirontmentVariable("DATABASE_NAME", &c.DatabaseConfig.Name)
 
 	c.ApplyEnvirontmentVariable("TEMPLATING_ENABLED", &c.TemplatingConfig.Enabled)
-	c.ApplyEnvirontmentVariable("TEMPLATING_RELOAD", &c.TemplatingConfig.Reload)
 
 	c.ApplyEnvirontmentVariable("STATIC_ENABLED", &c.StaticConfig.Enabled)
 	c.ApplyEnvirontmentVariable("STATIC_PREFIX", &c.StaticConfig.Prefix)
