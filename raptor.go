@@ -100,7 +100,7 @@ func newServerMVC(c *Config) *fiber.App {
 	return server
 }
 
-func newServerAPI(c *Config) *fiber.App {
+func newServerAPI(_ *Config) *fiber.App {
 	server := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 	})
