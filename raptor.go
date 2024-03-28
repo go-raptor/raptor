@@ -170,6 +170,18 @@ func (r *Raptor) registerServices() {
 		service.Init(r.Utils, r.svcs)
 		r.svcs[reflect.TypeOf(service).Elem().Name()] = service
 	}
+
+	for _, service := range r.svcs {
+		for i := 0; i < reflect.ValueOf(service).Elem().NumField(); i++ {
+			field := reflect.ValueOf(service).Elem().Field(i)
+			fieldType := reflect.TypeOf(service).Elem().Field(i)
+			if fieldType.Type.Kind() == reflect.Ptr && fieldType.Type.Elem().Kind() == reflect.Struct {
+				if service, ok := r.svcs[fieldType.Type.Elem().Name()]; ok {
+					field.Set(reflect.ValueOf(service))
+				}
+			}
+		}
+	}
 }
 
 func (r *Raptor) registerControllers() {
