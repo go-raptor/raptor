@@ -16,30 +16,21 @@ import (
 
 type Raptor struct {
 	Utils       *Utils
-	config      *Config
-	app         *AppInitializer
 	server      *fiber.App
 	coordinator *coordinator
 	svcs        map[string]ServiceInterface
 	routes      Routes
 }
 
-func NewRaptor(app *AppInitializer, routes Routes) *Raptor {
+func NewRaptor() *Raptor {
 	utils := newUtils()
-	config := newConfig(utils.Log)
+	utils.SetConfig(newConfig(utils.Log))
 
 	raptor := &Raptor{
 		Utils:       utils,
-		config:      config,
-		app:         app,
-		server:      newServer(config, app),
 		coordinator: newCoordinator(utils),
 		svcs:        make(map[string]ServiceInterface),
-		routes:      routes,
 	}
-
-	raptor.init()
-	raptor.registerRoutes()
 
 	return raptor
 }
@@ -60,7 +51,7 @@ func (r *Raptor) Listen() {
 }
 
 func (r *Raptor) address() string {
-	return r.config.ServerConfig.Address + ":" + fmt.Sprint(r.config.ServerConfig.Port)
+	return r.Utils.Config.ServerConfig.Address + ":" + fmt.Sprint(r.Utils.Config.ServerConfig.Port)
 }
 
 func (r *Raptor) checkPort() bool {
@@ -112,7 +103,7 @@ func newServerAPI() *fiber.App {
 }
 
 func (r *Raptor) info() {
-	if r.config.GeneralConfig.Development {
+	if r.Utils.Config.GeneralConfig.Development {
 		r.Utils.Log.Info(fmt.Sprintf("Raptor %v is running (development)! 🎉", Version))
 	} else {
 		r.Utils.Log.Info(fmt.Sprintf("Raptor %v is running (production)! 🎉", Version))
@@ -125,25 +116,25 @@ func (r *Raptor) waitForShutdown() {
 	signal.Notify(quit, os.Interrupt)
 	<-quit
 	r.Utils.Log.Warn("Shutting down Raptor...")
-	if err := r.server.ShutdownWithTimeout(time.Duration(r.config.ServerConfig.ShutdownTimeout) * time.Second); err != nil {
+	if err := r.server.ShutdownWithTimeout(time.Duration(r.Utils.Config.ServerConfig.ShutdownTimeout) * time.Second); err != nil {
 		r.Utils.Log.Error("Server Shutdown:", err)
 	}
 	r.Utils.Log.Warn("Raptor exited, bye bye!")
 }
 
-func (r *Raptor) init() {
-	r.Utils.SetConfig(r.config)
-	if r.config.DatabaseConfig.Type != "none" {
-		r.initDB(newDB(r.app.Database))
+func (r *Raptor) Init(app *AppInitializer) {
+	r.server = newServer(r.Utils.Config, app)
+	if r.Utils.Config.DatabaseConfig.Type != "none" {
+		r.initDB(newDB(app.Database))
 	}
-	r.registerMiddlewares()
-	r.registerServices()
-	r.registerControllers()
+	r.registerMiddlewares(app)
+	r.registerServices(app)
+	r.registerControllers(app)
 }
 
 func (r *Raptor) initDB(db *DB) {
 	if db != nil {
-		gormDB, err := db.Connector.Connect(r.config.DatabaseConfig)
+		gormDB, err := db.Connector.Connect(r.Utils.Config.DatabaseConfig)
 		if err != nil {
 			r.Utils.Log.Error("Database connection failed:", err)
 			os.Exit(1)
@@ -158,15 +149,15 @@ func (r *Raptor) initDB(db *DB) {
 	}
 }
 
-func (r *Raptor) registerMiddlewares() {
-	for _, middleware := range r.app.Middlewares {
+func (r *Raptor) registerMiddlewares(app *AppInitializer) {
+	for _, middleware := range app.Middlewares {
 		r.server.Use(wrapHandler(middleware.New))
 		middleware.Init(r.Utils)
 	}
 }
 
-func (r *Raptor) registerServices() {
-	for _, service := range r.app.Services {
+func (r *Raptor) registerServices(app *AppInitializer) {
+	for _, service := range app.Services {
 		service.Init(r.Utils, r.svcs)
 		r.svcs[reflect.TypeOf(service).Elem().Name()] = service
 	}
@@ -184,13 +175,14 @@ func (r *Raptor) registerServices() {
 	}
 }
 
-func (r *Raptor) registerControllers() {
-	for _, controller := range r.app.Controllers {
+func (r *Raptor) registerControllers(app *AppInitializer) {
+	for _, controller := range app.Controllers {
 		r.coordinator.registerController(controller, r.Utils, r.svcs)
 	}
 }
 
-func (r *Raptor) registerRoutes() {
+func (r *Raptor) RegisterRoutes(routes Routes) {
+	r.routes = routes
 	for _, route := range r.routes {
 		if _, ok := r.coordinator.actions[route.Controller][route.Action]; !ok {
 			r.Utils.Log.Error(fmt.Sprintf("Action %s not found in controller %s for path %s!", route.Action, route.Controller, route.Path))
