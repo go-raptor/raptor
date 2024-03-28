@@ -18,7 +18,7 @@ type Raptor struct {
 	Utils       *Utils
 	server      *fiber.App
 	coordinator *coordinator
-	svcs        map[string]ServiceInterface
+	services    map[string]ServiceInterface
 	routes      Routes
 }
 
@@ -29,7 +29,7 @@ func NewRaptor() *Raptor {
 	raptor := &Raptor{
 		Utils:       utils,
 		coordinator: newCoordinator(utils),
-		svcs:        make(map[string]ServiceInterface),
+		services:    make(map[string]ServiceInterface),
 	}
 
 	return raptor
@@ -158,16 +158,16 @@ func (r *Raptor) registerMiddlewares(app *AppInitializer) {
 
 func (r *Raptor) registerServices(app *AppInitializer) {
 	for _, service := range app.Services {
-		service.Init(r.Utils, r.svcs)
-		r.svcs[reflect.TypeOf(service).Elem().Name()] = service
+		service.Init(r.Utils, r.services)
+		r.services[reflect.TypeOf(service).Elem().Name()] = service
 	}
 
-	for _, service := range r.svcs {
+	for _, service := range r.services {
 		for i := 0; i < reflect.ValueOf(service).Elem().NumField(); i++ {
 			field := reflect.ValueOf(service).Elem().Field(i)
 			fieldType := reflect.TypeOf(service).Elem().Field(i)
 			if fieldType.Type.Kind() == reflect.Ptr && fieldType.Type.Elem().Kind() == reflect.Struct {
-				if service, ok := r.svcs[fieldType.Type.Elem().Name()]; ok {
+				if service, ok := r.services[fieldType.Type.Elem().Name()]; ok {
 					field.Set(reflect.ValueOf(service))
 				}
 			}
@@ -177,7 +177,7 @@ func (r *Raptor) registerServices(app *AppInitializer) {
 
 func (r *Raptor) registerControllers(app *AppInitializer) {
 	for _, controller := range app.Controllers {
-		r.coordinator.registerController(controller, r.Utils, r.svcs)
+		r.coordinator.registerController(controller, r.Utils, r.services)
 	}
 }
 
