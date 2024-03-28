@@ -52,6 +52,16 @@ func (c *coordinator) registerController(controller interface{}, u *Utils, s map
 				c.actions[controllerName][val.Type().Method(i).Name] = method.Interface().(func(*Context) error)
 			}
 		}
+
+		for i := 0; i < reflect.ValueOf(controller).Elem().NumField(); i++ {
+			field := reflect.ValueOf(controller).Elem().Field(i)
+			fieldType := reflect.TypeOf(controller).Elem().Field(i)
+			if fieldType.Type.Kind() == reflect.Ptr && fieldType.Type.Elem().Kind() == reflect.Struct {
+				if service, ok := s[fieldType.Type.Elem().Name()]; ok {
+					field.Set(reflect.ValueOf(service))
+				}
+			}
+		}
 	} else {
 		panic("Controller must be a pointer to a struct that embeds raptor.Controller")
 	}
