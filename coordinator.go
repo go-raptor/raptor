@@ -28,7 +28,13 @@ func (c *coordinator) action(ctx *Context) error {
 }
 
 func (c *coordinator) logActionStart(ctx *Context) {
-	c.utils.Log.Info(fmt.Sprintf("Started %s \"%s\" for %s", ctx.Method(), ctx.OriginalURL(), ctx.IP()))
+	var ip string
+	if len(ctx.IPs()) > 0 {
+		ip = ctx.IPs()[0]
+	} else {
+		ip = ctx.IP()
+	}
+	c.utils.Log.Info(fmt.Sprintf("Started %s \"%s\" for %s", ctx.Method(), ctx.OriginalURL(), ip))
 	c.utils.Log.Info(fmt.Sprintf("Processing by %s#%s", ctx.Controller, ctx.Action))
 }
 
