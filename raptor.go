@@ -89,6 +89,7 @@ func newServerMVC(app *AppInitializer) *fiber.App {
 		DisableStartupMessage: true,
 		Views:                 engine,
 		ViewsLayout:           app.Template.Layout,
+		ProxyHeader:           "X-Real-IP",
 	})
 
 	return server
@@ -97,6 +98,7 @@ func newServerMVC(app *AppInitializer) *fiber.App {
 func newServerAPI() *fiber.App {
 	server := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
+		ProxyHeader:           "X-Real-IP",
 	})
 
 	return server
