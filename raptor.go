@@ -160,7 +160,7 @@ func (r *Raptor) registerMiddlewares(app *AppInitializer) {
 
 func (r *Raptor) registerServices(app *AppInitializer) {
 	for _, service := range app.Services {
-		service.Init(r.Utils, r.services)
+		service.Init(r.Utils)
 		r.services[reflect.TypeOf(service).Elem().Name()] = service
 	}
 
