@@ -65,9 +65,9 @@ func (r *Raptor) checkPort() bool {
 func newServer(config *Config, app *AppInitializer) *fiber.App {
 	var server *fiber.App
 	if config.TemplatingConfig.Enabled {
-		server = newServerMVC(app)
+		server = newServerMVC(config, app)
 	} else {
-		server = newServerAPI()
+		server = newServerAPI(config, app)
 	}
 
 	server.Use(cors.New(cors.Config{
@@ -82,23 +82,23 @@ func newServer(config *Config, app *AppInitializer) *fiber.App {
 	return server
 }
 
-func newServerMVC(app *AppInitializer) *fiber.App {
+func newServerMVC(config *Config, app *AppInitializer) *fiber.App {
 	engine := app.Template.Engine
 
 	server := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 		Views:                 engine,
 		ViewsLayout:           app.Template.Layout,
-		ProxyHeader:           "X-Real-IP",
+		ProxyHeader:           config.ServerConfig.ProxyHeader,
 	})
 
 	return server
 }
 
-func newServerAPI() *fiber.App {
+func newServerAPI(config *Config, _ *AppInitializer) *fiber.App {
 	server := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
-		ProxyHeader:           "X-Real-IP",
+		ProxyHeader:           config.ServerConfig.ProxyHeader,
 	})
 
 	return server

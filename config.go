@@ -28,6 +28,7 @@ type ServerConfig struct {
 	Address         string
 	Port            int
 	ShutdownTimeout int
+	ProxyHeader     string
 }
 
 type DatabaseConfig struct {
@@ -60,6 +61,7 @@ const (
 	DefaultServerConfigAddress = "127.0.0.1"
 	DefaultServerConfigPort    = 3000
 	DefaultShutdownTimeout     = 3
+	DefaultProxyHeader         = ""
 
 	DefaultDatabaseConfigType = "none"
 	DefaultDatabaseConfigHost = "localhost"
@@ -104,6 +106,7 @@ func newConfigDefaults() *Config {
 			Address:         DefaultServerConfigAddress,
 			Port:            DefaultServerConfigPort,
 			ShutdownTimeout: DefaultShutdownTimeout,
+			ProxyHeader:     DefaultProxyHeader,
 		},
 		DatabaseConfig: DatabaseConfig{
 			Type:     DefaultDatabaseConfigType,
@@ -143,6 +146,7 @@ func (c *Config) ApplyEnvirontmentVariables() {
 	c.ApplyEnvirontmentVariable("SERVER_ADDRESS", &c.ServerConfig.Address)
 	c.ApplyEnvirontmentVariable("SERVER_PORT", &c.ServerConfig.Port)
 	c.ApplyEnvirontmentVariable("SERVER_SHUTDOWN_TIMEOUT", &c.ServerConfig.ShutdownTimeout)
+	c.ApplyEnvirontmentVariable("SERVER_PROXY_HEADER", &c.ServerConfig.ProxyHeader)
 
 	c.ApplyEnvirontmentVariable("DATABASE_TYPE", &c.DatabaseConfig.Type)
 	c.ApplyEnvirontmentVariable("DATABASE_HOST", &c.DatabaseConfig.Host)
