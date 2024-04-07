@@ -129,8 +129,8 @@ func (r *Raptor) Init(app *AppInitializer) {
 	if r.Utils.Config.DatabaseConfig.Type != "none" {
 		r.initDB(newDB(app.Database))
 	}
-	r.registerMiddlewares(app)
 	r.registerServices(app)
+	r.registerMiddlewares(app)
 	r.registerControllers(app)
 }
 
@@ -151,13 +151,6 @@ func (r *Raptor) initDB(db *DB) {
 	}
 }
 
-func (r *Raptor) registerMiddlewares(app *AppInitializer) {
-	for _, middleware := range app.Middlewares {
-		r.server.Use(wrapHandler(middleware.New))
-		middleware.Init(r.Utils)
-	}
-}
-
 func (r *Raptor) registerServices(app *AppInitializer) {
 	for _, service := range app.Services {
 		service.Init(r.Utils)
@@ -168,6 +161,23 @@ func (r *Raptor) registerServices(app *AppInitializer) {
 		for i := 0; i < reflect.ValueOf(service).Elem().NumField(); i++ {
 			field := reflect.ValueOf(service).Elem().Field(i)
 			fieldType := reflect.TypeOf(service).Elem().Field(i)
+			if fieldType.Type.Kind() == reflect.Ptr && fieldType.Type.Elem().Kind() == reflect.Struct {
+				if service, ok := r.services[fieldType.Type.Elem().Name()]; ok {
+					field.Set(reflect.ValueOf(service))
+				}
+			}
+		}
+	}
+}
+
+func (r *Raptor) registerMiddlewares(app *AppInitializer) {
+	for _, middleware := range app.Middlewares {
+		r.server.Use(wrapHandler(middleware.New))
+		middleware.Init(r.Utils)
+
+		for i := 0; i < reflect.ValueOf(middleware).Elem().NumField(); i++ {
+			field := reflect.ValueOf(middleware).Elem().Field(i)
+			fieldType := reflect.TypeOf(middleware).Elem().Field(i)
 			if fieldType.Type.Kind() == reflect.Ptr && fieldType.Type.Elem().Kind() == reflect.Struct {
 				if service, ok := r.services[fieldType.Type.Elem().Name()]; ok {
 					field.Set(reflect.ValueOf(service))
