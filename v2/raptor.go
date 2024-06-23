@@ -39,7 +39,7 @@ func (r *Raptor) Listen() {
 	r.Utils.Log.Info("====> Starting Raptor <====")
 	if r.checkPort() {
 		go func() {
-			if err := r.server.Listen(r.address()); err != nil && err != http.ErrServerClosed {
+			if err := r.server.Listen(r.address(), fiber.ListenConfig{DisableStartupMessage: true}); err != nil && err != http.ErrServerClosed {
 				panic(err)
 			}
 		}()
@@ -86,10 +86,10 @@ func newServerMVC(config *Config, app *AppInitializer) *fiber.App {
 	engine := app.Template.Engine
 
 	server := fiber.New(fiber.Config{
-		DisableStartupMessage: true,
-		Views:                 engine,
-		ViewsLayout:           app.Template.Layout,
-		ProxyHeader:           config.ServerConfig.ProxyHeader,
+		//DisableStartupMessage: true,
+		Views:       engine,
+		ViewsLayout: app.Template.Layout,
+		ProxyHeader: config.ServerConfig.ProxyHeader,
 	})
 
 	return server
@@ -97,8 +97,8 @@ func newServerMVC(config *Config, app *AppInitializer) *fiber.App {
 
 func newServerAPI(config *Config, _ *AppInitializer) *fiber.App {
 	server := fiber.New(fiber.Config{
-		DisableStartupMessage: true,
-		ProxyHeader:           config.ServerConfig.ProxyHeader,
+		//DisableStartupMessage: true,
+		ProxyHeader: config.ServerConfig.ProxyHeader,
 	})
 
 	return server
@@ -205,5 +205,5 @@ func (r *Raptor) RegisterRoutes(routes Routes) {
 }
 
 func (r *Raptor) registerRoute(route route) {
-	r.server.Add(route.Method, route.Path, wrapActionHandler(route.Controller, route.Action, r.coordinator.action))
+	r.server.Add([]string{route.Method}, route.Path, wrapActionHandler(route.Controller, route.Action, r.coordinator.action))
 }

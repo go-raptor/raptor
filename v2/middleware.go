@@ -30,7 +30,7 @@ type fiberMiddleware struct {
 }
 
 func (m *fiberMiddleware) New(c *Context) error {
-	return m.handler(c.Ctx)
+	return m.handler(c.DefaultCtx)
 }
 
 func (m *fiberMiddleware) Init(u *Utils) {
