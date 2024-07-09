@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
-	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -71,12 +70,14 @@ func newServer(config *Config, app *AppInitializer) *fiber.App {
 	}
 
 	server.Use(cors.New(cors.Config{
-		AllowOrigins:     strings.Join(config.CORSConfig.Origins, ", "),
+		// TODO: Upgrade to Fiber v3
+		// AllowOrigins:     strings.Join(config.CORSConfig.Origins, ", "),
 		AllowCredentials: config.CORSConfig.Credentials,
 	}))
 
 	if config.StaticConfig.Enabled {
-		server.Static(config.StaticConfig.Prefix, config.StaticConfig.Root)
+		// TODO: Upgrade to Fiber v3
+		// server.Static(config.StaticConfig.Prefix, config.StaticConfig.Root)
 	}
 
 	return server
