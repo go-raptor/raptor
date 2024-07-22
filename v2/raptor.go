@@ -11,6 +11,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
+	"github.com/gofiber/fiber/v3/middleware/static"
 )
 
 type Raptor struct {
@@ -75,8 +76,7 @@ func newServer(config *Config, app *AppInitializer) *fiber.App {
 	}))
 
 	if config.StaticConfig.Enabled {
-		// TODO: Upgrade to Fiber v3
-		// server.Static(config.StaticConfig.Prefix, config.StaticConfig.Root)
+		server.Get(config.StaticConfig.Prefix, static.New(config.StaticConfig.Root))
 	}
 
 	return server
