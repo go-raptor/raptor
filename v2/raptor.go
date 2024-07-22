@@ -70,8 +70,7 @@ func newServer(config *Config, app *AppInitializer) *fiber.App {
 	}
 
 	server.Use(cors.New(cors.Config{
-		// TODO: Upgrade to Fiber v3
-		// AllowOrigins:     strings.Join(config.CORSConfig.Origins, ", "),
+		AllowOrigins:     config.CORSConfig.Origins,
 		AllowCredentials: config.CORSConfig.Credentials,
 	}))
 
