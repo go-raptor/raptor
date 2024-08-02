@@ -1,5 +1,7 @@
 package raptor
 
+import "errors"
+
 type Routes []route
 
 type route struct {
@@ -37,4 +39,14 @@ func CollectRoutes(r ...Routes) Routes {
 		result = append(result, route...)
 	}
 	return result
+}
+
+func (r *Routes) Path(controller, action string) (string, error) {
+	for _, route := range *r {
+		if route.Controller == controller && route.Action == action {
+			return route.Path, nil
+		}
+	}
+
+	return "", errors.New("route not found")
 }

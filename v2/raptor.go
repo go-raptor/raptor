@@ -18,6 +18,7 @@ type Raptor struct {
 	Utils       *Utils
 	server      *fiber.App
 	coordinator *coordinator
+	middlewares map[string]MiddlewareInterface
 	services    map[string]ServiceInterface
 	routes      Routes
 }
@@ -29,6 +30,7 @@ func NewRaptor() *Raptor {
 	raptor := &Raptor{
 		Utils:       utils,
 		coordinator: newCoordinator(utils),
+		middlewares: make(map[string]MiddlewareInterface),
 		services:    make(map[string]ServiceInterface),
 	}
 
@@ -124,7 +126,7 @@ func (r *Raptor) waitForShutdown() {
 	r.Utils.Log.Warn("Raptor exited, bye bye!")
 }
 
-func (r *Raptor) Init(app *AppInitializer) {
+func (r *Raptor) Init(app *AppInitializer) *Raptor {
 	r.server = newServer(r.Utils.Config, app)
 	if r.Utils.Config.DatabaseConfig.Type != "none" {
 		r.initDB(newDB(app.Database))
@@ -132,6 +134,16 @@ func (r *Raptor) Init(app *AppInitializer) {
 	r.registerServices(app)
 	r.registerMiddlewares(app)
 	r.registerControllers(app)
+	r.registerRoutes(app)
+
+	for _, service := range r.services {
+		service.InitService(r.Utils, &r.routes)
+	}
+	for _, middleware := range r.middlewares {
+		middleware.InitMiddleware(r.Utils)
+	}
+
+	return r
 }
 
 func (r *Raptor) initDB(db *DB) {
@@ -153,7 +165,6 @@ func (r *Raptor) initDB(db *DB) {
 
 func (r *Raptor) registerServices(app *AppInitializer) {
 	for _, service := range app.Services {
-		service.Init(r.Utils)
 		r.services[reflect.TypeOf(service).Elem().Name()] = service
 	}
 
@@ -172,8 +183,8 @@ func (r *Raptor) registerServices(app *AppInitializer) {
 
 func (r *Raptor) registerMiddlewares(app *AppInitializer) {
 	for _, middleware := range app.Middlewares {
+		r.middlewares[reflect.TypeOf(middleware).Elem().Name()] = middleware
 		r.server.Use(wrapHandler(middleware.New))
-		middleware.Init(r.Utils)
 
 		for i := 0; i < reflect.ValueOf(middleware).Elem().NumField(); i++ {
 			field := reflect.ValueOf(middleware).Elem().Field(i)
@@ -193,8 +204,8 @@ func (r *Raptor) registerControllers(app *AppInitializer) {
 	}
 }
 
-func (r *Raptor) RegisterRoutes(routes Routes) {
-	r.routes = routes
+func (r *Raptor) registerRoutes(app *AppInitializer) {
+	r.routes = app.Routes
 	for _, route := range r.routes {
 		if _, ok := r.coordinator.actions[route.Controller][route.Action]; !ok {
 			r.Utils.Log.Error(fmt.Sprintf("Action %s not found in controller %s for path %s!", route.Action, route.Controller, route.Path))

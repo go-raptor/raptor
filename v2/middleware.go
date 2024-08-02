@@ -5,7 +5,7 @@ import "github.com/gofiber/fiber/v3"
 type Middlewares []MiddlewareInterface
 
 type MiddlewareInterface interface {
-	Init(u *Utils)
+	InitMiddleware(u *Utils)
 	New(*Context) error
 }
 
@@ -14,7 +14,7 @@ type Middleware struct {
 	onInit func()
 }
 
-func (m *Middleware) Init(u *Utils) {
+func (m *Middleware) InitMiddleware(u *Utils) {
 	m.Utils = u
 	if m.onInit != nil {
 		m.onInit()
@@ -33,7 +33,7 @@ func (m *fiberMiddleware) New(c *Context) error {
 	return m.handler(c.DefaultCtx)
 }
 
-func (m *fiberMiddleware) Init(u *Utils) {
+func (m *fiberMiddleware) InitMiddleware(u *Utils) {
 }
 
 func Use(h fiber.Handler) *fiberMiddleware {

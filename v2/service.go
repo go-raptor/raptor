@@ -3,16 +3,18 @@ package raptor
 type Services []ServiceInterface
 
 type ServiceInterface interface {
-	Init(u *Utils)
+	InitService(u *Utils, r *Routes)
 }
 
 type Service struct {
 	*Utils
+	Routes *Routes
 	onInit func()
 }
 
-func (s *Service) Init(u *Utils) {
+func (s *Service) InitService(u *Utils, r *Routes) {
 	s.Utils = u
+	s.Routes = r
 	if s.onInit != nil {
 		s.onInit()
 	}
