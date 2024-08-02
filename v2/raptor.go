@@ -16,11 +16,11 @@ import (
 
 type Raptor struct {
 	Utils       *Utils
-	server      *fiber.App
+	Server      *fiber.App
 	coordinator *coordinator
 	middlewares map[string]MiddlewareInterface
 	services    map[string]ServiceInterface
-	routes      Routes
+	Routes      Routes
 }
 
 func NewRaptor() *Raptor {
@@ -41,7 +41,7 @@ func (r *Raptor) Listen() {
 	r.Utils.Log.Info("====> Starting Raptor <====")
 	if r.checkPort() {
 		go func() {
-			if err := r.server.Listen(r.address(), fiber.ListenConfig{DisableStartupMessage: true}); err != nil && err != http.ErrServerClosed {
+			if err := r.Server.Listen(r.address(), fiber.ListenConfig{DisableStartupMessage: true}); err != nil && err != http.ErrServerClosed {
 				panic(err)
 			}
 		}()
@@ -120,14 +120,14 @@ func (r *Raptor) waitForShutdown() {
 	signal.Notify(quit, os.Interrupt)
 	<-quit
 	r.Utils.Log.Warn("Shutting down Raptor...")
-	if err := r.server.ShutdownWithTimeout(time.Duration(r.Utils.Config.ServerConfig.ShutdownTimeout) * time.Second); err != nil {
+	if err := r.Server.ShutdownWithTimeout(time.Duration(r.Utils.Config.ServerConfig.ShutdownTimeout) * time.Second); err != nil {
 		r.Utils.Log.Error("Server Shutdown:", err)
 	}
 	r.Utils.Log.Warn("Raptor exited, bye bye!")
 }
 
 func (r *Raptor) Init(app *AppInitializer) *Raptor {
-	r.server = newServer(r.Utils.Config, app)
+	r.Server = newServer(r.Utils.Config, app)
 	if r.Utils.Config.DatabaseConfig.Type != "none" {
 		r.initDB(newDB(app.Database))
 	}
@@ -137,10 +137,10 @@ func (r *Raptor) Init(app *AppInitializer) *Raptor {
 	r.registerRoutes(app)
 
 	for _, service := range r.services {
-		service.InitService(r.Utils, &r.routes)
+		service.InitService(r)
 	}
 	for _, middleware := range r.middlewares {
-		middleware.InitMiddleware(r.Utils)
+		middleware.InitMiddleware(r)
 	}
 
 	return r
@@ -184,7 +184,7 @@ func (r *Raptor) registerServices(app *AppInitializer) {
 func (r *Raptor) registerMiddlewares(app *AppInitializer) {
 	for _, middleware := range app.Middlewares {
 		r.middlewares[reflect.TypeOf(middleware).Elem().Name()] = middleware
-		r.server.Use(wrapHandler(middleware.New))
+		r.Server.Use(wrapHandler(middleware.New))
 
 		for i := 0; i < reflect.ValueOf(middleware).Elem().NumField(); i++ {
 			field := reflect.ValueOf(middleware).Elem().Field(i)
@@ -205,8 +205,8 @@ func (r *Raptor) registerControllers(app *AppInitializer) {
 }
 
 func (r *Raptor) registerRoutes(app *AppInitializer) {
-	r.routes = app.Routes
-	for _, route := range r.routes {
+	r.Routes = app.Routes
+	for _, route := range r.Routes {
 		if _, ok := r.coordinator.actions[route.Controller][route.Action]; !ok {
 			r.Utils.Log.Error(fmt.Sprintf("Action %s not found in controller %s for path %s!", route.Action, route.Controller, route.Path))
 			os.Exit(1)
@@ -216,5 +216,5 @@ func (r *Raptor) registerRoutes(app *AppInitializer) {
 }
 
 func (r *Raptor) registerRoute(route route) {
-	r.server.Add([]string{route.Method}, route.Path, wrapActionHandler(route.Controller, route.Action, r.coordinator.action))
+	r.Server.Add([]string{route.Method}, route.Path, wrapActionHandler(route.Controller, route.Action, r.coordinator.action))
 }
