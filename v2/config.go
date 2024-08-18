@@ -84,10 +84,23 @@ func newConfig(log *slog.Logger) *Config {
 	c := newConfigDefaults()
 	c.log = log
 
-	err := c.loadConfigFromFile(".raptor.toml")
-	if err != nil {
-		err = c.loadConfigFromFile(".raptor.dev.toml")
+	configFiles := []string{
+		".raptor.toml",
+		".raptor.conf",
+		".raptor.prod.toml",
+		".raptor.prod.conf",
+		".raptor.dev.toml",
+		".raptor.dev.conf",
 	}
+
+	var err error
+	for _, file := range configFiles {
+		err = c.loadConfigFromFile(file)
+		if err == nil {
+			break
+		}
+	}
+
 	if err != nil {
 		log.Warn("Unable to load configuration file, loaded defaults...")
 	}
