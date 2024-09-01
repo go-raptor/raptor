@@ -1,12 +1,13 @@
 package raptor
 
 import (
+	"context"
 	"reflect"
 	"runtime"
 	"strings"
 	"time"
 
-	"github.com/jmoiron/sqlx"
+	"github.com/uptrace/bun"
 )
 
 type Migration func(*DB) error
@@ -14,17 +15,17 @@ type Migration func(*DB) error
 type Migrations map[int]Migration
 
 type DB struct {
-	*sqlx.DB
+	*bun.DB
 	Connector  Connector
 	Migrations Migrations
 }
 
 type SchemaMigration struct {
-	ID         int       `db:"id"`
-	Version    string    `db:"version"`
-	MigratedAt time.Time `db:"migrated_at"`
-	CreatedAt  time.Time `db:"created_at"`
-	UpdatedAt  time.Time `db:"updated_at"`
+	ID         int       `bun:"id,pk,autoincrement"`
+	Version    string    `bun:"version,notnull"`
+	MigratedAt time.Time `bun:"migrated_at,notnull"`
+	CreatedAt  time.Time `bun:"created_at,notnull"`
+	UpdatedAt  time.Time `bun:"updated_at,notnull"`
 }
 
 func newDB(db Database) *DB {
@@ -35,7 +36,7 @@ func newDB(db Database) *DB {
 }
 
 type Connector interface {
-	Connect(config interface{}) (*sqlx.DB, error)
+	Connect(config interface{}) (*bun.DB, error)
 }
 
 type Database struct {
@@ -44,21 +45,19 @@ type Database struct {
 }
 
 func (db *DB) migrate() error {
-	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS schema_migrations (
-			id SERIAL PRIMARY KEY,
-			version VARCHAR(255) NOT NULL,
-			migrated_at TIMESTAMP NOT NULL,
-			created_at TIMESTAMP NOT NULL,
-			updated_at TIMESTAMP NOT NULL
-		)
-	`)
+	_, err := db.NewCreateTable().
+		Model((*SchemaMigration)(nil)).
+		IfNotExists().
+		Exec(context.Background())
 	if err != nil {
 		return err
 	}
 
 	var currentVersion int
-	err = db.Get(&currentVersion, "SELECT COUNT(*) FROM schema_migrations")
+	err = db.NewSelect().
+		Model((*SchemaMigration)(nil)).
+		ColumnExpr("COUNT(*)").
+		Scan(context.Background(), &currentVersion)
 	if err != nil {
 		return err
 	}
@@ -67,15 +66,21 @@ func (db *DB) migrate() error {
 		funcName := strings.Split(runtime.FuncForPC(reflect.ValueOf(db.Migrations[i]).Pointer()).Name(), "/")
 		migrationName := funcName[len(funcName)-1]
 
-		tx, err := db.Beginx()
+		tx, err := db.BeginTx(context.Background(), nil)
 		if err != nil {
 			return err
 		}
 
 		err = db.Migrations[i](db)
 		if err == nil {
-			_, err = tx.Exec("INSERT INTO schema_migrations (version, migrated_at, created_at, updated_at) VALUES ($1, $2, $2, $2)",
-				migrationName, time.Now())
+			_, err = tx.NewInsert().
+				Model(&SchemaMigration{
+					Version:    migrationName,
+					MigratedAt: time.Now(),
+					CreatedAt:  time.Now(),
+					UpdatedAt:  time.Now(),
+				}).
+				Exec(context.Background())
 			if err != nil {
 				tx.Rollback()
 				return err
