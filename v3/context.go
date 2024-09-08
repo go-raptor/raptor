@@ -22,7 +22,6 @@ func (c *Context) JSON(data interface{}, status ...int) error {
 	return c.Context.JSON(status[0], data)
 }
 
-// TODO: provjeriti da li vraća pravi status code
 func (c *Context) JSONError(err error, status ...int) error {
 	var e *Error
 	if errors.As(err, &e) {
@@ -32,5 +31,5 @@ func (c *Context) JSONError(err error, status ...int) error {
 	if len(status) == 0 {
 		status = append(status, http.StatusInternalServerError)
 	}
-	return c.JSON(NewError(status[0], err.Error()))
+	return c.JSON(NewError(status[0], err.Error()), status[0])
 }
