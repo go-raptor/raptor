@@ -48,6 +48,9 @@ type StaticConfig struct {
 	Enabled bool
 	Prefix  string
 	Root    string
+	Index   string
+	Browse  bool
+	HTML5   bool
 }
 
 type CORSConfig struct {
@@ -58,10 +61,10 @@ type CORSConfig struct {
 const (
 	DefaultGeneralConfigDevelopment = false
 
-	DefaultServerConfigAddress = "127.0.0.1"
-	DefaultServerConfigPort    = 3000
-	DefaultShutdownTimeout     = 3
-	DefaultProxyHeader         = ""
+	DefaultServerConfigAddress         = "127.0.0.1"
+	DefaultServerConfigPort            = 3000
+	DefaultServerConfigShutdownTimeout = 3
+	DefaultServerConfigProxyHeader     = ""
 
 	DefaultDatabaseConfigType = "none"
 	DefaultDatabaseConfigHost = "localhost"
@@ -75,6 +78,9 @@ const (
 	DefaultStaticConfigEnabled = true
 	DefaultStaticConfigPrefix  = "/public"
 	DefaultStaticConfigRoot    = "./public"
+	DefaultStaticConfigIndex   = "index.html"
+	DefaultStaticConfigBrowse  = false
+	DefaultStaticConfigHTML5   = false
 
 	DefaultCORSConfigOrigins     = "*"
 	DefaultCORSConfigCredentials = false
@@ -118,8 +124,8 @@ func newConfigDefaults() *Config {
 		ServerConfig: ServerConfig{
 			Address:         DefaultServerConfigAddress,
 			Port:            DefaultServerConfigPort,
-			ShutdownTimeout: DefaultShutdownTimeout,
-			ProxyHeader:     DefaultProxyHeader,
+			ShutdownTimeout: DefaultServerConfigShutdownTimeout,
+			ProxyHeader:     DefaultServerConfigProxyHeader,
 		},
 		DatabaseConfig: DatabaseConfig{
 			Type:     DefaultDatabaseConfigType,
@@ -136,6 +142,9 @@ func newConfigDefaults() *Config {
 			Enabled: DefaultStaticConfigEnabled,
 			Prefix:  DefaultStaticConfigPrefix,
 			Root:    DefaultStaticConfigRoot,
+			Index:   DefaultStaticConfigIndex,
+			Browse:  DefaultStaticConfigBrowse,
+			HTML5:   DefaultStaticConfigHTML5,
 		},
 		CORSConfig: CORSConfig{
 			Origins:     []string{DefaultCORSConfigOrigins},
