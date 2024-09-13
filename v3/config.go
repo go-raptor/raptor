@@ -48,9 +48,9 @@ type StaticConfig struct {
 	Enabled bool
 	Prefix  string
 	Root    string
+	HTML5   bool
 	Index   string
 	Browse  bool
-	HTML5   bool
 }
 
 type CORSConfig struct {
@@ -78,9 +78,9 @@ const (
 	DefaultStaticConfigEnabled = true
 	DefaultStaticConfigPrefix  = "/public"
 	DefaultStaticConfigRoot    = "./public"
+	DefaultStaticConfigHTML5   = false
 	DefaultStaticConfigIndex   = "index.html"
 	DefaultStaticConfigBrowse  = false
-	DefaultStaticConfigHTML5   = false
 
 	DefaultCORSConfigOrigins     = "*"
 	DefaultCORSConfigCredentials = false
@@ -142,9 +142,9 @@ func newConfigDefaults() *Config {
 			Enabled: DefaultStaticConfigEnabled,
 			Prefix:  DefaultStaticConfigPrefix,
 			Root:    DefaultStaticConfigRoot,
+			HTML5:   DefaultStaticConfigHTML5,
 			Index:   DefaultStaticConfigIndex,
 			Browse:  DefaultStaticConfigBrowse,
-			HTML5:   DefaultStaticConfigHTML5,
 		},
 		CORSConfig: CORSConfig{
 			Origins:     []string{DefaultCORSConfigOrigins},
@@ -182,6 +182,9 @@ func (c *Config) ApplyEnvirontmentVariables() {
 	c.ApplyEnvirontmentVariable("STATIC_ENABLED", &c.StaticConfig.Enabled)
 	c.ApplyEnvirontmentVariable("STATIC_PREFIX", &c.StaticConfig.Prefix)
 	c.ApplyEnvirontmentVariable("STATIC_ROOT", &c.StaticConfig.Root)
+	c.ApplyEnvirontmentVariable("STATIC_HTML5", &c.StaticConfig.HTML5)
+	c.ApplyEnvirontmentVariable("STATIC_INDEX", &c.StaticConfig.Index)
+	c.ApplyEnvirontmentVariable("STATIC_BROWSE", &c.StaticConfig.Browse)
 
 	c.ApplyEnvirontmentVariable("CORS_ORIGINS", &c.CORSConfig.Origins)
 	c.ApplyEnvirontmentVariable("CORS_CREDENTIALS", &c.CORSConfig.Credentials)
