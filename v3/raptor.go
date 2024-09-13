@@ -77,7 +77,13 @@ func newServer(config *Config, app *AppInitializer) *echo.Echo {
 	}))
 
 	if config.StaticConfig.Enabled {
-		server.Static(config.StaticConfig.Prefix, config.StaticConfig.Root)
+		//server.Static(config.StaticConfig.Prefix, config.StaticConfig.Root)
+		server.Use(middleware.StaticWithConfig(middleware.StaticConfig{
+			Root:   config.StaticConfig.Root,
+			Index:  "index.html",
+			Browse: false,
+			HTML5:  true,
+		}))
 	}
 
 	return server
