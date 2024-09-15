@@ -25,7 +25,7 @@ func (c *Context) JSON(data interface{}, status ...int) error {
 func (c *Context) JSONError(err error, status ...int) error {
 	var e *Error
 	if errors.As(err, &e) {
-		return c.JSON(NewError(e.Code, e.Message), e.Code)
+		return c.JSON(e, e.Code)
 	}
 
 	if len(status) == 0 {
