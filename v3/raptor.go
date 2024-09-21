@@ -73,7 +73,8 @@ func newServer(config *Config, app *AppInitializer) *echo.Echo {
 
 	server.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: config.CORSConfig.Origins,
-		AllowHeaders: []string{echo.HeaderAccessControlAllowCredentials},
+		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, echo.HeaderAccessControlAllowCredentials},
+		AllowMethods: []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete},
 	}))
 
 	if config.StaticConfig.Enabled {
