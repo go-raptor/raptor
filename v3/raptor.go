@@ -93,7 +93,7 @@ func newServer(config *Config, app *AppInitializer) *echo.Echo {
 	return server
 }
 
-func newServerMVC(config *Config, app *AppInitializer) *echo.Echo {
+func newServerMVC(config *Config, _ *AppInitializer) *echo.Echo {
 	server := echo.New()
 
 	if config.ServerConfig.ProxyHeader != "" {
@@ -132,7 +132,7 @@ func (r *Raptor) waitForShutdown() {
 	<-quit
 	r.Utils.Log.Warn("Shutting down Raptor...")
 	if err := r.Server.Shutdown(context.Background()); err != nil {
-		r.Utils.Log.Error("Server Shutdown:", err)
+		r.Utils.Log.Error("Server Shutdown", "error", err)
 	}
 	r.Utils.Log.Warn("Raptor exited, bye bye!")
 }
@@ -148,7 +148,10 @@ func (r *Raptor) Init(app *AppInitializer) *Raptor {
 	r.registerRoutes(app)
 
 	for _, service := range r.services {
-		service.InitService(r)
+		if err := service.InitService(r); err != nil {
+			r.Utils.Log.Error("Service initialization failed", "service", reflect.TypeOf(service).Elem().Name(), "error", err)
+			os.Exit(1)
+		}
 	}
 	for _, middleware := range r.middlewares {
 		middleware.InitMiddleware(r)
@@ -161,13 +164,13 @@ func (r *Raptor) initDB(db *DB) {
 	if db != nil {
 		gormDB, err := db.Connector.Connect(r.Utils.Config.DatabaseConfig)
 		if err != nil {
-			r.Utils.Log.Error("Database connection failed:", err)
+			r.Utils.Log.Error("Database connection failed", "error", err.Error())
 			os.Exit(1)
 		}
 		db.DB = gormDB
 		err = db.migrate()
 		if err != nil {
-			r.Utils.Log.Error("Database migration failed:", err)
+			r.Utils.Log.Error("Database migration failed", "error", err.Error())
 			os.Exit(1)
 		}
 		r.Utils.SetDB(db)
