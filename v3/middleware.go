@@ -1,5 +1,7 @@
 package raptor
 
+import "github.com/labstack/echo/v4"
+
 type Middlewares []MiddlewareInterface
 
 type MiddlewareInterface interface {
@@ -25,17 +27,17 @@ func (m *Middleware) OnInit(callback func()) {
 	m.onInit = callback
 }
 
-/*type fiberMiddleware struct {
-	handler fiber.Handler
+type echoMiddleware struct {
+	handler echo.HandlerFunc
 }
 
-func (m *fiberMiddleware) New(c *Context) error {
-	return m.handler(c.DefaultCtx)
+func (m *echoMiddleware) New(c *Context) error {
+	return m.handler(c.Context)
 }
 
-func (m *fiberMiddleware) InitMiddleware(r *Raptor) {
+func (m *echoMiddleware) InitMiddleware(r *Raptor) {
 }
 
-func Use(h fiber.Handler) *fiberMiddleware {
-	return &fiberMiddleware{handler: h}
-}*/
+func Use(h echo.HandlerFunc) *echoMiddleware {
+	return &echoMiddleware{handler: h}
+}
