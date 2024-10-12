@@ -140,7 +140,11 @@ func (r *Raptor) waitForShutdown() {
 func (r *Raptor) Init(app *AppInitializer) *Raptor {
 	r.Server = newServer(r.Utils.Config, app)
 	if r.Utils.Config.DatabaseConfig.Type != "none" {
-		r.initDB(newDB(app.Database))
+		r.Utils.DB = app.DatabaseConnector
+		if err := r.Utils.DB.Init(); err != nil {
+			r.Utils.Log.Error("Database initalization failed", "error", err.Error())
+			os.Exit(1)
+		}
 	}
 	r.registerServices(app)
 	r.registerMiddlewares(app)
@@ -158,23 +162,6 @@ func (r *Raptor) Init(app *AppInitializer) *Raptor {
 	}
 
 	return r
-}
-
-func (r *Raptor) initDB(db *DB) {
-	if db != nil {
-		gormDB, err := db.Connector.Connect(r.Utils.Config.DatabaseConfig)
-		if err != nil {
-			r.Utils.Log.Error("Database connection failed", "error", err.Error())
-			os.Exit(1)
-		}
-		db.DB = gormDB
-		err = db.migrate()
-		if err != nil {
-			r.Utils.Log.Error("Database migration failed", "error", err.Error())
-			os.Exit(1)
-		}
-		r.Utils.SetDB(db)
-	}
 }
 
 func (r *Raptor) registerServices(app *AppInitializer) {

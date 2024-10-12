@@ -10,7 +10,7 @@ import (
 type Utils struct {
 	Config *Config
 	Log    *slog.Logger
-	DB     *DB
+	DB     DatabaseConnector
 }
 
 func newUtils() *Utils {
@@ -19,7 +19,7 @@ func newUtils() *Utils {
 	}
 }
 
-func (u *Utils) SetDB(db *DB) {
+func (u *Utils) SetDB(db DatabaseConnector) {
 	u.DB = db
 }
 
