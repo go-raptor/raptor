@@ -4,13 +4,14 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/go-raptor/connector"
 	"github.com/lmittmann/tint"
 )
 
 type Utils struct {
 	Config *Config
 	Log    *slog.Logger
-	DB     DatabaseConnector
+	DB     connector.DatabaseConnector
 }
 
 func newUtils() *Utils {
@@ -19,7 +20,7 @@ func newUtils() *Utils {
 	}
 }
 
-func (u *Utils) SetDB(db DatabaseConnector) {
+func (u *Utils) SetDB(db connector.DatabaseConnector) {
 	u.DB = db
 }
 

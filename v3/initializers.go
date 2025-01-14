@@ -1,8 +1,10 @@
 package raptor
 
+import "github.com/go-raptor/connector"
+
 type AppInitializer struct {
 	Routes            Routes
-	DatabaseConnector DatabaseConnector
+	DatabaseConnector connector.DatabaseConnector
 	Middlewares       Middlewares
 	Services          Services
 	Controllers       Controllers
