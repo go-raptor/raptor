@@ -217,5 +217,9 @@ func (r *Raptor) registerRoutes(app *AppInitializer) {
 }
 
 func (r *Raptor) registerRoute(route route) {
-	r.Server.Add(route.Method, route.Path, wrapActionHandler(route.Controller, route.Action, r.coordinator.action))
+	if route.Method != "*" {
+		r.Server.Add(route.Method, route.Path, wrapActionHandler(route.Controller, route.Action, r.coordinator.action))
+		return
+	}
+	r.Server.Any(route.Path, wrapActionHandler(route.Controller, route.Action, r.coordinator.action))
 }

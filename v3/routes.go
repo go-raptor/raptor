@@ -11,6 +11,17 @@ type route struct {
 	Action     string
 }
 
+func Scope(path string, routes ...Routes) Routes {
+	var result Routes
+	for _, route := range routes {
+		for _, r := range route {
+			r.Path = path + r.Path
+			result = append(result, r)
+		}
+	}
+	return result
+}
+
 func Route(method, path, controller, action string) Routes {
 	return Routes{
 		route{
@@ -22,15 +33,52 @@ func Route(method, path, controller, action string) Routes {
 	}
 }
 
-func Scope(path string, routes ...Routes) Routes {
-	var result Routes
-	for _, route := range routes {
-		for _, r := range route {
-			r.Path = path + r.Path
-			result = append(result, r)
-		}
-	}
-	return result
+func Get(path, controller, action string) Routes {
+	return Route("GET", path, controller, action)
+}
+
+func Post(path, controller, action string) Routes {
+	return Route("POST", path, controller, action)
+}
+
+func Put(path, controller, action string) Routes {
+	return Route("PUT", path, controller, action)
+}
+
+func Patch(path, controller, action string) Routes {
+	return Route("PATCH", path, controller, action)
+}
+
+func Delete(path, controller, action string) Routes {
+	return Route("DELETE", path, controller, action)
+}
+
+func Options(path, controller, action string) Routes {
+	return Route("OPTIONS", path, controller, action)
+}
+
+func Head(path, controller, action string) Routes {
+	return Route("HEAD", path, controller, action)
+}
+
+func Connect(path, controller, action string) Routes {
+	return Route("CONNECT", path, controller, action)
+}
+
+func Trace(path, controller, action string) Routes {
+	return Route("TRACE", path, controller, action)
+}
+
+func Propfind(path, controller, action string) Routes {
+	return Route("PROPFIND", path, controller, action)
+}
+
+func Report(path, controller, action string) Routes {
+	return Route("REPORT", path, controller, action)
+}
+
+func Any(path, controller, action string) Routes {
+	return Route("*", path, controller, action)
 }
 
 func CollectRoutes(r ...Routes) Routes {
