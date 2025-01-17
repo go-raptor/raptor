@@ -48,10 +48,15 @@ func parseControllerAction(input string) (controller, action string) {
 
 func Scope(path string, routes ...Routes) Routes {
 	var result Routes
+	normalizedPath := normalizePath(path)
+
 	for _, route := range routes {
 		for _, r := range route {
-			r.Path = normalizePath(path) + r.Path
-			r.Controller = normalizeController(r.Controller)
+			if r.Path == "/" {
+				r.Path = normalizedPath
+			} else {
+				r.Path = normalizedPath + r.Path
+			}
 			result = append(result, r)
 		}
 	}
