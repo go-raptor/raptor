@@ -1,6 +1,11 @@
 package raptor
 
-import "errors"
+import (
+	"errors"
+	"regexp"
+)
+
+var pathRegex = regexp.MustCompile(`/+`)
 
 type Routes []route
 
@@ -11,11 +16,24 @@ type route struct {
 	Action     string
 }
 
+func normalizePath(path string) string {
+	if path == "" {
+		return "/"
+	}
+
+	path = pathRegex.ReplaceAllString("/"+path+"/", "/")
+	if len(path) > 1 {
+		path = path[:len(path)-1]
+	}
+
+	return path
+}
+
 func Scope(path string, routes ...Routes) Routes {
 	var result Routes
 	for _, route := range routes {
 		for _, r := range route {
-			r.Path = path + r.Path
+			r.Path = normalizePath(path) + r.Path
 			result = append(result, r)
 		}
 	}
@@ -26,7 +44,7 @@ func Route(method, path, controller, action string) Routes {
 	return Routes{
 		route{
 			Method:     method,
-			Path:       path,
+			Path:       normalizePath(path),
 			Controller: controller,
 			Action:     action,
 		},
