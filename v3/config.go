@@ -12,13 +12,13 @@ import (
 type Config struct {
 	log *slog.Logger
 
-	GeneralConfig    GeneralConfig          `toml:"General"`
-	ServerConfig     ServerConfig           `toml:"Server"`
-	DatabaseConfig   DatabaseConfig         `toml:"Database"`
-	TemplatingConfig TemplatingConfig       `toml:"Templating"`
-	StaticConfig     StaticConfig           `toml:"Static"`
-	CORSConfig       CORSConfig             `toml:"CORS"`
-	AppConfig        map[string]interface{} `toml:"App"`
+	GeneralConfig    GeneralConfig     `toml:"General"`
+	ServerConfig     ServerConfig      `toml:"Server"`
+	DatabaseConfig   DatabaseConfig    `toml:"Database"`
+	TemplatingConfig TemplatingConfig  `toml:"Templating"`
+	StaticConfig     StaticConfig      `toml:"Static"`
+	CORSConfig       CORSConfig        `toml:"CORS"`
+	AppConfig        map[string]string `toml:"App"`
 }
 
 type GeneralConfig struct {
@@ -122,6 +122,7 @@ func newConfig(log *slog.Logger) *Config {
 	}
 
 	c.ApplyEnvirontmentVariables()
+	c.ApplyAppEnvironmentVariables("APP_")
 
 	return c
 }
@@ -163,7 +164,7 @@ func newConfigDefaults() *Config {
 			AllowCredentials: DefaultCORSConfigAllowCredentials,
 			MaxAge:           DefaultCORSConfigMaxAge,
 		},
-		AppConfig: make(map[string]interface{}),
+		AppConfig: make(map[string]string),
 	}
 }
 
@@ -226,5 +227,20 @@ func (c *Config) ApplyEnvirontmentVariable(key string, value interface{}) {
 			*v = strings.Split(env, ",")
 		default:
 		}
+	}
+}
+
+func (c *Config) ApplyAppEnvironmentVariables(prefix string) {
+	for _, kv := range os.Environ() {
+		if !strings.HasPrefix(kv, prefix) {
+			continue
+		}
+		key, value, found := strings.Cut(kv, "=")
+		if !found {
+			continue
+		}
+		c.log.Info("Applying environment variable", key, value)
+		key = strings.ToLower(strings.TrimPrefix(key, prefix))
+		c.AppConfig[key] = value
 	}
 }
