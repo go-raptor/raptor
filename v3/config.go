@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 )
@@ -54,8 +55,11 @@ type StaticConfig struct {
 }
 
 type CORSConfig struct {
-	Origins     []string
-	Credentials bool
+	AllowOrigins     []string
+	AllowMethods     []string
+	AllowHeaders     []string
+	AllowCredentials bool
+	MaxAge           int
 }
 
 const (
@@ -82,8 +86,14 @@ const (
 	DefaultStaticConfigIndex   = "index.html"
 	DefaultStaticConfigBrowse  = false
 
-	DefaultCORSConfigOrigins     = "*"
-	DefaultCORSConfigCredentials = false
+	DefaultCORSConfigAllowCredentials = false
+)
+
+var (
+	DefaultCORSConfigAllowOrigins = []string{"*"}
+	DefaultCORSConfigAllowMethods = []string{"GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"}
+	DefaultCORSConfigAllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
+	DefaultCORSConfigMaxAge       = 0
 )
 
 func newConfig(log *slog.Logger) *Config {
@@ -147,8 +157,11 @@ func newConfigDefaults() *Config {
 			Browse:  DefaultStaticConfigBrowse,
 		},
 		CORSConfig: CORSConfig{
-			Origins:     []string{DefaultCORSConfigOrigins},
-			Credentials: DefaultCORSConfigCredentials,
+			AllowOrigins:     DefaultCORSConfigAllowOrigins,
+			AllowMethods:     DefaultCORSConfigAllowMethods,
+			AllowHeaders:     DefaultCORSConfigAllowHeaders,
+			AllowCredentials: DefaultCORSConfigAllowCredentials,
+			MaxAge:           DefaultCORSConfigMaxAge,
 		},
 		AppConfig: make(map[string]interface{}),
 	}
@@ -186,8 +199,11 @@ func (c *Config) ApplyEnvirontmentVariables() {
 	c.ApplyEnvirontmentVariable("STATIC_INDEX", &c.StaticConfig.Index)
 	c.ApplyEnvirontmentVariable("STATIC_BROWSE", &c.StaticConfig.Browse)
 
-	c.ApplyEnvirontmentVariable("CORS_ORIGINS", &c.CORSConfig.Origins)
-	c.ApplyEnvirontmentVariable("CORS_CREDENTIALS", &c.CORSConfig.Credentials)
+	c.ApplyEnvirontmentVariable("CORS_ALLOW_ORIGINS", &c.CORSConfig.AllowOrigins)
+	c.ApplyEnvirontmentVariable("CORS_ALLOW_METHODS", &c.CORSConfig.AllowMethods)
+	c.ApplyEnvirontmentVariable("CORS_ALLOW_HEADERS", &c.CORSConfig.AllowHeaders)
+	c.ApplyEnvirontmentVariable("CORS_ALLOW_CREDENTIALS", &c.CORSConfig.AllowCredentials)
+	c.ApplyEnvirontmentVariable("CORS_MAX_AGE", &c.CORSConfig.MaxAge)
 }
 
 func (c *Config) ApplyEnvirontmentVariable(key string, value interface{}) {
@@ -207,8 +223,7 @@ func (c *Config) ApplyEnvirontmentVariable(key string, value interface{}) {
 				*v = number
 			}
 		case *[]string:
-			*v = make([]string, 1)
-			(*v)[0] = env
+			*v = strings.Split(env, ",")
 		default:
 		}
 	}

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -63,18 +64,27 @@ func (r *Raptor) checkPort() bool {
 	return err == nil
 }
 
-func newServer(config *Config, app *AppInitializer) *echo.Echo {
-	var server *echo.Echo
-	if config.TemplatingConfig.Enabled {
-		server = newServerMVC(config, app)
-	} else {
-		server = newServerAPI(config, app)
+func newServer(config *Config, _ *AppInitializer) *echo.Echo {
+	server := echo.New()
+
+	switch strings.ToLower(config.ServerConfig.IPExtractor) {
+	case "x-forwarded-for":
+		server.IPExtractor = echo.ExtractIPFromXFFHeader()
+	case "x-real-ip":
+		server.IPExtractor = echo.ExtractIPFromRealIPHeader()
+	default:
+		server.IPExtractor = echo.ExtractIPDirect()
 	}
 
+	server.HideBanner = true
+	server.HidePort = true
+
 	server.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: config.CORSConfig.Origins,
-		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, echo.HeaderAccessControlAllowCredentials},
-		AllowMethods: []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete},
+		AllowOrigins:     config.CORSConfig.AllowOrigins,
+		AllowHeaders:     config.CORSConfig.AllowHeaders,
+		AllowMethods:     config.CORSConfig.AllowMethods,
+		AllowCredentials: config.CORSConfig.AllowCredentials,
+		MaxAge:           config.CORSConfig.MaxAge,
 	}))
 
 	if config.StaticConfig.Enabled {
@@ -89,42 +99,6 @@ func newServer(config *Config, app *AppInitializer) *echo.Echo {
 			server.Static(config.StaticConfig.Prefix, config.StaticConfig.Root)
 		}
 	}
-
-	return server
-}
-
-func newServerMVC(config *Config, _ *AppInitializer) *echo.Echo {
-	server := echo.New()
-
-	switch config.ServerConfig.IPExtractor {
-	case "x-forwarded-for":
-		server.IPExtractor = echo.ExtractIPFromXFFHeader()
-	case "x-real-ip":
-		server.IPExtractor = echo.ExtractIPFromRealIPHeader()
-	default:
-		server.IPExtractor = echo.ExtractIPDirect()
-	}
-
-	server.HideBanner = true
-	server.HidePort = true
-
-	return server
-}
-
-func newServerAPI(config *Config, _ *AppInitializer) *echo.Echo {
-	server := echo.New()
-
-	switch config.ServerConfig.IPExtractor {
-	case "x-forwarded-for":
-		server.IPExtractor = echo.ExtractIPFromXFFHeader()
-	case "x-real-ip":
-		server.IPExtractor = echo.ExtractIPFromRealIPHeader()
-	default:
-		server.IPExtractor = echo.ExtractIPDirect()
-	}
-
-	server.HideBanner = true
-	server.HidePort = true
 
 	return server
 }
