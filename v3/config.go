@@ -87,13 +87,13 @@ const (
 	DefaultStaticConfigBrowse  = false
 
 	DefaultCORSConfigAllowCredentials = false
+	DefaultCORSConfigMaxAge           = 0
 )
 
 var (
 	DefaultCORSConfigAllowOrigins = []string{"*"}
 	DefaultCORSConfigAllowMethods = []string{"GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"}
 	DefaultCORSConfigAllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
-	DefaultCORSConfigMaxAge       = 0
 )
 
 func newConfig(log *slog.Logger) *Config {
