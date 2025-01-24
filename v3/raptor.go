@@ -96,9 +96,15 @@ func newServer(config *Config, app *AppInitializer) *echo.Echo {
 func newServerMVC(config *Config, _ *AppInitializer) *echo.Echo {
 	server := echo.New()
 
-	if config.ServerConfig.ProxyHeader != "" {
+	switch config.ServerConfig.IPExtractor {
+	case "x-forwarded-for":
+		server.IPExtractor = echo.ExtractIPFromXFFHeader()
+	case "x-real-ip":
 		server.IPExtractor = echo.ExtractIPFromRealIPHeader()
+	default:
+		server.IPExtractor = echo.ExtractIPDirect()
 	}
+
 	server.HideBanner = true
 	server.HidePort = true
 
@@ -108,9 +114,15 @@ func newServerMVC(config *Config, _ *AppInitializer) *echo.Echo {
 func newServerAPI(config *Config, _ *AppInitializer) *echo.Echo {
 	server := echo.New()
 
-	if config.ServerConfig.ProxyHeader != "" {
+	switch config.ServerConfig.IPExtractor {
+	case "x-forwarded-for":
+		server.IPExtractor = echo.ExtractIPFromXFFHeader()
+	case "x-real-ip":
 		server.IPExtractor = echo.ExtractIPFromRealIPHeader()
+	default:
+		server.IPExtractor = echo.ExtractIPDirect()
 	}
+
 	server.HideBanner = true
 	server.HidePort = true
 
