@@ -3,6 +3,7 @@ package raptor
 import (
 	"log/slog"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -165,6 +166,51 @@ func newConfigDefaults() *Config {
 			MaxAge:           DefaultCORSConfigMaxAge,
 		},
 		AppConfig: make(map[string]string),
+	}
+}
+
+func WithConfig(config *Config) RaptorOption {
+	return func(r *Raptor) {
+		if config != nil {
+			mergeConfig(r.Utils.Config, config)
+		}
+	}
+}
+
+func mergeConfig(dst, src *Config) {
+	if src == nil {
+		return
+	}
+
+	srcVal := reflect.ValueOf(src).Elem()
+	dstVal := reflect.ValueOf(dst).Elem()
+
+	for i := 0; i < srcVal.NumField(); i++ {
+		fieldName := srcVal.Type().Field(i).Name
+		if fieldName == "log" {
+			continue
+		}
+
+		srcField := srcVal.Field(i)
+		dstField := dstVal.Field(i)
+
+		if fieldName == "AppConfig" && srcField.Len() > 0 {
+			for _, key := range srcField.MapKeys() {
+				dstField.SetMapIndex(key, srcField.MapIndex(key))
+			}
+			continue
+		}
+
+		if srcField.Kind() == reflect.Struct {
+			for j := 0; j < srcField.NumField(); j++ {
+				nestedSrcField := srcField.Field(j)
+				nestedDstField := dstField.Field(j)
+
+				if !nestedSrcField.IsZero() {
+					nestedDstField.Set(nestedSrcField)
+				}
+			}
+		}
 	}
 }
 

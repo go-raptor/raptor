@@ -22,8 +22,9 @@ type Raptor struct {
 	services    map[string]ServiceInterface
 	Routes      Routes
 }
+type RaptorOption func(*Raptor)
 
-func NewRaptor() *Raptor {
+func NewRaptor(opts ...RaptorOption) *Raptor {
 	utils := newUtils()
 	utils.SetConfig(newConfig(utils.Log))
 
@@ -32,6 +33,10 @@ func NewRaptor() *Raptor {
 		coordinator: newCoordinator(utils),
 		middlewares: make(map[string]MiddlewareInterface),
 		services:    make(map[string]ServiceInterface),
+	}
+
+	for _, opt := range opts {
+		opt(raptor)
 	}
 
 	return raptor
