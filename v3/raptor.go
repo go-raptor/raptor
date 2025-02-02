@@ -39,6 +39,7 @@ func NewRaptor(opts ...RaptorOption) *Raptor {
 		opt(raptor)
 	}
 
+	raptor.Utils.SetLogLevel(utils.Config.GeneralConfig.LogLevel)
 	return raptor
 }
 

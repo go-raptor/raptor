@@ -3,6 +3,7 @@ package raptor
 import (
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/go-raptor/connector"
 	"github.com/lmittmann/tint"
@@ -10,13 +11,23 @@ import (
 
 type Utils struct {
 	Config *Config
-	Log    *slog.Logger
-	DB     connector.DatabaseConnector
+
+	Log      *slog.Logger
+	logLevel *slog.LevelVar
+
+	DB connector.DatabaseConnector
 }
 
 func newUtils() *Utils {
+	levelVar := &slog.LevelVar{}
+
+	opts := &tint.Options{
+		Level: levelVar,
+	}
+
 	return &Utils{
-		Log: slog.New(tint.NewHandler(os.Stderr, nil)),
+		Log:      slog.New(tint.NewHandler(os.Stderr, opts)),
+		logLevel: levelVar,
 	}
 }
 
@@ -26,4 +37,21 @@ func (u *Utils) SetDB(db connector.DatabaseConnector) {
 
 func (u *Utils) SetConfig(config *Config) {
 	u.Config = config
+}
+
+func (u *Utils) SetLogLevel(logLevel string) {
+	var level slog.Level
+	switch strings.ToUpper(logLevel) {
+	case "DEBUG":
+		level = slog.LevelDebug
+	case "INFO":
+		level = slog.LevelInfo
+	case "WARN":
+		level = slog.LevelWarn
+	case "ERROR":
+		level = slog.LevelError
+	default:
+		level = slog.LevelInfo
+	}
+	u.logLevel.Set(level)
 }
