@@ -34,7 +34,6 @@ type ServerConfig struct {
 }
 
 type DatabaseConfig struct {
-	Type     string
 	Host     string
 	Port     int
 	Username string
@@ -71,12 +70,11 @@ const (
 	DefaultServerConfigShutdownTimeout = 3
 	DefaultServerConfigIPExtractor     = "direct"
 
-	DefaultDatabaseConfigType = "none"
 	DefaultDatabaseConfigHost = "localhost"
 	DefaultDatabaseConfigPort = 5432
-	DefaultDatabaseConfigUser = "AppConfig"
-	DefaultDatabaseConfigPass = ""
-	DefaultDatabaseConfigName = "AppConfig"
+	DefaultDatabaseConfigUser = "dbuser"
+	DefaultDatabaseConfigPass = "dbpass"
+	DefaultDatabaseConfigName = "dbname"
 
 	DefaultTemplatingConfigEnabled = false
 
@@ -140,7 +138,6 @@ func newConfigDefaults() *Config {
 			IPExtractor:     DefaultServerConfigIPExtractor,
 		},
 		DatabaseConfig: DatabaseConfig{
-			Type:     DefaultDatabaseConfigType,
 			Host:     DefaultDatabaseConfigHost,
 			Port:     DefaultDatabaseConfigPort,
 			Username: DefaultDatabaseConfigUser,
@@ -230,7 +227,6 @@ func (c *Config) ApplyEnvirontmentVariables() {
 	c.ApplyEnvirontmentVariable("SERVER_SHUTDOWN_TIMEOUT", &c.ServerConfig.ShutdownTimeout)
 	c.ApplyEnvirontmentVariable("SERVER_IP_EXTRACTOR", &c.ServerConfig.IPExtractor)
 
-	c.ApplyEnvirontmentVariable("DATABASE_TYPE", &c.DatabaseConfig.Type)
 	c.ApplyEnvirontmentVariable("DATABASE_HOST", &c.DatabaseConfig.Host)
 	c.ApplyEnvirontmentVariable("DATABASE_PORT", &c.DatabaseConfig.Port)
 	c.ApplyEnvirontmentVariable("DATABASE_USERNAME", &c.DatabaseConfig.Username)

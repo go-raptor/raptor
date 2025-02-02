@@ -130,7 +130,7 @@ func (r *Raptor) waitForShutdown() {
 
 func (r *Raptor) Init(app *AppInitializer) *Raptor {
 	r.Server = newServer(r.Utils.Config, app)
-	if r.Utils.Config.DatabaseConfig.Type != "none" {
+	if app.DatabaseConnector != nil {
 		r.Utils.DB = app.DatabaseConnector
 		if err := r.Utils.DB.Init(); err != nil {
 			r.Utils.Log.Error("Database initalization failed", "error", err.Error())
