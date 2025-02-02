@@ -44,7 +44,6 @@ func NewRaptor(opts ...RaptorOption) *Raptor {
 }
 
 func (r *Raptor) Listen() {
-	r.Utils.Log.Info("====> Starting Raptor <====")
 	if r.checkPort() {
 		go func() {
 			if err := r.Server.Start(r.address()); err != nil && err != http.ErrServerClosed {
@@ -110,8 +109,34 @@ func newServer(config *Config, _ *AppInitializer) *echo.Echo {
 }
 
 func (r *Raptor) info() {
-	r.Utils.Log.Info(fmt.Sprintf("Raptor %v is running! 🦖💨", Version))
-	r.Utils.Log.Info(fmt.Sprintf("Listening on http://%s", r.address()))
+	content := []string{
+		"Raptor is running! 🦖💨",
+		"Status    : Running ⚡️",
+		fmt.Sprintf("Version   : %s", Version),
+		fmt.Sprintf("Server    : %s", r.address()),
+	}
+
+	maxLen := 0
+	for _, line := range content {
+		if len(line) > maxLen {
+			maxLen = len(line)
+		}
+	}
+	maxLen += 4
+
+	top := "╔" + strings.Repeat("═", maxLen) + "╗"
+	bottom := "╚" + strings.Repeat("═", maxLen) + "╝"
+
+	var formattedContent []string
+	formattedContent = append(formattedContent, content[0])
+	formattedContent = append(formattedContent, top)
+
+	for _, line := range content[1:] {
+		formattedContent = append(formattedContent, fmt.Sprintf("║  %-*s  ║", maxLen-4, line))
+	}
+
+	formattedContent = append(formattedContent, bottom)
+	r.Utils.Log.Info(strings.Join(formattedContent, "\n"))
 }
 
 func (r *Raptor) waitForShutdown() {
