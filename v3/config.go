@@ -78,7 +78,7 @@ const (
 
 	DefaultTemplatingConfigEnabled = false
 
-	DefaultStaticConfigEnabled = true
+	DefaultStaticConfigEnabled = false
 	DefaultStaticConfigPrefix  = "/public"
 	DefaultStaticConfigRoot    = "./public"
 	DefaultStaticConfigHTML5   = false
