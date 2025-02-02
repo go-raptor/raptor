@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-raptor/connector"
-	"github.com/lmittmann/tint"
+	"github.com/pwntr/tinter"
 )
 
 type Utils struct {
@@ -21,12 +21,12 @@ type Utils struct {
 func newUtils() *Utils {
 	levelVar := &slog.LevelVar{}
 
-	opts := &tint.Options{
+	opts := &tinter.Options{
 		Level: levelVar,
 	}
 
 	return &Utils{
-		Log:      slog.New(tint.NewHandler(os.Stderr, opts)),
+		Log:      slog.New(tinter.NewHandler(os.Stderr, opts)),
 		logLevel: levelVar,
 	}
 }

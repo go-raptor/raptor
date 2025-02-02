@@ -6,7 +6,7 @@ require (
 	github.com/BurntSushi/toml v1.4.0
 	github.com/go-raptor/connector v1.0.0
 	github.com/labstack/echo/v4 v4.13.3
-	github.com/lmittmann/tint v1.0.6
+	github.com/pwntr/tinter v1.1.2
 )
 
 require (
