@@ -36,7 +36,7 @@ func (c *coordinator) logActionFinish(ctx *Context, startTime time.Time) {
 	c.utils.Log.Info(fmt.Sprintf("Completed %d %s in %dms", ctx.Response().Status, http.StatusText(ctx.Response().Status), time.Since(startTime).Milliseconds()))
 }
 
-func (c *coordinator) registerController(controller interface{}, u *Utils, s map[string]ServiceInterface) {
+func (c *coordinator) registerController(controller interface{}, u *Utils, s map[string]ServiceInterface) error {
 	val := reflect.ValueOf(controller)
 
 	if val.Kind() == reflect.Pointer && val.Elem().FieldByName("Controller").Type() == reflect.TypeOf(Controller{}) {
@@ -59,10 +59,13 @@ func (c *coordinator) registerController(controller interface{}, u *Utils, s map
 			if fieldType.Type.Kind() == reflect.Ptr && fieldType.Type.Elem().Kind() == reflect.Struct {
 				if service, ok := s[fieldType.Type.Elem().Name()]; ok {
 					field.Set(reflect.ValueOf(service))
+				} else {
+					return fmt.Errorf("%s requires %s, but the service was not found in services initializer", controllerName, fieldType.Type.Elem().Name())
 				}
 			}
 		}
 	} else {
-		panic("Controller must be a pointer to a struct that embeds raptor.Controller")
+		return fmt.Errorf("Controller must be a pointer to a struct that embeds raptor.Controller")
 	}
+	return nil
 }

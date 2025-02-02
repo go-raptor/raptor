@@ -159,6 +159,7 @@ func (r *Raptor) Init(app *AppInitializer) *Raptor {
 			os.Exit(1)
 		}
 	}
+
 	r.registerServices(app)
 	r.registerMiddlewares(app)
 	r.registerControllers(app)
@@ -214,7 +215,10 @@ func (r *Raptor) registerMiddlewares(app *AppInitializer) {
 
 func (r *Raptor) registerControllers(app *AppInitializer) {
 	for _, controller := range app.Controllers {
-		r.coordinator.registerController(controller, r.Utils, r.services)
+		if err := r.coordinator.registerController(controller, r.Utils, r.services); err != nil {
+			r.Utils.Log.Error("Error while registering controller", "error", err)
+			os.Exit(1)
+		}
 	}
 }
 
