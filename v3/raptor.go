@@ -160,66 +160,105 @@ func (r *Raptor) Init(app *AppInitializer) *Raptor {
 		}
 	}
 
-	r.registerServices(app)
-	r.registerMiddlewares(app)
-	r.registerControllers(app)
+	if err := r.registerServices(app); err != nil {
+		os.Exit(1)
+	}
+	if err := r.registerMiddlewares(app); err != nil {
+		os.Exit(1)
+	}
+	if err := r.registerControllers(app); err != nil {
+		os.Exit(1)
+	}
 	r.registerRoutes(app)
-
-	for _, service := range r.services {
-		if err := service.InitService(r); err != nil {
-			r.Utils.Log.Error("Service initialization failed", "service", reflect.TypeOf(service).Elem().Name(), "error", err)
-			os.Exit(1)
-		}
-	}
-	for _, middleware := range r.middlewares {
-		middleware.InitMiddleware(r)
-	}
 
 	return r
 }
 
-func (r *Raptor) registerServices(app *AppInitializer) {
+func (r *Raptor) registerServices(app *AppInitializer) error {
 	for _, service := range app.Services {
+		if err := service.InitService(r); err != nil {
+			r.Utils.Log.Error("Service initialization failed", "service", reflect.TypeOf(service).Elem().Name(), "error", err)
+			return err
+		}
 		r.services[reflect.TypeOf(service).Elem().Name()] = service
 	}
 
 	for _, service := range r.services {
-		for i := 0; i < reflect.ValueOf(service).Elem().NumField(); i++ {
-			field := reflect.ValueOf(service).Elem().Field(i)
-			fieldType := reflect.TypeOf(service).Elem().Field(i)
-			if fieldType.Type.Kind() == reflect.Ptr && fieldType.Type.Elem().Kind() == reflect.Struct {
-				if service, ok := r.services[fieldType.Type.Elem().Name()]; ok {
-					field.Set(reflect.ValueOf(service))
-				}
+		serviceValue := reflect.ValueOf(service).Elem()
+		serviceType := reflect.TypeOf(service).Elem()
+
+		for i := 0; i < serviceValue.NumField(); i++ {
+			field := serviceValue.Field(i)
+			fieldType := serviceType.Field(i)
+
+			if fieldType.Type.Kind() != reflect.Ptr || fieldType.Type.Elem().Kind() != reflect.Struct {
+				continue
+			}
+
+			if injectedService, ok := r.services[fieldType.Type.Elem().Name()]; ok {
+				field.Set(reflect.ValueOf(injectedService))
+				continue
+			}
+
+			serviceInterfaceType := reflect.TypeOf((*ServiceInterface)(nil)).Elem()
+			if fieldType.Type.Implements(serviceInterfaceType) {
+				err := fmt.Errorf("%s requires %s, but the service was not found in services initializer", serviceType.Name(), fieldType.Type.Elem().Name())
+				r.Utils.Log.Error("Error while registering service", "service", serviceType.Name(), "error", err)
+				return err
 			}
 		}
 	}
+
+	return nil
 }
 
-func (r *Raptor) registerMiddlewares(app *AppInitializer) {
+func (r *Raptor) registerMiddlewares(app *AppInitializer) error {
 	for _, middleware := range app.Middlewares {
-		r.middlewares[reflect.TypeOf(middleware).Elem().Name()] = middleware
+		middleware.InitMiddleware(r)
+		middlewareName := reflect.TypeOf(middleware).Elem().Name()
+		r.middlewares[middlewareName] = middleware
 		r.Server.Use(wrapMiddlewareHandler(middleware.New))
+	}
 
-		for i := 0; i < reflect.ValueOf(middleware).Elem().NumField(); i++ {
-			field := reflect.ValueOf(middleware).Elem().Field(i)
-			fieldType := reflect.TypeOf(middleware).Elem().Field(i)
-			if fieldType.Type.Kind() == reflect.Ptr && fieldType.Type.Elem().Kind() == reflect.Struct {
-				if service, ok := r.services[fieldType.Type.Elem().Name()]; ok {
-					field.Set(reflect.ValueOf(service))
-				}
+	for _, middleware := range r.middlewares {
+		middlewareValue := reflect.ValueOf(middleware).Elem()
+		middlewareType := reflect.TypeOf(middleware).Elem()
+
+		for i := 0; i < middlewareValue.NumField(); i++ {
+			field := middlewareValue.Field(i)
+			fieldType := middlewareType.Field(i)
+
+			if fieldType.Type.Kind() != reflect.Ptr || fieldType.Type.Elem().Kind() != reflect.Struct {
+				continue
+			}
+
+			serviceName := fieldType.Type.Elem().Name()
+			if injectedService, ok := r.services[serviceName]; ok {
+				field.Set(reflect.ValueOf(injectedService))
+				continue
+			}
+
+			serviceInterfaceType := reflect.TypeOf((*ServiceInterface)(nil)).Elem()
+			if fieldType.Type.Implements(serviceInterfaceType) {
+				err := fmt.Errorf("%s requires %s, but the service was not found in services initializer", middlewareType.Name(), serviceName)
+				r.Utils.Log.Error("Error while registering middleware", "middleware", middlewareType.Name(), "error", err)
+				return err
 			}
 		}
 	}
+
+	return nil
 }
 
-func (r *Raptor) registerControllers(app *AppInitializer) {
+func (r *Raptor) registerControllers(app *AppInitializer) error {
 	for _, controller := range app.Controllers {
 		if err := r.coordinator.registerController(controller, r.Utils, r.services); err != nil {
-			r.Utils.Log.Error("Error while registering controller", "error", err)
-			os.Exit(1)
+			r.Utils.Log.Error("Error while registering controller", "controller", reflect.TypeOf(controller).Elem().Name(), "error", err)
+			return err
 		}
 	}
+
+	return nil
 }
 
 func (r *Raptor) registerRoutes(app *AppInitializer) {
