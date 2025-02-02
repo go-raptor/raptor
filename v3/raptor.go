@@ -109,34 +109,21 @@ func newServer(config *Config, _ *AppInitializer) *echo.Echo {
 }
 
 func (r *Raptor) info() {
+	logo := `.______  .______  ._______ _____._._______  .______  
+: __   \ :      \ : ____  |\__ _:|: .___  \ : __   \ 
+|  \____||   .   ||    :  |  |  :|| :   |  ||  \____|
+|   :  \ |   :   ||   |___|  |   ||     :  ||   :  \ 
+|   |___\|___|   ||___|      |   | \_. ___/ |   |___\
+|___|        |___|           |___|   :/     |___|    
+                                     :               `
 	content := []string{
 		"Raptor is running! 🦖💨",
-		"Status    : Running ⚡️",
-		fmt.Sprintf("Version   : %s", Version),
-		fmt.Sprintf("Server    : %s", r.address()),
+		logo,
+		fmt.Sprintf("%s %s %s", strings.Repeat("-", 40), Version, strings.Repeat("-", 5)),
+		fmt.Sprintf("🟢 Server started on %s", r.address()),
 	}
 
-	maxLen := 0
-	for _, line := range content {
-		if len(line) > maxLen {
-			maxLen = len(line)
-		}
-	}
-	maxLen += 4
-
-	top := "╔" + strings.Repeat("═", maxLen) + "╗"
-	bottom := "╚" + strings.Repeat("═", maxLen) + "╝"
-
-	var formattedContent []string
-	formattedContent = append(formattedContent, content[0])
-	formattedContent = append(formattedContent, top)
-
-	for _, line := range content[1:] {
-		formattedContent = append(formattedContent, fmt.Sprintf("║  %-*s  ║", maxLen-4, line))
-	}
-
-	formattedContent = append(formattedContent, bottom)
-	r.Utils.Log.Info(strings.Join(formattedContent, "\n"))
+	r.Utils.Log.Info(strings.Join(content, "\n"))
 }
 
 func (r *Raptor) waitForShutdown() {
