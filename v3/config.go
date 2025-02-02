@@ -23,7 +23,7 @@ type Config struct {
 }
 
 type GeneralConfig struct {
-	Development bool
+	LogLevel string
 }
 
 type ServerConfig struct {
@@ -63,7 +63,7 @@ type CORSConfig struct {
 }
 
 const (
-	DefaultGeneralConfigDevelopment = false
+	DefaultGeneralConfigLogLevel = "info"
 
 	DefaultServerConfigAddress         = "127.0.0.1"
 	DefaultServerConfigPort            = 3000
@@ -129,7 +129,7 @@ func newConfig(log *slog.Logger) *Config {
 func newConfigDefaults() *Config {
 	return &Config{
 		GeneralConfig: GeneralConfig{
-			Development: DefaultGeneralConfigDevelopment,
+			LogLevel: DefaultGeneralConfigLogLevel,
 		},
 		ServerConfig: ServerConfig{
 			Address:         DefaultServerConfigAddress,
@@ -228,7 +228,7 @@ func (c *Config) loadConfigFromFile(path string) error {
 }
 
 func (c *Config) ApplyEnvirontmentVariables() {
-	c.ApplyEnvirontmentVariable("RAPTOR_DEVELOPMENT", &c.GeneralConfig.Development)
+	c.ApplyEnvirontmentVariable("RAPTOR_LOG_LEVEL", &c.GeneralConfig.LogLevel)
 
 	c.ApplyEnvirontmentVariable("SERVER_ADDRESS", &c.ServerConfig.Address)
 	c.ApplyEnvirontmentVariable("SERVER_PORT", &c.ServerConfig.Port)

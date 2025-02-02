@@ -109,11 +109,7 @@ func newServer(config *Config, _ *AppInitializer) *echo.Echo {
 }
 
 func (r *Raptor) info() {
-	if r.Utils.Config.GeneralConfig.Development {
-		r.Utils.Log.Info(fmt.Sprintf("Raptor %v is running (development)! 🎉", Version))
-	} else {
-		r.Utils.Log.Info(fmt.Sprintf("Raptor %v is running (production)! 🎉", Version))
-	}
+	r.Utils.Log.Info(fmt.Sprintf("Raptor %v is running! 🦖💨", Version))
 	r.Utils.Log.Info(fmt.Sprintf("Listening on http://%s", r.address()))
 }
 
