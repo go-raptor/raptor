@@ -198,16 +198,24 @@ func mergeConfig(dst, src *Config) {
 			continue
 		}
 
-		if srcField.Kind() == reflect.Struct {
-			for j := 0; j < srcField.NumField(); j++ {
-				nestedSrcField := srcField.Field(j)
-				nestedDstField := dstField.Field(j)
+		mergeConfigValues(dstField, srcField)
+	}
+}
 
-				if !nestedSrcField.IsZero() {
-					nestedDstField.Set(nestedSrcField)
-				}
+func mergeConfigValues(dst, src reflect.Value) {
+	if src.Kind() == reflect.Struct {
+		for i := 0; i < src.NumField(); i++ {
+			srcField := src.Field(i)
+			dstField := dst.Field(i)
+
+			if srcField.Kind() == reflect.Struct {
+				mergeConfigValues(dstField, srcField)
+			} else if !srcField.IsZero() {
+				dstField.Set(srcField)
 			}
 		}
+	} else if !src.IsZero() {
+		dst.Set(src)
 	}
 }
 
