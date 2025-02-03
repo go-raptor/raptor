@@ -2,21 +2,20 @@ package raptor
 
 import "github.com/labstack/echo/v4"
 
-func wrapMiddlewareHandler(handler func(*Context) error) echo.MiddlewareFunc {
-	return echo.MiddlewareFunc(func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			context := &Context{c, "", ""}
-			err := handler(context)
-			if err != nil {
-				return context.JSONError(err)
-			}
-			return next(c)
-		}
-	})
+func (r *Raptor) CreateActionWrapper(controller, action string, handler func(*Context) error) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		ctx := r.AcquireContext(c, controller, action)
+		defer r.ReleaseContext(ctx)
+		return handler(ctx)
+	}
 }
 
-func wrapActionHandler(controller, action string, handler func(*Context) error) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		return handler(&Context{c, controller, action})
+func (r *Raptor) CreateMiddlewareWrapper(handler func(*Context) error) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			ctx := r.AcquireContext(c, "middleware", "handler")
+			defer r.ReleaseContext(ctx)
+			return handler(ctx)
+		}
 	}
 }

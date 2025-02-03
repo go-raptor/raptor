@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -18,6 +19,7 @@ type Raptor struct {
 	Utils       *Utils
 	Server      *echo.Echo
 	coordinator *coordinator
+	contextPool sync.Pool
 	middlewares map[string]MiddlewareInterface
 	services    map[string]ServiceInterface
 	Routes      Routes
@@ -31,6 +33,11 @@ func NewRaptor(opts ...RaptorOption) *Raptor {
 	raptor := &Raptor{
 		Utils:       utils,
 		coordinator: newCoordinator(utils),
+		contextPool: sync.Pool{
+			New: func() interface{} {
+				return new(Context)
+			},
+		},
 		middlewares: make(map[string]MiddlewareInterface),
 		services:    make(map[string]ServiceInterface),
 	}
@@ -137,6 +144,24 @@ func (r *Raptor) waitForShutdown() {
 	r.Utils.Log.Warn("Raptor exited, bye bye!")
 }
 
+func (r *Raptor) AcquireContext(ec echo.Context, controller, action string) *Context {
+	ctx := r.contextPool.Get().(*Context)
+	ctx.Context = ec
+	ctx.Controller = controller
+	ctx.Action = action
+	return ctx
+}
+
+func (r *Raptor) ReleaseContext(ctx *Context) {
+	if ctx == nil {
+		return
+	}
+	ctx.Context = nil
+	ctx.Controller = ""
+	ctx.Action = ""
+	r.contextPool.Put(ctx)
+}
+
 func (r *Raptor) Init(app *AppInitializer) *Raptor {
 	r.Server = newServer(r.Utils.Config, app)
 	if app.DatabaseConnector != nil {
@@ -204,7 +229,7 @@ func (r *Raptor) registerMiddlewares(app *AppInitializer) error {
 		middleware.InitMiddleware(r)
 		middlewareName := reflect.TypeOf(middleware).Elem().Name()
 		r.middlewares[middlewareName] = middleware
-		r.Server.Use(wrapMiddlewareHandler(middleware.New))
+		r.Server.Use(r.CreateMiddlewareWrapper(middleware.New))
 	}
 
 	for _, middleware := range r.middlewares {
@@ -261,8 +286,10 @@ func (r *Raptor) registerRoutes(app *AppInitializer) {
 
 func (r *Raptor) registerRoute(route route) {
 	if route.Method != "*" {
-		r.Server.Add(route.Method, route.Path, wrapActionHandler(route.Controller, route.Action, r.coordinator.action))
+		r.Server.Add(route.Method, route.Path,
+			r.CreateActionWrapper(route.Controller, route.Action, r.coordinator.action))
 		return
 	}
-	r.Server.Any(route.Path, wrapActionHandler(route.Controller, route.Action, r.coordinator.action))
+	r.Server.Any(route.Path,
+		r.CreateActionWrapper(route.Controller, route.Action, r.coordinator.action))
 }
