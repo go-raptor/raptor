@@ -116,18 +116,16 @@ func newServer(config *Config, _ *AppInitializer) *echo.Echo {
 }
 
 func (r *Raptor) info() {
-	logo := `.______  .______  ._______ _____._._______  .______  
-: __   \ :      \ : ____  |\__ _:|: .___  \ : __   \ 
-|  \____||   .   ||    :  |  |  :|| :   |  ||  \____|
-|   :  \ |   :   ||   |___|  |   ||     :  ||   :  \ 
-|   |___\|___|   ||___|      |   | \_. ___/ |   |___\
-|___|        |___|           |___|   :/     |___|    
-                                     :               `
+	logo := `██████╗  █████╗ ██████╗ ████████╗ ██████╗ ██████╗ 
+██╔══██╗██╔══██╗██╔══██╗╚══██╔══╝██╔═══██╗██╔══██╗
+██████╔╝███████║██████╔╝   ██║   ██║   ██║██████╔╝
+██╔══██╗██╔══██║██╔═══╝    ██║   ██║   ██║██╔══██╗
+██║  ██║██║  ██║██║        ██║   ╚██████╔╝██║  ██║
+╚═╝  ╚═╝╚═╝  ╚═╝╚═╝        ╚═╝    ╚═════╝ ╚═╝  ╚═╝`
 	content := []string{
 		"Raptor is running! 🦖💨",
 		logo,
-		fmt.Sprintf("%s %s %s", strings.Repeat("-", 40), Version, strings.Repeat("-", 5)),
-		fmt.Sprintf("🟢 Server started on %s", r.address()),
+		fmt.Sprintf("🟢 Raptor %s started on %s", Version, r.address()),
 	}
 
 	r.Utils.Log.Info(strings.Join(content, "\n"))
@@ -144,7 +142,7 @@ func (r *Raptor) waitForShutdown() {
 	r.Utils.Log.Warn("Raptor exited, bye bye!")
 }
 
-func (r *Raptor) AcquireContext(ec echo.Context, controller, action string) *Context {
+func (r *Raptor) acquireContext(ec echo.Context, controller, action string) *Context {
 	ctx := r.contextPool.Get().(*Context)
 	ctx.Context = ec
 	ctx.Controller = controller
@@ -152,7 +150,7 @@ func (r *Raptor) AcquireContext(ec echo.Context, controller, action string) *Con
 	return ctx
 }
 
-func (r *Raptor) ReleaseContext(ctx *Context) {
+func (r *Raptor) releaseContext(ctx *Context) {
 	if ctx == nil {
 		return
 	}
