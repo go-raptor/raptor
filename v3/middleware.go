@@ -17,6 +17,7 @@ type Middleware struct {
 	onInit    func()
 	onlyMap   map[string]struct{}
 	exceptMap map[string]struct{}
+	scoped    bool
 }
 
 func (m *Middleware) InitMiddleware(r *Raptor) {
@@ -31,6 +32,10 @@ func (m *Middleware) OnInit(callback func()) {
 }
 
 func (m *Middleware) ShouldRun(controller, action string) bool {
+	if !m.scoped {
+		return true
+	}
+
 	route := controller + "#" + action
 
 	if m.exceptMap != nil {
@@ -48,6 +53,7 @@ func (m *Middleware) ShouldRun(controller, action string) bool {
 }
 
 func (m *Middleware) Only(only ...string) {
+	m.scoped = true
 	if m.onlyMap == nil {
 		m.onlyMap = make(map[string]struct{})
 	}
@@ -58,6 +64,7 @@ func (m *Middleware) Only(only ...string) {
 }
 
 func (m *Middleware) Except(except ...string) {
+	m.scoped = true
 	if m.exceptMap == nil {
 		m.exceptMap = make(map[string]struct{})
 	}
