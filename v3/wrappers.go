@@ -15,7 +15,12 @@ func (r *Raptor) CreateMiddlewareWrapper(handler func(*Context) error) echo.Midd
 		return func(c echo.Context) error {
 			ctx := r.acquireContext(c, "middleware", "handler")
 			defer r.releaseContext(ctx)
-			return handler(ctx)
+
+			if err := handler(ctx); err != nil {
+				return ctx.JSONError(err)
+			}
+
+			return next(c)
 		}
 	}
 }
