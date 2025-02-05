@@ -227,7 +227,7 @@ func (r *Raptor) registerMiddlewares(app *AppInitializer) error {
 		middleware.InitMiddleware(r)
 		middlewareName := reflect.TypeOf(middleware).Elem().Name()
 		r.middlewares[middlewareName] = middleware
-		r.Server.Use(r.CreateMiddlewareWrapper(middleware.New))
+		//r.Server.Use(r.CreateMiddlewareWrapper(middleware.New))
 	}
 
 	for _, middleware := range r.middlewares {
@@ -283,11 +283,10 @@ func (r *Raptor) registerRoutes(app *AppInitializer) {
 }
 
 func (r *Raptor) registerRoute(route route) {
+	routeHandler := r.CreateActionWrapper(route.Controller, route.Action, r.coordinator.action)
 	if route.Method != "*" {
-		r.Server.Add(route.Method, route.Path,
-			r.CreateActionWrapper(route.Controller, route.Action, r.coordinator.action))
+		r.Server.Add(route.Method, route.Path, routeHandler)
 		return
 	}
-	r.Server.Any(route.Path,
-		r.CreateActionWrapper(route.Controller, route.Action, r.coordinator.action))
+	r.Server.Any(route.Path, routeHandler)
 }

@@ -6,6 +6,13 @@ func (r *Raptor) CreateActionWrapper(controller, action string, handler func(*Co
 	return func(c echo.Context) error {
 		ctx := r.acquireContext(c, controller, action)
 		defer r.releaseContext(ctx)
+
+		for _, middleware := range r.middlewares {
+			if err := middleware.New(ctx); err != nil {
+				return ctx.JSONError(err)
+			}
+		}
+
 		return handler(ctx)
 	}
 }
