@@ -8,10 +8,8 @@ func (r *Raptor) CreateActionWrapper(controller, action string, handler func(*Co
 		defer r.releaseContext(ctx)
 
 		for _, middleware := range r.middlewares {
-			if middleware.ShouldRun(controller, action) {
-				if err := middleware.New(ctx); err != nil {
-					return ctx.JSONError(err)
-				}
+			if err := middleware.New(ctx); err != nil {
+				return ctx.JSONError(err)
 			}
 		}
 
