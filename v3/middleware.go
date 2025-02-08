@@ -4,7 +4,11 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type Middlewares []MiddlewareInterface
+type ScopedMiddleware struct {
+	middleware MiddlewareInterface
+	scope      string
+}
+type Middlewares []ScopedMiddleware
 
 type MiddlewareInterface interface {
 	InitMiddleware(r *Raptor)
@@ -38,6 +42,13 @@ func (m *echoMiddleware) New(c *Context) error {
 func (m *echoMiddleware) InitMiddleware(r *Raptor) {
 }
 
-func Use(h echo.HandlerFunc) *echoMiddleware {
+func UseEcho(h echo.HandlerFunc) *echoMiddleware {
 	return &echoMiddleware{handler: h}
+}
+
+func Use(middleware MiddlewareInterface) ScopedMiddleware {
+	return ScopedMiddleware{
+		middleware: middleware,
+		scope:      "*",
+	}
 }

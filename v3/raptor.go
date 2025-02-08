@@ -20,7 +20,7 @@ type Raptor struct {
 	Server      *echo.Echo
 	coordinator *coordinator
 	contextPool sync.Pool
-	middlewares Middlewares
+	middlewares []MiddlewareInterface
 	services    map[string]ServiceInterface
 	Routes      Routes
 }
@@ -38,7 +38,7 @@ func NewRaptor(opts ...RaptorOption) *Raptor {
 				return new(Context)
 			},
 		},
-		middlewares: Middlewares{},
+		middlewares: make([]MiddlewareInterface, 0),
 		services:    make(map[string]ServiceInterface),
 	}
 
@@ -223,9 +223,9 @@ func (r *Raptor) registerServices(app *AppInitializer) error {
 }
 
 func (r *Raptor) registerMiddlewares(app *AppInitializer) error {
-	for _, middleware := range app.Middlewares {
-		middleware.InitMiddleware(r)
-		r.middlewares = append(r.middlewares, middleware)
+	for _, scopedMiddleware := range app.Middlewares {
+		scopedMiddleware.middleware.InitMiddleware(r)
+		r.middlewares = append(r.middlewares, scopedMiddleware.middleware)
 	}
 
 	for _, middleware := range r.middlewares {
