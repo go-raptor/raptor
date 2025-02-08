@@ -274,7 +274,7 @@ func (r *Raptor) registerControllers(app *AppInitializer) error {
 func (r *Raptor) registerRoutes(app *AppInitializer) {
 	r.Routes = app.Routes
 	for _, route := range r.Routes {
-		if _, ok := r.coordinator.actions[route.Controller][route.Action]; !ok {
+		if _, ok := r.coordinator.handlers[route.Controller][route.Action]; !ok {
 			r.Utils.Log.Error(fmt.Sprintf("Action %s not found in controller %s for path %s!", route.Action, route.Controller, route.Path))
 			os.Exit(1)
 		}
@@ -283,7 +283,7 @@ func (r *Raptor) registerRoutes(app *AppInitializer) {
 }
 
 func (r *Raptor) registerRoute(route route) {
-	routeHandler := r.CreateActionWrapper(route.Controller, route.Action, r.coordinator.action)
+	routeHandler := r.CreateActionWrapper(route.Controller, route.Action, r.coordinator.handle)
 	if route.Method != "*" {
 		r.Server.Add(route.Method, route.Path, routeHandler)
 		return

@@ -7,22 +7,27 @@ import (
 	"time"
 )
 
+type handler struct {
+	action      func(*Context) error
+	middlewares []uint8
+}
+
 type coordinator struct {
-	utils   *Utils
-	actions map[string]map[string]func(*Context) error
+	utils    *Utils
+	handlers map[string]map[string]handler
 }
 
 func newCoordinator(u *Utils) *coordinator {
 	return &coordinator{
-		utils:   u,
-		actions: make(map[string]map[string]func(*Context) error),
+		utils:    u,
+		handlers: make(map[string]map[string]handler),
 	}
 }
 
-func (c *coordinator) action(ctx *Context) error {
+func (c *coordinator) handle(ctx *Context) error {
 	startTime := time.Now()
 	c.logActionStart(ctx)
-	err := c.actions[ctx.Controller][ctx.Action](ctx)
+	err := c.handlers[ctx.Controller][ctx.Action].action(ctx)
 	c.logActionFinish(ctx, startTime)
 	return err
 }
@@ -62,8 +67,8 @@ func (c *coordinator) validateController(val reflect.Value) error {
 }
 
 func (c *coordinator) registerActions(val reflect.Value, controllerName string) error {
-	if c.actions[controllerName] == nil {
-		c.actions[controllerName] = make(map[string]func(*Context) error)
+	if c.handlers[controllerName] == nil {
+		c.handlers[controllerName] = make(map[string]handler)
 	}
 
 	for i := 0; i < val.NumMethod(); i++ {
@@ -72,7 +77,10 @@ func (c *coordinator) registerActions(val reflect.Value, controllerName string) 
 
 		if isValidActionMethod(methodType) {
 			actionName := val.Type().Method(i).Name
-			c.actions[controllerName][actionName] = method.Interface().(func(*Context) error)
+			c.handlers[controllerName][actionName] = handler{
+				action:      method.Interface().(func(*Context) error),
+				middlewares: []uint8{},
+			}
 		}
 	}
 
