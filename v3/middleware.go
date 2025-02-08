@@ -6,7 +6,9 @@ import (
 
 type ScopedMiddleware struct {
 	middleware MiddlewareInterface
-	scope      string
+	only       []string
+	except     []string
+	global     bool
 }
 type Middlewares []ScopedMiddleware
 
@@ -49,6 +51,13 @@ func UseEcho(h echo.HandlerFunc) *echoMiddleware {
 func Use(middleware MiddlewareInterface) ScopedMiddleware {
 	return ScopedMiddleware{
 		middleware: middleware,
-		scope:      "*",
+		global:     true,
+	}
+}
+
+func UseExcept(middleware MiddlewareInterface, except ...string) ScopedMiddleware {
+	return ScopedMiddleware{
+		middleware: middleware,
+		except:     except,
 	}
 }

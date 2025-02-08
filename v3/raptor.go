@@ -223,9 +223,33 @@ func (r *Raptor) registerServices(app *AppInitializer) error {
 }
 
 func (r *Raptor) registerMiddlewares(app *AppInitializer) error {
-	for _, scopedMiddleware := range app.Middlewares {
+	for i, scopedMiddleware := range app.Middlewares {
 		scopedMiddleware.middleware.InitMiddleware(r)
 		r.middlewares = append(r.middlewares, scopedMiddleware.middleware)
+		if scopedMiddleware.global {
+			for _, actions := range r.coordinator.handlers {
+				for _, handler := range actions {
+					if handler.middlewares == nil {
+						handler.middlewares = make([]uint8, 0)
+					}
+					handler.middlewares = append(handler.middlewares, uint8(i))
+				}
+			}
+		} else if scopedMiddleware.except != nil {
+			exceptCoordinator, exceptAction := parseControllerAction(scopedMiddleware.except[0])
+			for controller, actions := range r.coordinator.handlers {
+				for action, handler := range actions {
+					if controller == exceptCoordinator && action == exceptAction {
+						continue
+					}
+					if handler.middlewares == nil {
+						handler.middlewares = make([]uint8, 0)
+					}
+					handler.middlewares = append(handler.middlewares, uint8(i))
+				}
+			}
+		}
+
 	}
 
 	for _, middleware := range r.middlewares {
@@ -251,15 +275,6 @@ func (r *Raptor) registerMiddlewares(app *AppInitializer) error {
 				err := fmt.Errorf("%s requires %s, but the service was not found in services initializer", middlewareType.Name(), serviceName)
 				r.Utils.Log.Error("Error while registering middleware", "middleware", middlewareType.Name(), "error", err)
 				return err
-			}
-		}
-	}
-
-	for _, actions := range r.coordinator.handlers {
-		for _, handler := range actions {
-			handler.middlewares = make([]uint8, len(r.middlewares))
-			for i := range r.middlewares {
-				handler.middlewares[i] = uint8(i)
 			}
 		}
 	}

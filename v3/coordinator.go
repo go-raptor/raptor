@@ -66,9 +66,9 @@ func (c *coordinator) validateController(val reflect.Value) error {
 	return nil
 }
 
-func (c *coordinator) registerActions(val reflect.Value, controllerName string) error {
-	if c.handlers[controllerName] == nil {
-		c.handlers[controllerName] = make(map[string]*handler)
+func (c *coordinator) registerActions(val reflect.Value, controller string) error {
+	if c.handlers[controller] == nil {
+		c.handlers[controller] = make(map[string]*handler)
 	}
 
 	for i := 0; i < val.NumMethod(); i++ {
@@ -76,10 +76,10 @@ func (c *coordinator) registerActions(val reflect.Value, controllerName string) 
 		methodType := method.Type()
 
 		if isValidActionMethod(methodType) {
-			actionName := val.Type().Method(i).Name
-			c.handlers[controllerName][actionName] = &handler{
+			action := val.Type().Method(i).Name
+			c.handlers[controller][action] = &handler{
 				action:      method.Interface().(func(*Context) error),
-				middlewares: []uint8{},
+				middlewares: nil,
 			}
 		}
 	}
@@ -94,7 +94,7 @@ func isValidActionMethod(methodType reflect.Type) bool {
 		methodType.Out(0) == reflect.TypeOf((*error)(nil)).Elem()
 }
 
-func (c *coordinator) injectServices(controllerValue reflect.Value, controllerName string, services map[string]ServiceInterface) error {
+func (c *coordinator) injectServices(controllerValue reflect.Value, controller string, services map[string]ServiceInterface) error {
 	controllerElem := controllerValue.Elem()
 
 	for i := 0; i < controllerElem.NumField(); i++ {
@@ -110,15 +110,15 @@ func (c *coordinator) injectServices(controllerValue reflect.Value, controllerNa
 			continue
 		}
 
-		serviceName := fieldType.Type.Elem().Name()
-		if injectedService, ok := services[serviceName]; ok {
+		service := fieldType.Type.Elem().Name()
+		if injectedService, ok := services[service]; ok {
 			field.Set(reflect.ValueOf(injectedService))
 			continue
 		}
 
 		serviceInterfaceType := reflect.TypeOf((*ServiceInterface)(nil)).Elem()
 		if fieldType.Type.Implements(serviceInterfaceType) {
-			return fmt.Errorf("%s requires %s, but the service was not found in services initializer", controllerName, serviceName)
+			return fmt.Errorf("%s requires %s, but the service was not found in services initializer", controller, service)
 		}
 	}
 
