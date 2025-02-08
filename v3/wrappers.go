@@ -1,14 +1,16 @@
 package raptor
 
-import "github.com/labstack/echo/v4"
+import (
+	"github.com/labstack/echo/v4"
+)
 
 func (r *Raptor) CreateActionWrapper(controller, action string, handler func(*Context) error) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		ctx := r.acquireContext(c, controller, action)
 		defer r.releaseContext(ctx)
 
-		for _, middleware := range r.middlewares {
-			if err := middleware.New(ctx); err != nil {
+		for _, middlewareIndex := range r.coordinator.handlers[controller][action].middlewares {
+			if err := r.middlewares[middlewareIndex].New(ctx); err != nil {
 				return ctx.JSONError(err)
 			}
 		}

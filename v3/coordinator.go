@@ -14,13 +14,13 @@ type handler struct {
 
 type coordinator struct {
 	utils    *Utils
-	handlers map[string]map[string]handler
+	handlers map[string]map[string]*handler
 }
 
 func newCoordinator(u *Utils) *coordinator {
 	return &coordinator{
 		utils:    u,
-		handlers: make(map[string]map[string]handler),
+		handlers: make(map[string]map[string]*handler),
 	}
 }
 
@@ -68,7 +68,7 @@ func (c *coordinator) validateController(val reflect.Value) error {
 
 func (c *coordinator) registerActions(val reflect.Value, controllerName string) error {
 	if c.handlers[controllerName] == nil {
-		c.handlers[controllerName] = make(map[string]handler)
+		c.handlers[controllerName] = make(map[string]*handler)
 	}
 
 	for i := 0; i < val.NumMethod(); i++ {
@@ -77,7 +77,7 @@ func (c *coordinator) registerActions(val reflect.Value, controllerName string) 
 
 		if isValidActionMethod(methodType) {
 			actionName := val.Type().Method(i).Name
-			c.handlers[controllerName][actionName] = handler{
+			c.handlers[controllerName][actionName] = &handler{
 				action:      method.Interface().(func(*Context) error),
 				middlewares: []uint8{},
 			}

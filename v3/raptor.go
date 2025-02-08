@@ -20,7 +20,7 @@ type Raptor struct {
 	Server      *echo.Echo
 	coordinator *coordinator
 	contextPool sync.Pool
-	middlewares map[string]MiddlewareInterface
+	middlewares []MiddlewareInterface
 	services    map[string]ServiceInterface
 	Routes      Routes
 }
@@ -38,7 +38,7 @@ func NewRaptor(opts ...RaptorOption) *Raptor {
 				return new(Context)
 			},
 		},
-		middlewares: make(map[string]MiddlewareInterface),
+		middlewares: []MiddlewareInterface{},
 		services:    make(map[string]ServiceInterface),
 	}
 
@@ -173,10 +173,10 @@ func (r *Raptor) Init(app *AppInitializer) *Raptor {
 	if err := r.registerServices(app); err != nil {
 		os.Exit(1)
 	}
-	if err := r.registerMiddlewares(app); err != nil {
+	if err := r.registerControllers(app); err != nil {
 		os.Exit(1)
 	}
-	if err := r.registerControllers(app); err != nil {
+	if err := r.registerMiddlewares(app); err != nil {
 		os.Exit(1)
 	}
 	r.registerRoutes(app)
@@ -225,9 +225,7 @@ func (r *Raptor) registerServices(app *AppInitializer) error {
 func (r *Raptor) registerMiddlewares(app *AppInitializer) error {
 	for _, middleware := range app.Middlewares {
 		middleware.InitMiddleware(r)
-		middlewareName := reflect.TypeOf(middleware).Elem().Name()
-		r.middlewares[middlewareName] = middleware
-		//r.Server.Use(r.CreateMiddlewareWrapper(middleware.New))
+		r.middlewares = append(r.middlewares, middleware)
 	}
 
 	for _, middleware := range r.middlewares {
@@ -253,6 +251,15 @@ func (r *Raptor) registerMiddlewares(app *AppInitializer) error {
 				err := fmt.Errorf("%s requires %s, but the service was not found in services initializer", middlewareType.Name(), serviceName)
 				r.Utils.Log.Error("Error while registering middleware", "middleware", middlewareType.Name(), "error", err)
 				return err
+			}
+		}
+	}
+
+	for _, actions := range r.coordinator.handlers {
+		for _, handler := range actions {
+			handler.middlewares = make([]uint8, len(r.middlewares))
+			for i := range r.middlewares {
+				handler.middlewares[i] = uint8(i)
 			}
 		}
 	}
