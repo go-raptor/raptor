@@ -20,7 +20,7 @@ type Raptor struct {
 	Server      *echo.Echo
 	coordinator *coordinator
 	contextPool sync.Pool
-	middlewares []MiddlewareInterface
+	middlewares Middlewares
 	services    map[string]ServiceInterface
 	Routes      Routes
 }
@@ -38,7 +38,7 @@ func NewRaptor(opts ...RaptorOption) *Raptor {
 				return new(Context)
 			},
 		},
-		middlewares: []MiddlewareInterface{},
+		middlewares: Middlewares{},
 		services:    make(map[string]ServiceInterface),
 	}
 
