@@ -229,9 +229,6 @@ func (r *Raptor) registerMiddlewares(app *AppInitializer) error {
 		if scopedMiddleware.global {
 			for _, actions := range r.coordinator.handlers {
 				for _, handler := range actions {
-					if handler.middlewares == nil {
-						handler.middlewares = make([]uint8, 0)
-					}
 					handler.middlewares = append(handler.middlewares, uint8(i))
 				}
 			}
@@ -242,14 +239,10 @@ func (r *Raptor) registerMiddlewares(app *AppInitializer) error {
 					if controller == exceptCoordinator && action == exceptAction {
 						continue
 					}
-					if handler.middlewares == nil {
-						handler.middlewares = make([]uint8, 0)
-					}
 					handler.middlewares = append(handler.middlewares, uint8(i))
 				}
 			}
 		}
-
 	}
 
 	for _, middleware := range r.middlewares {

@@ -79,7 +79,7 @@ func (c *coordinator) registerActions(val reflect.Value, controller string) erro
 			action := val.Type().Method(i).Name
 			c.handlers[controller][action] = &handler{
 				action:      method.Interface().(func(*Context) error),
-				middlewares: nil,
+				middlewares: make([]uint8, 0),
 			}
 		}
 	}
