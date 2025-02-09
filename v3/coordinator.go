@@ -124,3 +124,49 @@ func (c *coordinator) injectServices(controllerValue reflect.Value, controller s
 
 	return nil
 }
+
+func (c *coordinator) applyMiddlewareGlobal(i int) error {
+	for _, actions := range c.handlers {
+		for _, handler := range actions {
+			handler.middlewares = append(handler.middlewares, uint8(i))
+		}
+	}
+
+	return nil
+}
+
+func (c *coordinator) applyMiddlewareExcept(i int, exceptions []string) error {
+	excluded := make(map[string]struct{})
+	for _, exception := range exceptions {
+		controller, action := parseControllerAction(exception)
+		excluded[controller+"#"+action] = struct{}{}
+	}
+
+	for controller, actions := range c.handlers {
+		for action, handler := range actions {
+			if _, isExcluded := excluded[controller+"#"+action]; !isExcluded {
+				handler.middlewares = append(handler.middlewares, uint8(i))
+			}
+		}
+	}
+
+	return nil
+}
+
+func (c *coordinator) applyMiddlewareOnly(i int, only []string) error {
+	included := make(map[string]struct{})
+	for _, include := range only {
+		controller, action := parseControllerAction(include)
+		included[controller+"#"+action] = struct{}{}
+	}
+
+	for controller, actions := range c.handlers {
+		for action, handler := range actions {
+			if _, isIncluded := included[controller+"#"+action]; isIncluded {
+				handler.middlewares = append(handler.middlewares, uint8(i))
+			}
+		}
+	}
+
+	return nil
+}

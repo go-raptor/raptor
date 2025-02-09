@@ -61,3 +61,10 @@ func UseExcept(middleware MiddlewareInterface, except ...string) ScopedMiddlewar
 		except:     except,
 	}
 }
+
+func UseOnly(middleware MiddlewareInterface, only ...string) ScopedMiddleware {
+	return ScopedMiddleware{
+		middleware: middleware,
+		only:       only,
+	}
+}

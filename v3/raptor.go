@@ -227,21 +227,11 @@ func (r *Raptor) registerMiddlewares(app *AppInitializer) error {
 		scopedMiddleware.middleware.InitMiddleware(r)
 		r.middlewares = append(r.middlewares, scopedMiddleware.middleware)
 		if scopedMiddleware.global {
-			for _, actions := range r.coordinator.handlers {
-				for _, handler := range actions {
-					handler.middlewares = append(handler.middlewares, uint8(i))
-				}
-			}
+			r.coordinator.applyMiddlewareGlobal(i)
 		} else if scopedMiddleware.except != nil {
-			exceptCoordinator, exceptAction := parseControllerAction(scopedMiddleware.except[0])
-			for controller, actions := range r.coordinator.handlers {
-				for action, handler := range actions {
-					if controller == exceptCoordinator && action == exceptAction {
-						continue
-					}
-					handler.middlewares = append(handler.middlewares, uint8(i))
-				}
-			}
+			r.coordinator.applyMiddlewareExcept(i, scopedMiddleware.except)
+		} else if scopedMiddleware.only != nil {
+			r.coordinator.applyMiddlewareOnly(i, scopedMiddleware.only)
 		}
 	}
 
