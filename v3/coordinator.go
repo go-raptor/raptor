@@ -135,10 +135,10 @@ func (c *coordinator) applyMiddlewareGlobal(i int) error {
 	return nil
 }
 
-func (c *coordinator) applyMiddlewareExcept(i int, exceptions []string) error {
+func (c *coordinator) applyMiddlewareExcept(i int, exceptionDescriptors []string) error {
 	excluded := make(map[string]struct{})
-	for _, exception := range exceptions {
-		controller, action := parseControllerAction(exception)
+	for _, exception := range exceptionDescriptors {
+		controller, action := parseActionDescriptor(exception)
 		excluded[controller+"#"+action] = struct{}{}
 	}
 
@@ -153,10 +153,10 @@ func (c *coordinator) applyMiddlewareExcept(i int, exceptions []string) error {
 	return nil
 }
 
-func (c *coordinator) applyMiddlewareOnly(i int, only []string) error {
+func (c *coordinator) applyMiddlewareOnly(i int, onlyDescriptors []string) error {
 	included := make(map[string]struct{})
-	for _, include := range only {
-		controller, action := parseControllerAction(include)
+	for _, include := range onlyDescriptors {
+		controller, action := parseActionDescriptor(include)
 		included[controller+"#"+action] = struct{}{}
 	}
 

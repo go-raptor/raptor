@@ -38,12 +38,12 @@ func normalizeController(controller string) string {
 	return controller
 }
 
-func parseControllerAction(input string) (controller, action string) {
-	parts := strings.Split(input, "#")
+func parseActionDescriptor(descriptor string) (controller, action string) {
+	parts := strings.Split(descriptor, "#")
 	if len(parts) == 2 {
 		return normalizeController(parts[0]), parts[1]
 	}
-	return normalizeController(input), ""
+	return normalizeController(descriptor), ""
 }
 
 func Scope(path string, routes ...Routes) Routes {
@@ -63,13 +63,13 @@ func Scope(path string, routes ...Routes) Routes {
 	return result
 }
 
-func Route(method, path string, handler ...string) Routes {
+func Route(method, path string, actionDescriptor ...string) Routes {
 	var controller, action string
 
-	if len(handler) == 1 {
-		controller, action = parseControllerAction(handler[0])
-	} else if len(handler) == 2 {
-		controller, action = handler[0], handler[1]
+	if len(actionDescriptor) == 1 {
+		controller, action = parseActionDescriptor(actionDescriptor[0])
+	} else if len(actionDescriptor) == 2 {
+		controller, action = actionDescriptor[0], actionDescriptor[1]
 	}
 
 	return Routes{
