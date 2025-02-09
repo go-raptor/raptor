@@ -94,6 +94,11 @@ func isValidActionMethod(methodType reflect.Type) bool {
 		methodType.Out(0) == reflect.TypeOf((*error)(nil)).Elem()
 }
 
+func (c *coordinator) handlerExists(controller, action string) bool {
+	_, ok := c.handlers[controller][action]
+	return ok
+}
+
 func (c *coordinator) injectServices(controllerValue reflect.Value, controller string, services map[string]ServiceInterface) error {
 	controllerElem := controllerValue.Elem()
 
@@ -139,6 +144,9 @@ func (c *coordinator) applyMiddlewareExcept(i int, exceptionDescriptors []string
 	excluded := make(map[string]struct{})
 	for _, exception := range exceptionDescriptors {
 		controller, action := parseActionDescriptor(exception)
+		if !c.handlerExists(controller, action) {
+			return fmt.Errorf("action %s#%s does not exist", controller, action)
+		}
 		excluded[actionDescriptor(controller, action)] = struct{}{}
 	}
 
@@ -157,6 +165,9 @@ func (c *coordinator) applyMiddlewareOnly(i int, onlyDescriptors []string) error
 	included := make(map[string]struct{})
 	for _, include := range onlyDescriptors {
 		controller, action := parseActionDescriptor(include)
+		if !c.handlerExists(controller, action) {
+			return fmt.Errorf("action %s#%s does not exist", controller, action)
+		}
 		included[actionDescriptor(controller, action)] = struct{}{}
 	}
 
