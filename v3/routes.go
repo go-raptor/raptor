@@ -46,6 +46,10 @@ func parseActionDescriptor(descriptor string) (controller, action string) {
 	return normalizeController(descriptor), ""
 }
 
+func actionDescriptor(controller, action string) string {
+	return controller + "#" + action
+}
+
 func Scope(path string, routes ...Routes) Routes {
 	var result Routes
 	normalizedPath := normalizePath(path)

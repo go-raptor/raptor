@@ -34,7 +34,7 @@ func (c *coordinator) handle(ctx *Context) error {
 
 func (c *coordinator) logActionStart(ctx *Context) {
 	c.utils.Log.Info(fmt.Sprintf("Started %s \"%s\" for %s", ctx.Request().Method, ctx.Request().URL.Path, ctx.RealIP()))
-	c.utils.Log.Info(fmt.Sprintf("Processing by %s#%s", ctx.Controller, ctx.Action))
+	c.utils.Log.Info(fmt.Sprintf("Processing by %s", actionDescriptor(ctx.Controller, ctx.Action)))
 }
 
 func (c *coordinator) logActionFinish(ctx *Context, startTime time.Time) {
@@ -139,12 +139,12 @@ func (c *coordinator) applyMiddlewareExcept(i int, exceptionDescriptors []string
 	excluded := make(map[string]struct{})
 	for _, exception := range exceptionDescriptors {
 		controller, action := parseActionDescriptor(exception)
-		excluded[controller+"#"+action] = struct{}{}
+		excluded[actionDescriptor(controller, action)] = struct{}{}
 	}
 
 	for controller, actions := range c.handlers {
 		for action, handler := range actions {
-			if _, isExcluded := excluded[controller+"#"+action]; !isExcluded {
+			if _, isExcluded := excluded[actionDescriptor(controller, action)]; !isExcluded {
 				handler.middlewares = append(handler.middlewares, uint8(i))
 			}
 		}
@@ -157,12 +157,12 @@ func (c *coordinator) applyMiddlewareOnly(i int, onlyDescriptors []string) error
 	included := make(map[string]struct{})
 	for _, include := range onlyDescriptors {
 		controller, action := parseActionDescriptor(include)
-		included[controller+"#"+action] = struct{}{}
+		included[actionDescriptor(controller, action)] = struct{}{}
 	}
 
 	for controller, actions := range c.handlers {
 		for action, handler := range actions {
-			if _, isIncluded := included[controller+"#"+action]; isIncluded {
+			if _, isIncluded := included[actionDescriptor(controller, action)]; isIncluded {
 				handler.middlewares = append(handler.middlewares, uint8(i))
 			}
 		}
