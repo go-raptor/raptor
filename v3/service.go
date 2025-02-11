@@ -8,13 +8,11 @@ type ServiceInterface interface {
 
 type Service struct {
 	*Utils
-	*Raptor
 	onInit func() error
 }
 
 func (s *Service) InitService(r *Raptor) error {
 	s.Utils = r.Utils
-	s.Raptor = r
 	if s.onInit != nil {
 		return s.onInit()
 	}
