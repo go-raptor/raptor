@@ -21,7 +21,6 @@ type Raptor struct {
 	coordinator *coordinator
 	contextPool sync.Pool
 	middlewares []MiddlewareInterface
-	services    map[string]ServiceInterface
 	Routes      Routes
 }
 type RaptorOption func(*Raptor)
@@ -39,7 +38,6 @@ func NewRaptor(opts ...RaptorOption) *Raptor {
 			},
 		},
 		middlewares: make([]MiddlewareInterface, 0),
-		services:    make(map[string]ServiceInterface),
 	}
 
 	for _, opt := range opts {
@@ -170,10 +168,10 @@ func (r *Raptor) Init(app *AppInitializer) *Raptor {
 		}
 	}
 
-	if err := r.registerServices(app); err != nil {
+	if err := r.coordinator.registerServices(app); err != nil {
 		os.Exit(1)
 	}
-	if err := r.registerControllers(app); err != nil {
+	if err := r.coordinator.registerControllers(app); err != nil {
 		os.Exit(1)
 	}
 	if err := r.registerMiddlewares(app); err != nil {
@@ -182,44 +180,6 @@ func (r *Raptor) Init(app *AppInitializer) *Raptor {
 	r.registerRoutes(app)
 
 	return r
-}
-
-func (r *Raptor) registerServices(app *AppInitializer) error {
-	for _, service := range app.Services {
-		if err := service.InitService(r); err != nil {
-			r.Utils.Log.Error("Service initialization failed", "service", reflect.TypeOf(service).Elem().Name(), "error", err)
-			return err
-		}
-		r.services[reflect.TypeOf(service).Elem().Name()] = service
-	}
-
-	for _, service := range r.services {
-		serviceValue := reflect.ValueOf(service).Elem()
-		serviceType := reflect.TypeOf(service).Elem()
-
-		for i := 0; i < serviceValue.NumField(); i++ {
-			field := serviceValue.Field(i)
-			fieldType := serviceType.Field(i)
-
-			if fieldType.Type.Kind() != reflect.Ptr || fieldType.Type.Elem().Kind() != reflect.Struct {
-				continue
-			}
-
-			if injectedService, ok := r.services[fieldType.Type.Elem().Name()]; ok {
-				field.Set(reflect.ValueOf(injectedService))
-				continue
-			}
-
-			serviceInterfaceType := reflect.TypeOf((*ServiceInterface)(nil)).Elem()
-			if fieldType.Type.Implements(serviceInterfaceType) {
-				err := fmt.Errorf("%s requires %s, but the service was not found in services initializer", serviceType.Name(), fieldType.Type.Elem().Name())
-				r.Utils.Log.Error("Error while registering service", "service", serviceType.Name(), "error", err)
-				return err
-			}
-		}
-	}
-
-	return nil
 }
 
 func (r *Raptor) registerMiddlewares(app *AppInitializer) error {
@@ -253,7 +213,7 @@ func (r *Raptor) registerMiddlewares(app *AppInitializer) error {
 			}
 
 			serviceName := fieldType.Type.Elem().Name()
-			if injectedService, ok := r.services[serviceName]; ok {
+			if injectedService, ok := r.coordinator.services[serviceName]; ok {
 				field.Set(reflect.ValueOf(injectedService))
 				continue
 			}
@@ -264,17 +224,6 @@ func (r *Raptor) registerMiddlewares(app *AppInitializer) error {
 				r.Utils.Log.Error("Error while registering middleware", "middleware", middlewareType.Name(), "error", err)
 				return err
 			}
-		}
-	}
-
-	return nil
-}
-
-func (r *Raptor) registerControllers(app *AppInitializer) error {
-	for _, controller := range app.Controllers {
-		if err := r.coordinator.registerController(controller, r.Utils, r.services); err != nil {
-			r.Utils.Log.Error("Error while registering controller", "controller", reflect.TypeOf(controller).Elem().Name(), "error", err)
-			return err
 		}
 	}
 

@@ -10,12 +10,14 @@ import (
 type coordinator struct {
 	utils    *Utils
 	handlers map[string]map[string]*handler
+	services map[string]ServiceInterface
 }
 
 func newCoordinator(u *Utils) *coordinator {
 	return &coordinator{
 		utils:    u,
 		handlers: make(map[string]map[string]*handler),
+		services: make(map[string]ServiceInterface),
 	}
 }
 
@@ -36,7 +38,18 @@ func (c *coordinator) logActionFinish(ctx *Context, startTime time.Time) {
 	c.utils.Log.Info(fmt.Sprintf("Completed %d %s in %dms", ctx.Response().Status, http.StatusText(ctx.Response().Status), time.Since(startTime).Milliseconds()))
 }
 
-func (c *coordinator) registerController(controller interface{}, u *Utils, s map[string]ServiceInterface) error {
+func (c *coordinator) registerControllers(app *AppInitializer) error {
+	for _, controller := range app.Controllers {
+		if err := c.registerController(controller); err != nil {
+			c.utils.Log.Error("Error while registering controller", "controller", reflect.TypeOf(controller).Elem().Name(), "error", err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *coordinator) registerController(controller interface{}) error {
 	controllerValue := reflect.ValueOf(controller)
 	if err := c.validateController(controllerValue); err != nil {
 		return err
@@ -44,13 +57,13 @@ func (c *coordinator) registerController(controller interface{}, u *Utils, s map
 
 	controllerElem := controllerValue.Elem()
 	controllerName := controllerElem.Type().Name()
-	controllerElem.FieldByName("Controller").Addr().Interface().(*Controller).Init(u, s)
+	controllerElem.FieldByName("Controller").Addr().Interface().(*Controller).Init(c.utils)
 
 	if err := c.registerControllerActions(controllerValue, controllerName); err != nil {
 		return err
 	}
 
-	return c.injectServicesToController(controllerValue, controllerName, s)
+	return c.injectServicesToController(controllerValue, controllerName, c.services)
 }
 
 func (c *coordinator) validateController(val reflect.Value) error {
@@ -116,6 +129,44 @@ func (c *coordinator) injectServicesToController(controllerValue reflect.Value, 
 		serviceInterfaceType := reflect.TypeOf((*ServiceInterface)(nil)).Elem()
 		if fieldType.Type.Implements(serviceInterfaceType) {
 			return fmt.Errorf("%s requires %s, but the service was not found in services initializer", controller, service)
+		}
+	}
+
+	return nil
+}
+
+func (c *coordinator) registerServices(app *AppInitializer) error {
+	for _, service := range app.Services {
+		if err := service.InitService(c.utils); err != nil {
+			c.utils.Log.Error("Service initialization failed", "service", reflect.TypeOf(service).Elem().Name(), "error", err)
+			return err
+		}
+		c.services[reflect.TypeOf(service).Elem().Name()] = service
+	}
+
+	for _, service := range c.services {
+		serviceValue := reflect.ValueOf(service).Elem()
+		serviceType := reflect.TypeOf(service).Elem()
+
+		for i := 0; i < serviceValue.NumField(); i++ {
+			field := serviceValue.Field(i)
+			fieldType := serviceType.Field(i)
+
+			if fieldType.Type.Kind() != reflect.Ptr || fieldType.Type.Elem().Kind() != reflect.Struct {
+				continue
+			}
+
+			if injectedService, ok := c.services[fieldType.Type.Elem().Name()]; ok {
+				field.Set(reflect.ValueOf(injectedService))
+				continue
+			}
+
+			serviceInterfaceType := reflect.TypeOf((*ServiceInterface)(nil)).Elem()
+			if fieldType.Type.Implements(serviceInterfaceType) {
+				err := fmt.Errorf("%s requires %s, but the service was not found in services initializer", serviceType.Name(), fieldType.Type.Elem().Name())
+				c.utils.Log.Error("Error while registering service", "service", serviceType.Name(), "error", err)
+				return err
+			}
 		}
 	}
 

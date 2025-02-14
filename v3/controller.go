@@ -3,18 +3,16 @@ package raptor
 type Controllers []interface{}
 
 type ControllerInterface interface {
-	Init(u *Utils, s map[string]ServiceInterface)
+	Init(u *Utils)
 }
 
 type Controller struct {
 	*Utils
-	Services map[string]ServiceInterface
-	onInit   func()
+	onInit func()
 }
 
-func (c *Controller) Init(u *Utils, s map[string]ServiceInterface) {
+func (c *Controller) Init(u *Utils) {
 	c.Utils = u
-	c.Services = s
 	if c.onInit != nil {
 		c.onInit()
 	}

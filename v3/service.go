@@ -3,7 +3,7 @@ package raptor
 type Services []ServiceInterface
 
 type ServiceInterface interface {
-	InitService(r *Raptor) error
+	InitService(u *Utils) error
 }
 
 type Service struct {
@@ -11,8 +11,8 @@ type Service struct {
 	onInit func() error
 }
 
-func (s *Service) InitService(r *Raptor) error {
-	s.Utils = r.Utils
+func (s *Service) InitService(utils *Utils) error {
+	s.Utils = utils
 	if s.onInit != nil {
 		return s.onInit()
 	}
