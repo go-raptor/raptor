@@ -46,7 +46,7 @@ func (c *coordinator) registerController(controller interface{}, u *Utils, s map
 	controllerName := controllerElem.Type().Name()
 	controllerElem.FieldByName("Controller").Addr().Interface().(*Controller).Init(u, s)
 
-	if err := c.registerActions(controllerValue, controllerName); err != nil {
+	if err := c.registerControllerActions(controllerValue, controllerName); err != nil {
 		return err
 	}
 
@@ -61,7 +61,7 @@ func (c *coordinator) validateController(val reflect.Value) error {
 	return nil
 }
 
-func (c *coordinator) registerActions(val reflect.Value, controller string) error {
+func (c *coordinator) registerControllerActions(val reflect.Value, controller string) error {
 	if c.handlers[controller] == nil {
 		c.handlers[controller] = make(map[string]*handler)
 	}
@@ -70,26 +70,23 @@ func (c *coordinator) registerActions(val reflect.Value, controller string) erro
 		method := val.Method(i)
 		methodType := method.Type()
 
-		if isValidActionMethod(methodType) {
+		if c.isValidActionMethod(methodType) {
 			action := val.Type().Method(i).Name
-			c.handlers[controller][action] = &handler{
-				action:      method.Interface().(func(*Context) error),
-				middlewares: make([]uint8, 0),
-			}
+			c.handlers[controller][action] = newHandler(method.Interface().(func(*Context) error))
 		}
 	}
 
 	return nil
 }
 
-func isValidActionMethod(methodType reflect.Type) bool {
+func (c *coordinator) isValidActionMethod(methodType reflect.Type) bool {
 	return methodType.NumIn() == 1 &&
 		methodType.In(0) == reflect.TypeOf(&Context{}) &&
 		methodType.NumOut() == 1 &&
 		methodType.Out(0) == reflect.TypeOf((*error)(nil)).Elem()
 }
 
-func (c *coordinator) handlerExists(controller, action string) bool {
+func (c *coordinator) hasControllerAction(controller, action string) bool {
 	_, ok := c.handlers[controller][action]
 	return ok
 }
@@ -125,21 +122,21 @@ func (c *coordinator) injectServices(controllerValue reflect.Value, controller s
 	return nil
 }
 
-func (c *coordinator) applyMiddlewareGlobal(i int) error {
+func (c *coordinator) injectMiddlewareGlobal(i int) error {
 	for _, actions := range c.handlers {
 		for _, handler := range actions {
-			handler.middlewares = append(handler.middlewares, uint8(i))
+			handler.injectMiddleware(uint8(i))
 		}
 	}
 
 	return nil
 }
 
-func (c *coordinator) applyMiddlewareExcept(i int, exceptionDescriptors []string) error {
+func (c *coordinator) injectMiddlewareExcept(i int, exceptionDescriptors []string) error {
 	excluded := make(map[string]struct{})
 	for _, exception := range exceptionDescriptors {
 		controller, action := parseActionDescriptor(exception)
-		if !c.handlerExists(controller, action) {
+		if !c.hasControllerAction(controller, action) {
 			return fmt.Errorf("action %s#%s does not exist", controller, action)
 		}
 		excluded[actionDescriptor(controller, action)] = struct{}{}
@@ -148,7 +145,7 @@ func (c *coordinator) applyMiddlewareExcept(i int, exceptionDescriptors []string
 	for controller, actions := range c.handlers {
 		for action, handler := range actions {
 			if _, isExcluded := excluded[actionDescriptor(controller, action)]; !isExcluded {
-				handler.middlewares = append(handler.middlewares, uint8(i))
+				handler.injectMiddleware(uint8(i))
 			}
 		}
 	}
@@ -156,11 +153,11 @@ func (c *coordinator) applyMiddlewareExcept(i int, exceptionDescriptors []string
 	return nil
 }
 
-func (c *coordinator) applyMiddlewareOnly(i int, onlyDescriptors []string) error {
+func (c *coordinator) injectMiddlewareOnly(i int, onlyDescriptors []string) error {
 	included := make(map[string]struct{})
 	for _, include := range onlyDescriptors {
 		controller, action := parseActionDescriptor(include)
-		if !c.handlerExists(controller, action) {
+		if !c.hasControllerAction(controller, action) {
 			return fmt.Errorf("action %s#%s does not exist", controller, action)
 		}
 		included[actionDescriptor(controller, action)] = struct{}{}
@@ -169,7 +166,7 @@ func (c *coordinator) applyMiddlewareOnly(i int, onlyDescriptors []string) error
 	for controller, actions := range c.handlers {
 		for action, handler := range actions {
 			if _, isIncluded := included[actionDescriptor(controller, action)]; isIncluded {
-				handler.middlewares = append(handler.middlewares, uint8(i))
+				handler.injectMiddleware(uint8(i))
 			}
 		}
 	}

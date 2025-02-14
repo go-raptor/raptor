@@ -228,11 +228,11 @@ func (r *Raptor) registerMiddlewares(app *AppInitializer) error {
 		r.middlewares = append(r.middlewares, scopedMiddleware.middleware)
 		var err error
 		if scopedMiddleware.global {
-			err = r.coordinator.applyMiddlewareGlobal(i)
+			err = r.coordinator.injectMiddlewareGlobal(i)
 		} else if scopedMiddleware.except != nil {
-			err = r.coordinator.applyMiddlewareExcept(i, scopedMiddleware.except)
+			err = r.coordinator.injectMiddlewareExcept(i, scopedMiddleware.except)
 		} else if scopedMiddleware.only != nil {
-			err = r.coordinator.applyMiddlewareOnly(i, scopedMiddleware.only)
+			err = r.coordinator.injectMiddlewareOnly(i, scopedMiddleware.only)
 		}
 		if err != nil {
 			r.Utils.Log.Error("Error while registering middleware", "middleware", reflect.TypeOf(scopedMiddleware.middleware).Elem().Name(), "error", err)
