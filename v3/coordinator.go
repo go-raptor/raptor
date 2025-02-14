@@ -7,11 +7,6 @@ import (
 	"time"
 )
 
-type handler struct {
-	action      func(*Context) error
-	middlewares []uint8
-}
-
 type coordinator struct {
 	utils    *Utils
 	handlers map[string]map[string]*handler
