@@ -156,28 +156,36 @@ func (c *coordinator) registerServices(app *AppInitializer) error {
 	}
 
 	for _, service := range c.services {
-		serviceValue := reflect.ValueOf(service).Elem()
-		serviceType := reflect.TypeOf(service).Elem()
+		if err := c.injectServiceToService(service); err != nil {
+			return err
+		}
+	}
 
-		for i := 0; i < serviceValue.NumField(); i++ {
-			field := serviceValue.Field(i)
-			fieldType := serviceType.Field(i)
+	return nil
+}
 
-			if fieldType.Type.Kind() != reflect.Ptr || fieldType.Type.Elem().Kind() != reflect.Struct {
-				continue
-			}
+func (c *coordinator) injectServiceToService(service ServiceInterface) error {
+	serviceValue := reflect.ValueOf(service).Elem()
+	serviceType := reflect.TypeOf(service).Elem()
 
-			if injectedService, ok := c.services[fieldType.Type.Elem().Name()]; ok {
-				field.Set(reflect.ValueOf(injectedService))
-				continue
-			}
+	for i := 0; i < serviceValue.NumField(); i++ {
+		field := serviceValue.Field(i)
+		fieldType := serviceType.Field(i)
 
-			serviceInterfaceType := reflect.TypeOf((*ServiceInterface)(nil)).Elem()
-			if fieldType.Type.Implements(serviceInterfaceType) {
-				err := fmt.Errorf("%s requires %s, but the service was not found in services initializer", serviceType.Name(), fieldType.Type.Elem().Name())
-				c.utils.Log.Error("Error while registering service", "service", serviceType.Name(), "error", err)
-				return err
-			}
+		if fieldType.Type.Kind() != reflect.Ptr || fieldType.Type.Elem().Kind() != reflect.Struct {
+			continue
+		}
+
+		if injectedService, ok := c.services[fieldType.Type.Elem().Name()]; ok {
+			field.Set(reflect.ValueOf(injectedService))
+			continue
+		}
+
+		serviceInterfaceType := reflect.TypeOf((*ServiceInterface)(nil)).Elem()
+		if fieldType.Type.Implements(serviceInterfaceType) {
+			err := fmt.Errorf("%s requires %s, but the service was not found in services initializer", serviceType.Name(), fieldType.Type.Elem().Name())
+			c.utils.Log.Error("Error while registering service", "service", serviceType.Name(), "error", err)
+			return err
 		}
 	}
 
