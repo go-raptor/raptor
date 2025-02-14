@@ -74,7 +74,7 @@ func (c *coordinator) registerController(controller interface{}) error {
 		return err
 	}
 
-	return c.injectServicesToController(controllerValue, controllerName, c.services)
+	return c.injectServicesToController(controllerValue, controllerName)
 }
 
 func (c *coordinator) validateController(val reflect.Value) error {
@@ -115,7 +115,7 @@ func (c *coordinator) hasControllerAction(controller, action string) bool {
 	return ok
 }
 
-func (c *coordinator) injectServicesToController(controllerValue reflect.Value, controller string, services map[string]ServiceInterface) error {
+func (c *coordinator) injectServicesToController(controllerValue reflect.Value, controller string) error {
 	controllerElem := controllerValue.Elem()
 
 	for i := 0; i < controllerElem.NumField(); i++ {
@@ -132,7 +132,7 @@ func (c *coordinator) injectServicesToController(controllerValue reflect.Value, 
 		}
 
 		service := fieldType.Type.Elem().Name()
-		if injectedService, ok := services[service]; ok {
+		if injectedService, ok := c.services[service]; ok {
 			field.Set(reflect.ValueOf(injectedService))
 			continue
 		}
