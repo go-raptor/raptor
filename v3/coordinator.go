@@ -156,7 +156,7 @@ func (c *coordinator) registerServices(app *AppInitializer) error {
 	}
 
 	for _, service := range c.services {
-		if err := c.injectServiceToService(service); err != nil {
+		if err := c.injectServicesToService(service); err != nil {
 			return err
 		}
 	}
@@ -164,7 +164,7 @@ func (c *coordinator) registerServices(app *AppInitializer) error {
 	return nil
 }
 
-func (c *coordinator) injectServiceToService(service ServiceInterface) error {
+func (c *coordinator) injectServicesToService(service ServiceInterface) error {
 	serviceValue := reflect.ValueOf(service).Elem()
 	serviceType := reflect.TypeOf(service).Elem()
 
@@ -211,29 +211,37 @@ func (c *coordinator) registerMiddlewares(app *AppInitializer) error {
 	}
 
 	for _, middleware := range c.middlewares {
-		middlewareValue := reflect.ValueOf(middleware).Elem()
-		middlewareType := reflect.TypeOf(middleware).Elem()
+		if err := c.injectServicesToMiddleware(middleware); err != nil {
+			return err
+		}
+	}
 
-		for i := 0; i < middlewareValue.NumField(); i++ {
-			field := middlewareValue.Field(i)
-			fieldType := middlewareType.Field(i)
+	return nil
+}
 
-			if fieldType.Type.Kind() != reflect.Ptr || fieldType.Type.Elem().Kind() != reflect.Struct {
-				continue
-			}
+func (c *coordinator) injectServicesToMiddleware(middleware MiddlewareInterface) error {
+	middlewareValue := reflect.ValueOf(middleware).Elem()
+	middlewareType := reflect.TypeOf(middleware).Elem()
 
-			serviceName := fieldType.Type.Elem().Name()
-			if injectedService, ok := c.services[serviceName]; ok {
-				field.Set(reflect.ValueOf(injectedService))
-				continue
-			}
+	for i := 0; i < middlewareValue.NumField(); i++ {
+		field := middlewareValue.Field(i)
+		fieldType := middlewareType.Field(i)
 
-			serviceInterfaceType := reflect.TypeOf((*ServiceInterface)(nil)).Elem()
-			if fieldType.Type.Implements(serviceInterfaceType) {
-				err := fmt.Errorf("%s requires %s, but the service was not found in services initializer", middlewareType.Name(), serviceName)
-				c.utils.Log.Error("Error while registering middleware", "middleware", middlewareType.Name(), "error", err)
-				return err
-			}
+		if fieldType.Type.Kind() != reflect.Ptr || fieldType.Type.Elem().Kind() != reflect.Struct {
+			continue
+		}
+
+		serviceName := fieldType.Type.Elem().Name()
+		if injectedService, ok := c.services[serviceName]; ok {
+			field.Set(reflect.ValueOf(injectedService))
+			continue
+		}
+
+		serviceInterfaceType := reflect.TypeOf((*ServiceInterface)(nil)).Elem()
+		if fieldType.Type.Implements(serviceInterfaceType) {
+			err := fmt.Errorf("%s requires %s, but the service was not found in services initializer", middlewareType.Name(), serviceName)
+			c.utils.Log.Error("Error while registering middleware", "middleware", middlewareType.Name(), "error", err)
+			return err
 		}
 	}
 
