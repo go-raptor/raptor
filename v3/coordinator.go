@@ -50,7 +50,7 @@ func (c *coordinator) registerController(controller interface{}, u *Utils, s map
 		return err
 	}
 
-	return c.injectServices(controllerValue, controllerName, s)
+	return c.injectServicesToController(controllerValue, controllerName, s)
 }
 
 func (c *coordinator) validateController(val reflect.Value) error {
@@ -91,7 +91,7 @@ func (c *coordinator) hasControllerAction(controller, action string) bool {
 	return ok
 }
 
-func (c *coordinator) injectServices(controllerValue reflect.Value, controller string, services map[string]ServiceInterface) error {
+func (c *coordinator) injectServicesToController(controllerValue reflect.Value, controller string, services map[string]ServiceInterface) error {
 	controllerElem := controllerValue.Elem()
 
 	for i := 0; i < controllerElem.NumField(); i++ {
