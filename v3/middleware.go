@@ -13,7 +13,7 @@ type ScopedMiddleware struct {
 type Middlewares []ScopedMiddleware
 
 type MiddlewareInterface interface {
-	InitMiddleware(r *Raptor)
+	InitMiddleware(u *Utils)
 	New(*Context) error
 }
 
@@ -22,8 +22,8 @@ type Middleware struct {
 	onInit func()
 }
 
-func (m *Middleware) InitMiddleware(r *Raptor) {
-	m.Utils = r.Utils
+func (m *Middleware) InitMiddleware(u *Utils) {
+	m.Utils = u
 	if m.onInit != nil {
 		m.onInit()
 	}

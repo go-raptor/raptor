@@ -7,9 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"reflect"
 	"strings"
-	"sync"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -19,8 +17,6 @@ type Raptor struct {
 	Utils       *Utils
 	Server      *echo.Echo
 	coordinator *coordinator
-	contextPool sync.Pool
-	middlewares []MiddlewareInterface
 	Routes      Routes
 }
 type RaptorOption func(*Raptor)
@@ -32,12 +28,6 @@ func NewRaptor(opts ...RaptorOption) *Raptor {
 	raptor := &Raptor{
 		Utils:       utils,
 		coordinator: newCoordinator(utils),
-		contextPool: sync.Pool{
-			New: func() interface{} {
-				return new(Context)
-			},
-		},
-		middlewares: make([]MiddlewareInterface, 0),
 	}
 
 	for _, opt := range opts {
@@ -140,24 +130,6 @@ func (r *Raptor) waitForShutdown() {
 	r.Utils.Log.Warn("Raptor exited, bye bye!")
 }
 
-func (r *Raptor) acquireContext(ec echo.Context, controller, action string) *Context {
-	ctx := r.contextPool.Get().(*Context)
-	ctx.Context = ec
-	ctx.Controller = controller
-	ctx.Action = action
-	return ctx
-}
-
-func (r *Raptor) releaseContext(ctx *Context) {
-	if ctx == nil {
-		return
-	}
-	ctx.Context = nil
-	ctx.Controller = ""
-	ctx.Action = ""
-	r.contextPool.Put(ctx)
-}
-
 func (r *Raptor) Init(app *AppInitializer) *Raptor {
 	r.Server = newServer(r.Utils.Config, app)
 	if app.DatabaseConnector != nil {
@@ -174,7 +146,7 @@ func (r *Raptor) Init(app *AppInitializer) *Raptor {
 	if err := r.coordinator.registerControllers(app); err != nil {
 		os.Exit(1)
 	}
-	if err := r.registerMiddlewares(app); err != nil {
+	if err := r.coordinator.registerMiddlewares(app); err != nil {
 		os.Exit(1)
 	}
 	r.registerRoutes(app)
@@ -182,58 +154,10 @@ func (r *Raptor) Init(app *AppInitializer) *Raptor {
 	return r
 }
 
-func (r *Raptor) registerMiddlewares(app *AppInitializer) error {
-	for i, scopedMiddleware := range app.Middlewares {
-		scopedMiddleware.middleware.InitMiddleware(r)
-		r.middlewares = append(r.middlewares, scopedMiddleware.middleware)
-		var err error
-		if scopedMiddleware.global {
-			err = r.coordinator.injectMiddlewareGlobal(i)
-		} else if scopedMiddleware.except != nil {
-			err = r.coordinator.injectMiddlewareExcept(i, scopedMiddleware.except)
-		} else if scopedMiddleware.only != nil {
-			err = r.coordinator.injectMiddlewareOnly(i, scopedMiddleware.only)
-		}
-		if err != nil {
-			r.Utils.Log.Error("Error while registering middleware", "middleware", reflect.TypeOf(scopedMiddleware.middleware).Elem().Name(), "error", err)
-			return err
-		}
-	}
-
-	for _, middleware := range r.middlewares {
-		middlewareValue := reflect.ValueOf(middleware).Elem()
-		middlewareType := reflect.TypeOf(middleware).Elem()
-
-		for i := 0; i < middlewareValue.NumField(); i++ {
-			field := middlewareValue.Field(i)
-			fieldType := middlewareType.Field(i)
-
-			if fieldType.Type.Kind() != reflect.Ptr || fieldType.Type.Elem().Kind() != reflect.Struct {
-				continue
-			}
-
-			serviceName := fieldType.Type.Elem().Name()
-			if injectedService, ok := r.coordinator.services[serviceName]; ok {
-				field.Set(reflect.ValueOf(injectedService))
-				continue
-			}
-
-			serviceInterfaceType := reflect.TypeOf((*ServiceInterface)(nil)).Elem()
-			if fieldType.Type.Implements(serviceInterfaceType) {
-				err := fmt.Errorf("%s requires %s, but the service was not found in services initializer", middlewareType.Name(), serviceName)
-				r.Utils.Log.Error("Error while registering middleware", "middleware", middlewareType.Name(), "error", err)
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
 func (r *Raptor) registerRoutes(app *AppInitializer) {
 	r.Routes = app.Routes
 	for _, route := range r.Routes {
-		if _, ok := r.coordinator.handlers[route.Controller][route.Action]; !ok {
+		if !r.coordinator.hasControllerAction(route.Controller, route.Action) {
 			r.Utils.Log.Error(fmt.Sprintf("Action %s not found in controller %s for path %s!", route.Action, route.Controller, route.Path))
 			os.Exit(1)
 		}
@@ -242,7 +166,7 @@ func (r *Raptor) registerRoutes(app *AppInitializer) {
 }
 
 func (r *Raptor) registerRoute(route route) {
-	routeHandler := r.CreateActionWrapper(route.Controller, route.Action, r.coordinator.handle)
+	routeHandler := r.coordinator.CreateActionWrapper(route.Controller, route.Action, r.coordinator.handle)
 	if route.Method != "*" {
 		r.Server.Add(route.Method, route.Path, routeHandler)
 		return

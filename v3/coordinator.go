@@ -4,20 +4,31 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"sync"
 	"time"
+
+	"github.com/labstack/echo/v4"
 )
 
 type coordinator struct {
-	utils    *Utils
-	handlers map[string]map[string]*handler
-	services map[string]ServiceInterface
+	utils       *Utils
+	handlers    map[string]map[string]*handler
+	contextPool sync.Pool
+	services    map[string]ServiceInterface
+	middlewares []MiddlewareInterface
 }
 
 func newCoordinator(u *Utils) *coordinator {
 	return &coordinator{
 		utils:    u,
 		handlers: make(map[string]map[string]*handler),
-		services: make(map[string]ServiceInterface),
+		contextPool: sync.Pool{
+			New: func() interface{} {
+				return new(Context)
+			},
+		},
+		services:    make(map[string]ServiceInterface),
+		middlewares: make([]MiddlewareInterface, 0),
 	}
 }
 
@@ -173,6 +184,54 @@ func (c *coordinator) registerServices(app *AppInitializer) error {
 	return nil
 }
 
+func (c *coordinator) registerMiddlewares(app *AppInitializer) error {
+	for i, scopedMiddleware := range app.Middlewares {
+		scopedMiddleware.middleware.InitMiddleware(c.utils)
+		c.middlewares = append(c.middlewares, scopedMiddleware.middleware)
+		var err error
+		if scopedMiddleware.global {
+			err = c.injectMiddlewareGlobal(i)
+		} else if scopedMiddleware.except != nil {
+			err = c.injectMiddlewareExcept(i, scopedMiddleware.except)
+		} else if scopedMiddleware.only != nil {
+			err = c.injectMiddlewareOnly(i, scopedMiddleware.only)
+		}
+		if err != nil {
+			c.utils.Log.Error("Error while registering middleware", "middleware", reflect.TypeOf(scopedMiddleware.middleware).Elem().Name(), "error", err)
+			return err
+		}
+	}
+
+	for _, middleware := range c.middlewares {
+		middlewareValue := reflect.ValueOf(middleware).Elem()
+		middlewareType := reflect.TypeOf(middleware).Elem()
+
+		for i := 0; i < middlewareValue.NumField(); i++ {
+			field := middlewareValue.Field(i)
+			fieldType := middlewareType.Field(i)
+
+			if fieldType.Type.Kind() != reflect.Ptr || fieldType.Type.Elem().Kind() != reflect.Struct {
+				continue
+			}
+
+			serviceName := fieldType.Type.Elem().Name()
+			if injectedService, ok := c.services[serviceName]; ok {
+				field.Set(reflect.ValueOf(injectedService))
+				continue
+			}
+
+			serviceInterfaceType := reflect.TypeOf((*ServiceInterface)(nil)).Elem()
+			if fieldType.Type.Implements(serviceInterfaceType) {
+				err := fmt.Errorf("%s requires %s, but the service was not found in services initializer", middlewareType.Name(), serviceName)
+				c.utils.Log.Error("Error while registering middleware", "middleware", middlewareType.Name(), "error", err)
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 func (c *coordinator) injectMiddlewareGlobal(i int) error {
 	for _, actions := range c.handlers {
 		for _, handler := range actions {
@@ -223,4 +282,22 @@ func (c *coordinator) injectMiddlewareOnly(i int, onlyDescriptors []string) erro
 	}
 
 	return nil
+}
+
+func (c *coordinator) acquireContext(ec echo.Context, controller, action string) *Context {
+	ctx := c.contextPool.Get().(*Context)
+	ctx.Context = ec
+	ctx.Controller = controller
+	ctx.Action = action
+	return ctx
+}
+
+func (c *coordinator) releaseContext(ctx *Context) {
+	if ctx == nil {
+		return
+	}
+	ctx.Context = nil
+	ctx.Controller = ""
+	ctx.Action = ""
+	c.contextPool.Put(ctx)
 }
