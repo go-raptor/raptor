@@ -8,24 +8,6 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type ScopedMiddleware struct {
-	middleware MiddlewareInterface
-	only       []string
-	except     []string
-	global     bool
-}
-type Middlewares []ScopedMiddleware
-
-type MiddlewareInterface interface {
-	InitMiddleware(u *Utils)
-	New(*Context) error
-}
-
-type Middleware struct {
-	*Utils
-	onInit func()
-}
-
 func (m *Middleware) InitMiddleware(u *Utils) {
 	m.Utils = u
 	if m.onInit != nil {
@@ -35,10 +17,6 @@ func (m *Middleware) InitMiddleware(u *Utils) {
 
 func (m *Middleware) OnInit(callback func()) {
 	m.onInit = callback
-}
-
-type echoMiddleware struct {
-	handler echo.HandlerFunc
 }
 
 func (m *echoMiddleware) New(c *Context) error {

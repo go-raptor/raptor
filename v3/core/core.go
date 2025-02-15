@@ -1,12 +1,22 @@
 package core
 
 import (
-	"fmt"
+	"log/slog"
 	"sync"
 
+	"github.com/go-raptor/connector"
+	"github.com/go-raptor/raptor/v3/config"
 	"github.com/go-raptor/raptor/v3/router"
 	"github.com/labstack/echo/v4"
 )
+
+type App struct {
+	Routes            router.Routes
+	DatabaseConnector connector.DatabaseConnector
+	Middlewares       Middlewares
+	Services          Services
+	Controllers       Controllers
+}
 
 type Core struct {
 	utils       *Utils
@@ -31,25 +41,69 @@ func NewCore(u *Utils) *Core {
 	}
 }
 
-func (c *Core) RegisterRoutes(app *App, server *echo.Echo) error {
-	c.routes = app.Routes
-	for _, route := range c.routes {
-		if !c.hasControllerAction(route.Controller, route.Action) {
-			err := fmt.Errorf("action %s not found in controller %s for path %s", route.Action, route.Controller, route.Path)
-			c.utils.Log.Error("Error while registering route", "error", err)
-			return err
-		}
-		c.registerRoute(route, server)
-	}
+type Map map[string]interface{}
 
-	return nil
+type Context struct {
+	echo.Context
+	Controller string
+	Action     string
 }
 
-func (c *Core) registerRoute(route router.Route, server *echo.Echo) {
-	routeHandler := c.CreateActionWrapper(route.Controller, route.Action, c.handle)
-	if route.Method != "*" {
-		server.Add(route.Method, route.Path, routeHandler)
-		return
-	}
-	server.Any(route.Path, routeHandler)
+type Controllers []interface{}
+
+type ControllerInterface interface {
+	Init(u *Utils)
+}
+
+type Controller struct {
+	*Utils
+	onInit func()
+}
+
+type Services []ServiceInterface
+
+type ServiceInterface interface {
+	InitService(u *Utils) error
+}
+
+type Service struct {
+	*Utils
+	onInit func() error
+}
+
+type ScopedMiddleware struct {
+	middleware MiddlewareInterface
+	only       []string
+	except     []string
+	global     bool
+}
+type Middlewares []ScopedMiddleware
+
+type MiddlewareInterface interface {
+	InitMiddleware(u *Utils)
+	New(*Context) error
+}
+
+type Middleware struct {
+	*Utils
+	onInit func()
+}
+
+type echoMiddleware struct {
+	handler echo.HandlerFunc
+}
+
+type Utils struct {
+	Config *config.Config
+
+	Log      *slog.Logger
+	logLevel *slog.LevelVar
+
+	DB connector.DatabaseConnector
+}
+
+type Error struct {
+	Code        int    `json:"code"`
+	Message     string `json:"message"`
+	Description string `json:"description,omitempty"`
 }

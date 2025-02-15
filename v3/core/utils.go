@@ -10,15 +10,6 @@ import (
 	"github.com/pwntr/tinter"
 )
 
-type Utils struct {
-	Config *config.Config
-
-	Log      *slog.Logger
-	logLevel *slog.LevelVar
-
-	DB connector.DatabaseConnector
-}
-
 func NewUtils() *Utils {
 	levelVar := &slog.LevelVar{}
 

@@ -7,14 +7,6 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type Map map[string]interface{}
-
-type Context struct {
-	echo.Context
-	Controller string
-	Action     string
-}
-
 func (c *Context) JSON(data interface{}, status ...int) error {
 	if len(status) == 0 {
 		status = append(status, http.StatusOK)
@@ -34,9 +26,9 @@ func (c *Context) JSONError(err error, status ...int) error {
 	return c.JSON(NewError(status[0], err.Error()), status[0])
 }
 
-func (c *Core) acquireContext(ec echo.Context, controller, action string) *Context {
+func (c *Core) acquireContext(echoContext echo.Context, controller, action string) *Context {
 	ctx := c.contextPool.Get().(*Context)
-	ctx.Context = ec
+	ctx.Context = echoContext
 	ctx.Controller = controller
 	ctx.Action = action
 	return ctx
