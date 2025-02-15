@@ -1,4 +1,4 @@
-package raptor
+package core
 
 import (
 	"github.com/labstack/echo/v4"
@@ -41,7 +41,7 @@ func (m *echoMiddleware) New(c *Context) error {
 	return m.handler(c.Context)
 }
 
-func (m *echoMiddleware) InitMiddleware(r *Raptor) {
+func (m *echoMiddleware) InitMiddleware(u *Utils) {
 }
 
 func UseEcho(h echo.HandlerFunc) *echoMiddleware {

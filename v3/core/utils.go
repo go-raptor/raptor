@@ -1,4 +1,4 @@
-package raptor
+package core
 
 import (
 	"log/slog"
@@ -6,11 +6,12 @@ import (
 	"strings"
 
 	"github.com/go-raptor/connector"
+	"github.com/go-raptor/raptor/v3/config"
 	"github.com/pwntr/tinter"
 )
 
 type Utils struct {
-	Config *Config
+	Config *config.Config
 
 	Log      *slog.Logger
 	logLevel *slog.LevelVar
@@ -18,7 +19,7 @@ type Utils struct {
 	DB connector.DatabaseConnector
 }
 
-func newUtils() *Utils {
+func NewUtils() *Utils {
 	levelVar := &slog.LevelVar{}
 
 	opts := &tinter.Options{
@@ -35,7 +36,7 @@ func (u *Utils) SetDB(db connector.DatabaseConnector) {
 	u.DB = db
 }
 
-func (u *Utils) SetConfig(config *Config) {
+func (u *Utils) SetConfig(config *config.Config) {
 	u.Config = config
 }
 

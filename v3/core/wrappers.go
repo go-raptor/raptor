@@ -1,4 +1,4 @@
-package raptor
+package core
 
 import (
 	"github.com/labstack/echo/v4"

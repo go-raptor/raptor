@@ -1,4 +1,4 @@
-package raptor
+package core
 
 type handler struct {
 	action      func(*Context) error

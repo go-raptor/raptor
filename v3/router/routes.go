@@ -1,4 +1,4 @@
-package raptor
+package router
 
 import (
 	"regexp"
@@ -9,9 +9,9 @@ const controllerSuffix = "Controller"
 
 var pathRegex = regexp.MustCompile(`/+`)
 
-type Routes []route
+type Routes []Route
 
-type route struct {
+type Route struct {
 	Method     string
 	Path       string
 	Controller string
@@ -38,7 +38,7 @@ func normalizeController(controller string) string {
 	return controller
 }
 
-func parseActionDescriptor(descriptor string) (controller, action string) {
+func ParseActionDescriptor(descriptor string) (controller, action string) {
 	parts := strings.Split(descriptor, "#")
 	if len(parts) == 2 {
 		return normalizeController(parts[0]), parts[1]
@@ -46,7 +46,7 @@ func parseActionDescriptor(descriptor string) (controller, action string) {
 	return normalizeController(descriptor), ""
 }
 
-func actionDescriptor(controller, action string) string {
+func ActionDescriptor(controller, action string) string {
 	return controller + "#" + action
 }
 
@@ -67,17 +67,17 @@ func Scope(path string, routes ...Routes) Routes {
 	return result
 }
 
-func Route(method, path string, actionDescriptor ...string) Routes {
+func MethodRoute(method, path string, actionDescriptor ...string) Routes {
 	var controller, action string
 
 	if len(actionDescriptor) == 1 {
-		controller, action = parseActionDescriptor(actionDescriptor[0])
+		controller, action = ParseActionDescriptor(actionDescriptor[0])
 	} else if len(actionDescriptor) == 2 {
 		controller, action = actionDescriptor[0], actionDescriptor[1]
 	}
 
 	return Routes{
-		route{
+		Route{
 			Method:     method,
 			Path:       normalizePath(path),
 			Controller: normalizeController(controller),
@@ -87,51 +87,51 @@ func Route(method, path string, actionDescriptor ...string) Routes {
 }
 
 func Get(path string, handler ...string) Routes {
-	return Route("GET", path, handler...)
+	return MethodRoute("GET", path, handler...)
 }
 
 func Post(path string, handler ...string) Routes {
-	return Route("POST", path, handler...)
+	return MethodRoute("POST", path, handler...)
 }
 
 func Put(path string, handler ...string) Routes {
-	return Route("PUT", path, handler...)
+	return MethodRoute("PUT", path, handler...)
 }
 
 func Patch(path string, handler ...string) Routes {
-	return Route("PATCH", path, handler...)
+	return MethodRoute("PATCH", path, handler...)
 }
 
 func Delete(path string, handler ...string) Routes {
-	return Route("DELETE", path, handler...)
+	return MethodRoute("DELETE", path, handler...)
 }
 
 func Options(path string, handler ...string) Routes {
-	return Route("OPTIONS", path, handler...)
+	return MethodRoute("OPTIONS", path, handler...)
 }
 
 func Head(path string, handler ...string) Routes {
-	return Route("HEAD", path, handler...)
+	return MethodRoute("HEAD", path, handler...)
 }
 
 func Connect(path string, handler ...string) Routes {
-	return Route("CONNECT", path, handler...)
+	return MethodRoute("CONNECT", path, handler...)
 }
 
 func Trace(path string, handler ...string) Routes {
-	return Route("TRACE", path, handler...)
+	return MethodRoute("TRACE", path, handler...)
 }
 
 func Propfind(path string, handler ...string) Routes {
-	return Route("PROPFIND", path, handler...)
+	return MethodRoute("PROPFIND", path, handler...)
 }
 
 func Report(path string, handler ...string) Routes {
-	return Route("REPORT", path, handler...)
+	return MethodRoute("REPORT", path, handler...)
 }
 
 func Any(path string, handler ...string) Routes {
-	return Route("*", path, handler...)
+	return MethodRoute("*", path, handler...)
 }
 
 func CollectRoutes(r ...Routes) Routes {

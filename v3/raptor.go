@@ -9,24 +9,26 @@ import (
 	"os/signal"
 	"strings"
 
+	"github.com/go-raptor/raptor/v3/config"
+	"github.com/go-raptor/raptor/v3/core"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
 
 type Raptor struct {
-	Utils  *Utils
+	Utils  *core.Utils
 	Server *echo.Echo
-	Core   *Core
+	Core   *core.Core
 }
 type RaptorOption func(*Raptor)
 
 func NewRaptor(opts ...RaptorOption) *Raptor {
-	utils := newUtils()
-	utils.SetConfig(newConfig(utils.Log))
+	utils := core.NewUtils()
+	utils.SetConfig(config.NewConfig(utils.Log))
 
 	raptor := &Raptor{
 		Utils: utils,
-		Core:  NewCore(utils),
+		Core:  core.NewCore(utils),
 	}
 
 	for _, opt := range opts {
@@ -35,6 +37,14 @@ func NewRaptor(opts ...RaptorOption) *Raptor {
 
 	raptor.Utils.SetLogLevel(utils.Config.GeneralConfig.LogLevel)
 	return raptor
+}
+
+func WithConfig(c *Config) RaptorOption {
+	return func(r *Raptor) {
+		if c != nil {
+			config.MergeConfig(r.Utils.Config, c)
+		}
+	}
 }
 
 func (r *Raptor) Listen() {
@@ -63,7 +73,7 @@ func (r *Raptor) checkPort() bool {
 	return err == nil
 }
 
-func newServer(config *Config, _ *AppInitializer) *echo.Echo {
+func newServer(config *config.Config) *echo.Echo {
 	server := echo.New()
 
 	switch strings.ToLower(config.ServerConfig.IPExtractor) {
@@ -129,8 +139,8 @@ func (r *Raptor) waitForShutdown() {
 	r.Utils.Log.Warn("Raptor exited, bye bye!")
 }
 
-func (r *Raptor) Init(app *AppInitializer) *Raptor {
-	r.Server = newServer(r.Utils.Config, app)
+func (r *Raptor) Init(app *core.App) *Raptor {
+	r.Server = newServer(r.Utils.Config)
 	if app.DatabaseConnector != nil {
 		r.Utils.DB = app.DatabaseConnector
 		if err := r.Utils.DB.Init(); err != nil {
@@ -139,16 +149,16 @@ func (r *Raptor) Init(app *AppInitializer) *Raptor {
 		}
 	}
 
-	if err := r.Core.registerServices(app); err != nil {
+	if err := r.Core.RegisterServices(app); err != nil {
 		os.Exit(1)
 	}
-	if err := r.Core.registerControllers(app); err != nil {
+	if err := r.Core.RegisterControllers(app); err != nil {
 		os.Exit(1)
 	}
-	if err := r.Core.registerMiddlewares(app); err != nil {
+	if err := r.Core.RegisterMiddlewares(app); err != nil {
 		os.Exit(1)
 	}
-	if err := r.Core.registerRoutes(app, r.Server); err != nil {
+	if err := r.Core.RegisterRoutes(app, r.Server); err != nil {
 		os.Exit(1)
 	}
 

@@ -1,4 +1,4 @@
-package raptor
+package core
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-raptor/raptor/v3/router"
 	"github.com/labstack/echo/v4"
 )
 
@@ -16,7 +17,7 @@ type Core struct {
 	contextPool sync.Pool
 	services    map[string]ServiceInterface
 	middlewares []MiddlewareInterface
-	routes      Routes
+	routes      router.Routes
 }
 
 func NewCore(u *Utils) *Core {
@@ -43,14 +44,14 @@ func (c *Core) handle(ctx *Context) error {
 
 func (c *Core) logActionStart(ctx *Context) {
 	c.utils.Log.Info(fmt.Sprintf("Started %s \"%s\" for %s", ctx.Request().Method, ctx.Request().URL.Path, ctx.RealIP()))
-	c.utils.Log.Info(fmt.Sprintf("Processing by %s", actionDescriptor(ctx.Controller, ctx.Action)))
+	c.utils.Log.Info(fmt.Sprintf("Processing by %s", router.ActionDescriptor(ctx.Controller, ctx.Action)))
 }
 
 func (c *Core) logActionFinish(ctx *Context, startTime time.Time) {
 	c.utils.Log.Info(fmt.Sprintf("Completed %d %s in %dms", ctx.Response().Status, http.StatusText(ctx.Response().Status), time.Since(startTime).Milliseconds()))
 }
 
-func (c *Core) registerControllers(app *AppInitializer) error {
+func (c *Core) RegisterControllers(app *App) error {
 	for _, controller := range app.Controllers {
 		if err := c.registerController(controller); err != nil {
 			c.utils.Log.Error("Error while registering controller", "controller", reflect.TypeOf(controller).Elem().Name(), "error", err)
@@ -147,7 +148,7 @@ func (c *Core) injectServicesToController(controllerValue reflect.Value, control
 	return nil
 }
 
-func (c *Core) registerServices(app *AppInitializer) error {
+func (c *Core) RegisterServices(app *App) error {
 	for _, service := range app.Services {
 		if err := service.InitService(c.utils); err != nil {
 			c.utils.Log.Error("Service initialization failed", "service", reflect.TypeOf(service).Elem().Name(), "error", err)
@@ -193,7 +194,7 @@ func (c *Core) injectServicesToService(service ServiceInterface) error {
 	return nil
 }
 
-func (c *Core) registerMiddlewares(app *AppInitializer) error {
+func (c *Core) RegisterMiddlewares(app *App) error {
 	for i, scopedMiddleware := range app.Middlewares {
 		scopedMiddleware.middleware.InitMiddleware(c.utils)
 		c.middlewares = append(c.middlewares, scopedMiddleware.middleware)
@@ -262,16 +263,16 @@ func (c *Core) injectMiddlewareGlobal(i int) error {
 func (c *Core) injectMiddlewareExcept(i int, exceptionDescriptors []string) error {
 	excluded := make(map[string]struct{})
 	for _, exception := range exceptionDescriptors {
-		controller, action := parseActionDescriptor(exception)
+		controller, action := router.ParseActionDescriptor(exception)
 		if !c.hasControllerAction(controller, action) {
 			return fmt.Errorf("action %s#%s does not exist", controller, action)
 		}
-		excluded[actionDescriptor(controller, action)] = struct{}{}
+		excluded[router.ActionDescriptor(controller, action)] = struct{}{}
 	}
 
 	for controller, actions := range c.handlers {
 		for action, handler := range actions {
-			if _, isExcluded := excluded[actionDescriptor(controller, action)]; !isExcluded {
+			if _, isExcluded := excluded[router.ActionDescriptor(controller, action)]; !isExcluded {
 				handler.injectMiddleware(uint8(i))
 			}
 		}
@@ -283,16 +284,16 @@ func (c *Core) injectMiddlewareExcept(i int, exceptionDescriptors []string) erro
 func (c *Core) injectMiddlewareOnly(i int, onlyDescriptors []string) error {
 	included := make(map[string]struct{})
 	for _, include := range onlyDescriptors {
-		controller, action := parseActionDescriptor(include)
+		controller, action := router.ParseActionDescriptor(include)
 		if !c.hasControllerAction(controller, action) {
 			return fmt.Errorf("action %s#%s does not exist", controller, action)
 		}
-		included[actionDescriptor(controller, action)] = struct{}{}
+		included[router.ActionDescriptor(controller, action)] = struct{}{}
 	}
 
 	for controller, actions := range c.handlers {
 		for action, handler := range actions {
-			if _, isIncluded := included[actionDescriptor(controller, action)]; isIncluded {
+			if _, isIncluded := included[router.ActionDescriptor(controller, action)]; isIncluded {
 				handler.injectMiddleware(uint8(i))
 			}
 		}
@@ -319,7 +320,7 @@ func (c *Core) releaseContext(ctx *Context) {
 	c.contextPool.Put(ctx)
 }
 
-func (c *Core) registerRoutes(app *AppInitializer, server *echo.Echo) error {
+func (c *Core) RegisterRoutes(app *App, server *echo.Echo) error {
 	c.routes = app.Routes
 	for _, route := range c.routes {
 		if !c.hasControllerAction(route.Controller, route.Action) {
@@ -333,7 +334,7 @@ func (c *Core) registerRoutes(app *AppInitializer, server *echo.Echo) error {
 	return nil
 }
 
-func (c *Core) registerRoute(route route, server *echo.Echo) {
+func (c *Core) registerRoute(route router.Route, server *echo.Echo) {
 	routeHandler := c.CreateActionWrapper(route.Controller, route.Action, c.handle)
 	if route.Method != "*" {
 		server.Add(route.Method, route.Path, routeHandler)

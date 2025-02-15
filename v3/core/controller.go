@@ -1,4 +1,4 @@
-package raptor
+package core
 
 type Controllers []interface{}
 

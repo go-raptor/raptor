@@ -1,4 +1,4 @@
-package raptor
+package config
 
 import (
 	"log/slog"
@@ -95,7 +95,7 @@ var (
 	DefaultCORSConfigAllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
 )
 
-func newConfig(log *slog.Logger) *Config {
+func NewConfig(log *slog.Logger) *Config {
 	c := newConfigDefaults()
 	c.log = log
 
@@ -166,15 +166,7 @@ func newConfigDefaults() *Config {
 	}
 }
 
-func WithConfig(config *Config) RaptorOption {
-	return func(r *Raptor) {
-		if config != nil {
-			mergeConfig(r.Utils.Config, config)
-		}
-	}
-}
-
-func mergeConfig(dst, src *Config) {
+func MergeConfig(dst, src *Config) {
 	if src == nil {
 		return
 	}
