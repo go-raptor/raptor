@@ -17,7 +17,6 @@ type Raptor struct {
 	Utils       *Utils
 	Server      *echo.Echo
 	coordinator *coordinator
-	Routes      Routes
 }
 type RaptorOption func(*Raptor)
 
@@ -149,27 +148,9 @@ func (r *Raptor) Init(app *AppInitializer) *Raptor {
 	if err := r.coordinator.registerMiddlewares(app); err != nil {
 		os.Exit(1)
 	}
-	r.registerRoutes(app)
+	if err := r.coordinator.registerRoutes(app, r.Server); err != nil {
+		os.Exit(1)
+	}
 
 	return r
-}
-
-func (r *Raptor) registerRoutes(app *AppInitializer) {
-	r.Routes = app.Routes
-	for _, route := range r.Routes {
-		if !r.coordinator.hasControllerAction(route.Controller, route.Action) {
-			r.Utils.Log.Error(fmt.Sprintf("Action %s not found in controller %s for path %s!", route.Action, route.Controller, route.Path))
-			os.Exit(1)
-		}
-		r.registerRoute(route)
-	}
-}
-
-func (r *Raptor) registerRoute(route route) {
-	routeHandler := r.coordinator.CreateActionWrapper(route.Controller, route.Action, r.coordinator.handle)
-	if route.Method != "*" {
-		r.Server.Add(route.Method, route.Path, routeHandler)
-		return
-	}
-	r.Server.Any(route.Path, routeHandler)
 }
