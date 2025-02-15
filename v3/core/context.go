@@ -33,3 +33,21 @@ func (c *Context) JSONError(err error, status ...int) error {
 	}
 	return c.JSON(NewError(status[0], err.Error()), status[0])
 }
+
+func (c *Core) acquireContext(ec echo.Context, controller, action string) *Context {
+	ctx := c.contextPool.Get().(*Context)
+	ctx.Context = ec
+	ctx.Controller = controller
+	ctx.Action = action
+	return ctx
+}
+
+func (c *Core) releaseContext(ctx *Context) {
+	if ctx == nil {
+		return
+	}
+	ctx.Context = nil
+	ctx.Controller = ""
+	ctx.Action = ""
+	c.contextPool.Put(ctx)
+}
