@@ -4,7 +4,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func (c *coordinator) CreateActionWrapper(controller, action string, handler func(*Context) error) echo.HandlerFunc {
+func (c *Core) CreateActionWrapper(controller, action string, handler func(*Context) error) echo.HandlerFunc {
 	return func(echoCtx echo.Context) error {
 		ctx := c.acquireContext(echoCtx, controller, action)
 		defer c.releaseContext(ctx)
@@ -19,7 +19,7 @@ func (c *coordinator) CreateActionWrapper(controller, action string, handler fun
 	}
 }
 
-func (c *coordinator) CreateMiddlewareWrapper(handler func(*Context) error) echo.MiddlewareFunc {
+func (c *Core) CreateMiddlewareWrapper(handler func(*Context) error) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(echoCtx echo.Context) error {
 			ctx := c.acquireContext(echoCtx, "middleware", "handler")

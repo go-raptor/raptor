@@ -10,7 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type coordinator struct {
+type Core struct {
 	utils       *Utils
 	handlers    map[string]map[string]*handler
 	contextPool sync.Pool
@@ -19,8 +19,8 @@ type coordinator struct {
 	routes      Routes
 }
 
-func newCoordinator(u *Utils) *coordinator {
-	return &coordinator{
+func NewCore(u *Utils) *Core {
+	return &Core{
 		utils:    u,
 		handlers: make(map[string]map[string]*handler),
 		contextPool: sync.Pool{
@@ -33,7 +33,7 @@ func newCoordinator(u *Utils) *coordinator {
 	}
 }
 
-func (c *coordinator) handle(ctx *Context) error {
+func (c *Core) handle(ctx *Context) error {
 	startTime := time.Now()
 	c.logActionStart(ctx)
 	err := c.handlers[ctx.Controller][ctx.Action].action(ctx)
@@ -41,16 +41,16 @@ func (c *coordinator) handle(ctx *Context) error {
 	return err
 }
 
-func (c *coordinator) logActionStart(ctx *Context) {
+func (c *Core) logActionStart(ctx *Context) {
 	c.utils.Log.Info(fmt.Sprintf("Started %s \"%s\" for %s", ctx.Request().Method, ctx.Request().URL.Path, ctx.RealIP()))
 	c.utils.Log.Info(fmt.Sprintf("Processing by %s", actionDescriptor(ctx.Controller, ctx.Action)))
 }
 
-func (c *coordinator) logActionFinish(ctx *Context, startTime time.Time) {
+func (c *Core) logActionFinish(ctx *Context, startTime time.Time) {
 	c.utils.Log.Info(fmt.Sprintf("Completed %d %s in %dms", ctx.Response().Status, http.StatusText(ctx.Response().Status), time.Since(startTime).Milliseconds()))
 }
 
-func (c *coordinator) registerControllers(app *AppInitializer) error {
+func (c *Core) registerControllers(app *AppInitializer) error {
 	for _, controller := range app.Controllers {
 		if err := c.registerController(controller); err != nil {
 			c.utils.Log.Error("Error while registering controller", "controller", reflect.TypeOf(controller).Elem().Name(), "error", err)
@@ -61,7 +61,7 @@ func (c *coordinator) registerControllers(app *AppInitializer) error {
 	return nil
 }
 
-func (c *coordinator) registerController(controller interface{}) error {
+func (c *Core) registerController(controller interface{}) error {
 	controllerValue := reflect.ValueOf(controller)
 	if err := c.validateController(controllerValue); err != nil {
 		return err
@@ -78,7 +78,7 @@ func (c *coordinator) registerController(controller interface{}) error {
 	return c.injectServicesToController(controllerValue, controllerName)
 }
 
-func (c *coordinator) validateController(val reflect.Value) error {
+func (c *Core) validateController(val reflect.Value) error {
 	if val.Kind() != reflect.Pointer || val.Elem().FieldByName("Controller").Type() != reflect.TypeOf(Controller{}) {
 		c.utils.Log.Error("Error while registering controller", "controller", val.Type().Name(), "error", "controller must be a pointer to a struct that embeds raptor.Controller")
 		return fmt.Errorf("controller must be a pointer to a struct that embeds raptor.Controller")
@@ -86,7 +86,7 @@ func (c *coordinator) validateController(val reflect.Value) error {
 	return nil
 }
 
-func (c *coordinator) registerControllerActions(val reflect.Value, controller string) error {
+func (c *Core) registerControllerActions(val reflect.Value, controller string) error {
 	if c.handlers[controller] == nil {
 		c.handlers[controller] = make(map[string]*handler)
 	}
@@ -104,19 +104,19 @@ func (c *coordinator) registerControllerActions(val reflect.Value, controller st
 	return nil
 }
 
-func (c *coordinator) isValidActionMethod(methodType reflect.Type) bool {
+func (c *Core) isValidActionMethod(methodType reflect.Type) bool {
 	return methodType.NumIn() == 1 &&
 		methodType.In(0) == reflect.TypeOf(&Context{}) &&
 		methodType.NumOut() == 1 &&
 		methodType.Out(0) == reflect.TypeOf((*error)(nil)).Elem()
 }
 
-func (c *coordinator) hasControllerAction(controller, action string) bool {
+func (c *Core) hasControllerAction(controller, action string) bool {
 	_, ok := c.handlers[controller][action]
 	return ok
 }
 
-func (c *coordinator) injectServicesToController(controllerValue reflect.Value, controller string) error {
+func (c *Core) injectServicesToController(controllerValue reflect.Value, controller string) error {
 	controllerElem := controllerValue.Elem()
 
 	for i := 0; i < controllerElem.NumField(); i++ {
@@ -147,7 +147,7 @@ func (c *coordinator) injectServicesToController(controllerValue reflect.Value, 
 	return nil
 }
 
-func (c *coordinator) registerServices(app *AppInitializer) error {
+func (c *Core) registerServices(app *AppInitializer) error {
 	for _, service := range app.Services {
 		if err := service.InitService(c.utils); err != nil {
 			c.utils.Log.Error("Service initialization failed", "service", reflect.TypeOf(service).Elem().Name(), "error", err)
@@ -165,7 +165,7 @@ func (c *coordinator) registerServices(app *AppInitializer) error {
 	return nil
 }
 
-func (c *coordinator) injectServicesToService(service ServiceInterface) error {
+func (c *Core) injectServicesToService(service ServiceInterface) error {
 	serviceValue := reflect.ValueOf(service).Elem()
 	serviceType := reflect.TypeOf(service).Elem()
 
@@ -193,7 +193,7 @@ func (c *coordinator) injectServicesToService(service ServiceInterface) error {
 	return nil
 }
 
-func (c *coordinator) registerMiddlewares(app *AppInitializer) error {
+func (c *Core) registerMiddlewares(app *AppInitializer) error {
 	for i, scopedMiddleware := range app.Middlewares {
 		scopedMiddleware.middleware.InitMiddleware(c.utils)
 		c.middlewares = append(c.middlewares, scopedMiddleware.middleware)
@@ -220,7 +220,7 @@ func (c *coordinator) registerMiddlewares(app *AppInitializer) error {
 	return nil
 }
 
-func (c *coordinator) injectServicesToMiddleware(middleware MiddlewareInterface) error {
+func (c *Core) injectServicesToMiddleware(middleware MiddlewareInterface) error {
 	middlewareValue := reflect.ValueOf(middleware).Elem()
 	middlewareType := reflect.TypeOf(middleware).Elem()
 
@@ -249,7 +249,7 @@ func (c *coordinator) injectServicesToMiddleware(middleware MiddlewareInterface)
 	return nil
 }
 
-func (c *coordinator) injectMiddlewareGlobal(i int) error {
+func (c *Core) injectMiddlewareGlobal(i int) error {
 	for _, actions := range c.handlers {
 		for _, handler := range actions {
 			handler.injectMiddleware(uint8(i))
@@ -259,7 +259,7 @@ func (c *coordinator) injectMiddlewareGlobal(i int) error {
 	return nil
 }
 
-func (c *coordinator) injectMiddlewareExcept(i int, exceptionDescriptors []string) error {
+func (c *Core) injectMiddlewareExcept(i int, exceptionDescriptors []string) error {
 	excluded := make(map[string]struct{})
 	for _, exception := range exceptionDescriptors {
 		controller, action := parseActionDescriptor(exception)
@@ -280,7 +280,7 @@ func (c *coordinator) injectMiddlewareExcept(i int, exceptionDescriptors []strin
 	return nil
 }
 
-func (c *coordinator) injectMiddlewareOnly(i int, onlyDescriptors []string) error {
+func (c *Core) injectMiddlewareOnly(i int, onlyDescriptors []string) error {
 	included := make(map[string]struct{})
 	for _, include := range onlyDescriptors {
 		controller, action := parseActionDescriptor(include)
@@ -301,7 +301,7 @@ func (c *coordinator) injectMiddlewareOnly(i int, onlyDescriptors []string) erro
 	return nil
 }
 
-func (c *coordinator) acquireContext(ec echo.Context, controller, action string) *Context {
+func (c *Core) acquireContext(ec echo.Context, controller, action string) *Context {
 	ctx := c.contextPool.Get().(*Context)
 	ctx.Context = ec
 	ctx.Controller = controller
@@ -309,7 +309,7 @@ func (c *coordinator) acquireContext(ec echo.Context, controller, action string)
 	return ctx
 }
 
-func (c *coordinator) releaseContext(ctx *Context) {
+func (c *Core) releaseContext(ctx *Context) {
 	if ctx == nil {
 		return
 	}
@@ -319,7 +319,7 @@ func (c *coordinator) releaseContext(ctx *Context) {
 	c.contextPool.Put(ctx)
 }
 
-func (c *coordinator) registerRoutes(app *AppInitializer, server *echo.Echo) error {
+func (c *Core) registerRoutes(app *AppInitializer, server *echo.Echo) error {
 	c.routes = app.Routes
 	for _, route := range c.routes {
 		if !c.hasControllerAction(route.Controller, route.Action) {
@@ -333,7 +333,7 @@ func (c *coordinator) registerRoutes(app *AppInitializer, server *echo.Echo) err
 	return nil
 }
 
-func (c *coordinator) registerRoute(route route, server *echo.Echo) {
+func (c *Core) registerRoute(route route, server *echo.Echo) {
 	routeHandler := c.CreateActionWrapper(route.Controller, route.Action, c.handle)
 	if route.Method != "*" {
 		server.Add(route.Method, route.Path, routeHandler)

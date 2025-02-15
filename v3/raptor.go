@@ -14,9 +14,9 @@ import (
 )
 
 type Raptor struct {
-	Utils       *Utils
-	Server      *echo.Echo
-	coordinator *coordinator
+	Utils  *Utils
+	Server *echo.Echo
+	Core   *Core
 }
 type RaptorOption func(*Raptor)
 
@@ -25,8 +25,8 @@ func NewRaptor(opts ...RaptorOption) *Raptor {
 	utils.SetConfig(newConfig(utils.Log))
 
 	raptor := &Raptor{
-		Utils:       utils,
-		coordinator: newCoordinator(utils),
+		Utils: utils,
+		Core:  NewCore(utils),
 	}
 
 	for _, opt := range opts {
@@ -139,16 +139,16 @@ func (r *Raptor) Init(app *AppInitializer) *Raptor {
 		}
 	}
 
-	if err := r.coordinator.registerServices(app); err != nil {
+	if err := r.Core.registerServices(app); err != nil {
 		os.Exit(1)
 	}
-	if err := r.coordinator.registerControllers(app); err != nil {
+	if err := r.Core.registerControllers(app); err != nil {
 		os.Exit(1)
 	}
-	if err := r.coordinator.registerMiddlewares(app); err != nil {
+	if err := r.Core.registerMiddlewares(app); err != nil {
 		os.Exit(1)
 	}
-	if err := r.coordinator.registerRoutes(app, r.Server); err != nil {
+	if err := r.Core.registerRoutes(app, r.Server); err != nil {
 		os.Exit(1)
 	}
 
