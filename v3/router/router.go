@@ -6,6 +6,7 @@ import (
 )
 
 const controllerSuffix = "Controller"
+const descriptorSeparator = "."
 
 var pathRegex = regexp.MustCompile(`/+`)
 
@@ -39,7 +40,7 @@ func normalizeController(controller string) string {
 }
 
 func ParseActionDescriptor(descriptor string) (controller, action string) {
-	parts := strings.Split(descriptor, "#")
+	parts := strings.Split(descriptor, descriptorSeparator)
 	if len(parts) == 2 {
 		return normalizeController(parts[0]), parts[1]
 	}
@@ -47,7 +48,7 @@ func ParseActionDescriptor(descriptor string) (controller, action string) {
 }
 
 func ActionDescriptor(controller, action string) string {
-	return controller + "#" + action
+	return controller + descriptorSeparator + action
 }
 
 func Scope(path string, routes ...Routes) Routes {
