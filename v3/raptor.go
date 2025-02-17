@@ -23,7 +23,7 @@ type Raptor struct {
 }
 type RaptorOption func(*Raptor)
 
-func NewRaptor(opts ...RaptorOption) *Raptor {
+func New(opts ...RaptorOption) *Raptor {
 	utils := core.NewUtils()
 	utils.SetConfig(config.NewConfig(utils.Log))
 
@@ -49,7 +49,7 @@ func WithConfig(c *Config) RaptorOption {
 	}
 }
 
-func (r *Raptor) Listen() {
+func (r *Raptor) Run() {
 	if r.checkPort() {
 		go func() {
 			if err := r.Server.Start(r.address()); err != nil && err != http.ErrServerClosed {
@@ -141,7 +141,7 @@ func (r *Raptor) waitForShutdown() {
 	r.Utils.Log.Warn("Raptor exited, bye bye!")
 }
 
-func (r *Raptor) InitComponents(components *core.Components) *Raptor {
+func (r *Raptor) Configure(components *core.Components) *Raptor {
 	if components.DatabaseConnector != nil {
 		r.Utils.DB = components.DatabaseConnector
 		if err := r.Utils.DB.Init(); err != nil {
@@ -163,6 +163,6 @@ func (r *Raptor) InitComponents(components *core.Components) *Raptor {
 	return r
 }
 
-func (r *Raptor) InitRouter(routes router.Routes) {
+func (r *Raptor) RegisterRoutes(routes router.Routes) {
 	r.Core.RegisterRoutes(routes, r.Server)
 }
