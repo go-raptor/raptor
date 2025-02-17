@@ -5,7 +5,7 @@ import (
 	"github.com/go-raptor/raptor/v3/core"
 )
 
-type App = core.App
+type Components = core.Components
 type Config = config.Config
 type Controller = core.Controller
 type Controllers = core.Controllers

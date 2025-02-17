@@ -51,8 +51,8 @@ func UseOnly(middleware MiddlewareInterface, only ...string) ScopedMiddleware {
 	}
 }
 
-func (c *Core) RegisterMiddlewares(app *App) error {
-	for i, scopedMiddleware := range app.Middlewares {
+func (c *Core) RegisterMiddlewares(components *Components) error {
+	for i, scopedMiddleware := range components.Middlewares {
 		scopedMiddleware.middleware.InitMiddleware(c.utils)
 		c.middlewares = append(c.middlewares, scopedMiddleware.middleware)
 		var err error

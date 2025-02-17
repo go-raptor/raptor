@@ -10,7 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type App struct {
+type Components struct {
 	Routes            router.Routes
 	DatabaseConnector connector.DatabaseConnector
 	Middlewares       Middlewares

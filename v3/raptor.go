@@ -139,26 +139,26 @@ func (r *Raptor) waitForShutdown() {
 	r.Utils.Log.Warn("Raptor exited, bye bye!")
 }
 
-func (r *Raptor) Init(app *core.App) *Raptor {
+func (r *Raptor) Init(components *core.Components) *Raptor {
 	r.Server = newServer(r.Utils.Config)
-	if app.DatabaseConnector != nil {
-		r.Utils.DB = app.DatabaseConnector
+	if components.DatabaseConnector != nil {
+		r.Utils.DB = components.DatabaseConnector
 		if err := r.Utils.DB.Init(); err != nil {
 			r.Utils.Log.Error("Database initalization failed", "error", err.Error())
 			os.Exit(1)
 		}
 	}
 
-	if err := r.Core.RegisterServices(app); err != nil {
+	if err := r.Core.RegisterServices(components); err != nil {
 		os.Exit(1)
 	}
-	if err := r.Core.RegisterControllers(app); err != nil {
+	if err := r.Core.RegisterControllers(components); err != nil {
 		os.Exit(1)
 	}
-	if err := r.Core.RegisterMiddlewares(app); err != nil {
+	if err := r.Core.RegisterMiddlewares(components); err != nil {
 		os.Exit(1)
 	}
-	if err := r.Core.RegisterRoutes(app, r.Server); err != nil {
+	if err := r.Core.RegisterRoutes(components, r.Server); err != nil {
 		os.Exit(1)
 	}
 

@@ -7,8 +7,8 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func (c *Core) RegisterRoutes(app *App, server *echo.Echo) error {
-	c.routes = app.Routes
+func (c *Core) RegisterRoutes(components *Components, server *echo.Echo) error {
+	c.routes = components.Routes
 	for _, route := range c.routes {
 		if !c.hasControllerAction(route.Controller, route.Action) {
 			err := fmt.Errorf("action %s not found in controller %s for path %s", route.Action, route.Controller, route.Path)

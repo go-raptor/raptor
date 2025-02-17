@@ -16,8 +16,8 @@ func (c *Controller) OnInit(callback func()) {
 	c.onInit = callback
 }
 
-func (c *Core) RegisterControllers(app *App) error {
-	for _, controller := range app.Controllers {
+func (c *Core) RegisterControllers(components *Components) error {
+	for _, controller := range components.Controllers {
 		if err := c.registerController(controller); err != nil {
 			c.utils.Log.Error("Error while registering controller", "controller", reflect.TypeOf(controller).Elem().Name(), "error", err)
 			return err

@@ -17,8 +17,8 @@ func (s *Service) OnInit(callback func() error) {
 	s.onInit = callback
 }
 
-func (c *Core) RegisterServices(app *App) error {
-	for _, service := range app.Services {
+func (c *Core) RegisterServices(components *Components) error {
+	for _, service := range components.Services {
 		if err := service.InitService(c.utils); err != nil {
 			c.utils.Log.Error("Service initialization failed", "service", reflect.TypeOf(service).Elem().Name(), "error", err)
 			return err
