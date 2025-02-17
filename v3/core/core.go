@@ -11,7 +11,6 @@ import (
 )
 
 type Components struct {
-	Routes            router.Routes
 	DatabaseConnector connector.DatabaseConnector
 	Middlewares       Middlewares
 	Services          Services

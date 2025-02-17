@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-raptor/raptor/v3/config"
 	"github.com/go-raptor/raptor/v3/core"
+	"github.com/go-raptor/raptor/v3/router"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -27,8 +28,9 @@ func NewRaptor(opts ...RaptorOption) *Raptor {
 	utils.SetConfig(config.NewConfig(utils.Log))
 
 	raptor := &Raptor{
-		Utils: utils,
-		Core:  core.NewCore(utils),
+		Server: newServer(utils.Config),
+		Utils:  utils,
+		Core:   core.NewCore(utils),
 	}
 
 	for _, opt := range opts {
@@ -139,12 +141,11 @@ func (r *Raptor) waitForShutdown() {
 	r.Utils.Log.Warn("Raptor exited, bye bye!")
 }
 
-func (r *Raptor) Init(components *core.Components) *Raptor {
-	r.Server = newServer(r.Utils.Config)
+func (r *Raptor) InitComponents(components *core.Components) *Raptor {
 	if components.DatabaseConnector != nil {
 		r.Utils.DB = components.DatabaseConnector
 		if err := r.Utils.DB.Init(); err != nil {
-			r.Utils.Log.Error("Database initalization failed", "error", err.Error())
+			r.Utils.Log.Error("Database connector initalization failed", "error", err.Error())
 			os.Exit(1)
 		}
 	}
@@ -158,9 +159,10 @@ func (r *Raptor) Init(components *core.Components) *Raptor {
 	if err := r.Core.RegisterMiddlewares(components); err != nil {
 		os.Exit(1)
 	}
-	if err := r.Core.RegisterRoutes(components, r.Server); err != nil {
-		os.Exit(1)
-	}
 
 	return r
+}
+
+func (r *Raptor) InitRouter(routes router.Routes) {
+	r.Core.RegisterRoutes(routes, r.Server)
 }
