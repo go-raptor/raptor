@@ -26,7 +26,11 @@ type RaptorOption func(*Raptor)
 
 func New(opts ...RaptorOption) *Raptor {
 	utils := core.NewUtils()
-	utils.SetConfig(config.NewConfig(utils.Log))
+	config, err := config.NewConfig(utils.Log)
+	if err != nil {
+		os.Exit(1)
+	}
+	utils.SetConfig(config)
 
 	raptor := &Raptor{
 		Server: newServer(utils.Config),

@@ -3,10 +3,10 @@ module github.com/go-raptor/raptor/v3
 go 1.24.0
 
 require (
-	github.com/BurntSushi/toml v1.4.0
 	github.com/go-raptor/connector v1.0.0
 	github.com/labstack/echo/v4 v4.13.3
 	github.com/pwntr/tinter v1.1.2
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

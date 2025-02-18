@@ -1,65 +1,60 @@
 package config
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
 
-	"github.com/BurntSushi/toml"
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	log *slog.Logger
-
-	GeneralConfig    GeneralConfig     `toml:"General"`
-	ServerConfig     ServerConfig      `toml:"Server"`
-	DatabaseConfig   DatabaseConfig    `toml:"Database"`
-	TemplatingConfig TemplatingConfig  `toml:"Templating"`
-	StaticConfig     StaticConfig      `toml:"Static"`
-	CORSConfig       CORSConfig        `toml:"CORS"`
-	AppConfig        map[string]string `toml:"App"`
+	log            *slog.Logger
+	GeneralConfig  GeneralConfig     `yaml:"general"`
+	ServerConfig   ServerConfig      `yaml:"server"`
+	DatabaseConfig DatabaseConfig    `yaml:"database"`
+	StaticConfig   StaticConfig      `yaml:"static"`
+	CORSConfig     CORSConfig        `yaml:"cors"`
+	AppConfig      map[string]string `yaml:"app"`
 }
 
 type GeneralConfig struct {
-	LogLevel string
+	LogLevel string `yaml:"loglevel"`
 }
 
 type ServerConfig struct {
-	Address         string
-	Port            int
-	ShutdownTimeout int
-	IPExtractor     string
+	Address         string `yaml:"address"`
+	Port            int    `yaml:"port"`
+	ShutdownTimeout int    `yaml:"shutdownTimeout"`
+	IPExtractor     string `yaml:"ipExtractor"`
 }
 
 type DatabaseConfig struct {
-	Host     string
-	Port     int
-	Username string
-	Password string
-	Name     string
-}
-
-type TemplatingConfig struct {
-	Enabled bool
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
+	Name     string `yaml:"name"`
 }
 
 type StaticConfig struct {
-	Enabled bool
-	Prefix  string
-	Root    string
-	HTML5   bool
-	Index   string
-	Browse  bool
+	Enabled bool   `yaml:"enabled"`
+	Prefix  string `yaml:"prefix"`
+	Root    string `yaml:"root"`
+	HTML5   bool   `yaml:"html5"`
+	Index   string `yaml:"index"`
+	Browse  bool   `yaml:"browse"`
 }
 
 type CORSConfig struct {
-	AllowOrigins     []string
-	AllowMethods     []string
-	AllowHeaders     []string
-	AllowCredentials bool
-	MaxAge           int
+	AllowOrigins     []string `yaml:"allowOrigins"`
+	AllowMethods     []string `yaml:"allowMethods"`
+	AllowHeaders     []string `yaml:"allowHeaders"`
+	AllowCredentials bool     `yaml:"allowCredentials"`
+	MaxAge           int      `yaml:"maxAge"`
 }
 
 const (
@@ -75,8 +70,6 @@ const (
 	DefaultDatabaseConfigUser = "dbuser"
 	DefaultDatabaseConfigPass = "dbpass"
 	DefaultDatabaseConfigName = "dbname"
-
-	DefaultTemplatingConfigEnabled = false
 
 	DefaultStaticConfigEnabled = false
 	DefaultStaticConfigPrefix  = "/public"
@@ -95,35 +88,45 @@ var (
 	DefaultCORSConfigAllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
 )
 
-func NewConfig(log *slog.Logger) *Config {
+func NewConfig(log *slog.Logger) (*Config, error) {
 	c := newConfigDefaults()
 	c.log = log
 
 	configFiles := []string{
-		".raptor.toml",
+		".raptor.yaml",
+		".raptor.yml",
 		".raptor.conf",
-		".raptor.prod.toml",
+		".raptor.prod.yaml",
+		".raptor.prod.yml",
 		".raptor.prod.conf",
-		".raptor.dev.toml",
+		".raptor.dev.yaml",
+		".raptor.dev.yml",
 		".raptor.dev.conf",
 	}
 
-	var err error
+	loaded := false
 	for _, file := range configFiles {
-		err = c.loadConfigFromFile(file)
-		if err == nil {
-			break
+		err := c.loadConfigFromFile(file)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			c.log.Error("Failed to load configuration file", "file", file, "error", err)
+			return c, err
+		} else {
+			loaded = true
+			c.log.Info("Configuration loaded", "file", file)
 		}
 	}
 
-	if err != nil {
-		log.Warn("Unable to load configuration file, loaded defaults...")
+	if !loaded {
+		log.Warn("No configuration files found, using defaults")
 	}
 
 	c.ApplyEnvirontmentVariables()
 	c.ApplyAppEnvironmentVariables("APP_")
 
-	return c
+	return c, nil
 }
 
 func newConfigDefaults() *Config {
@@ -143,9 +146,6 @@ func newConfigDefaults() *Config {
 			Username: DefaultDatabaseConfigUser,
 			Password: DefaultDatabaseConfigPass,
 			Name:     DefaultDatabaseConfigName,
-		},
-		TemplatingConfig: TemplatingConfig{
-			Enabled: DefaultTemplatingConfigEnabled,
 		},
 		StaticConfig: StaticConfig{
 			Enabled: DefaultStaticConfigEnabled,
@@ -212,15 +212,20 @@ func mergeConfigValues(dst, src reflect.Value) {
 }
 
 func (c *Config) loadConfigFromFile(path string) error {
-	if _, err := toml.DecodeFile(path, c); err != nil {
+	data, err := os.ReadFile(path)
+	if err != nil {
 		return err
+	}
+
+	if err := yaml.Unmarshal(data, c); err != nil {
+		return fmt.Errorf("malformed YAML in config file %s: %w", path, err)
 	}
 
 	return nil
 }
 
 func (c *Config) ApplyEnvirontmentVariables() {
-	c.ApplyEnvirontmentVariable("RAPTOR_LOG_LEVEL", &c.GeneralConfig.LogLevel)
+	c.ApplyEnvirontmentVariable("GENERAL_LOG_LEVEL", &c.GeneralConfig.LogLevel)
 
 	c.ApplyEnvirontmentVariable("SERVER_ADDRESS", &c.ServerConfig.Address)
 	c.ApplyEnvirontmentVariable("SERVER_PORT", &c.ServerConfig.Port)
@@ -232,8 +237,6 @@ func (c *Config) ApplyEnvirontmentVariables() {
 	c.ApplyEnvirontmentVariable("DATABASE_USERNAME", &c.DatabaseConfig.Username)
 	c.ApplyEnvirontmentVariable("DATABASE_PASSWORD", &c.DatabaseConfig.Password)
 	c.ApplyEnvirontmentVariable("DATABASE_NAME", &c.DatabaseConfig.Name)
-
-	c.ApplyEnvirontmentVariable("TEMPLATING_ENABLED", &c.TemplatingConfig.Enabled)
 
 	c.ApplyEnvirontmentVariable("STATIC_ENABLED", &c.StaticConfig.Enabled)
 	c.ApplyEnvirontmentVariable("STATIC_PREFIX", &c.StaticConfig.Prefix)
@@ -251,7 +254,7 @@ func (c *Config) ApplyEnvirontmentVariables() {
 
 func (c *Config) ApplyEnvirontmentVariable(key string, value interface{}) {
 	if env, ok := os.LookupEnv(key); ok {
-		c.log.Info("Applying environment variable", key, env)
+		c.log.Info("Applying environment variable", "key", key, "value", env)
 		switch v := value.(type) {
 		case *string:
 			*v = env
@@ -281,7 +284,7 @@ func (c *Config) ApplyAppEnvironmentVariables(prefix string) {
 		if !found {
 			continue
 		}
-		c.log.Info("Applying environment variable", key, value)
+		c.log.Info("Applying app environment variable", "key", key, "value", value)
 		key = strings.ToLower(strings.TrimPrefix(key, prefix))
 		c.AppConfig[key] = value
 	}
