@@ -20,6 +20,7 @@ type Raptor struct {
 	Utils  *core.Utils
 	Server *echo.Echo
 	Core   *core.Core
+	Router *router.Router
 }
 type RaptorOption func(*Raptor)
 
@@ -145,7 +146,7 @@ func (r *Raptor) Configure(components *core.Components) *Raptor {
 	if components.DatabaseConnector != nil {
 		r.Utils.DB = components.DatabaseConnector
 		if err := r.Utils.DB.Init(); err != nil {
-			r.Utils.Log.Error("Database connector initalization failed", "error", err.Error())
+			r.Utils.Log.Error("Database connector initalization failed", "error", err)
 			os.Exit(1)
 		}
 	}
@@ -164,5 +165,10 @@ func (r *Raptor) Configure(components *core.Components) *Raptor {
 }
 
 func (r *Raptor) RegisterRoutes(routes router.Routes) {
-	r.Core.RegisterRoutes(routes, r.Server)
+	router, err := router.New(routes, r.Core, r.Server)
+	if err != nil {
+		r.Utils.Log.Error("Error while registering routes", "error", err)
+		os.Exit(1)
+	}
+	r.Router = router
 }

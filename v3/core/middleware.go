@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/go-raptor/raptor/v3/router"
 	"github.com/labstack/echo/v4"
 )
 
@@ -91,16 +90,16 @@ func (c *Core) injectMiddlewareGlobal(i int) error {
 func (c *Core) injectMiddlewareExcept(i int, exceptionDescriptors []string) error {
 	excluded := make(map[string]struct{})
 	for _, exception := range exceptionDescriptors {
-		controller, action := router.ParseActionDescriptor(exception)
-		if !c.hasControllerAction(controller, action) {
+		controller, action := ParseActionDescriptor(exception)
+		if !c.HasControllerAction(controller, action) {
 			return fmt.Errorf("action %s#%s does not exist", controller, action)
 		}
-		excluded[router.ActionDescriptor(controller, action)] = struct{}{}
+		excluded[ActionDescriptor(controller, action)] = struct{}{}
 	}
 
 	for controller, actions := range c.handlers {
 		for action, handler := range actions {
-			if _, isExcluded := excluded[router.ActionDescriptor(controller, action)]; !isExcluded {
+			if _, isExcluded := excluded[ActionDescriptor(controller, action)]; !isExcluded {
 				handler.injectMiddleware(uint8(i))
 			}
 		}
@@ -112,16 +111,16 @@ func (c *Core) injectMiddlewareExcept(i int, exceptionDescriptors []string) erro
 func (c *Core) injectMiddlewareOnly(i int, onlyDescriptors []string) error {
 	included := make(map[string]struct{})
 	for _, include := range onlyDescriptors {
-		controller, action := router.ParseActionDescriptor(include)
-		if !c.hasControllerAction(controller, action) {
+		controller, action := ParseActionDescriptor(include)
+		if !c.HasControllerAction(controller, action) {
 			return fmt.Errorf("action %s#%s does not exist", controller, action)
 		}
-		included[router.ActionDescriptor(controller, action)] = struct{}{}
+		included[ActionDescriptor(controller, action)] = struct{}{}
 	}
 
 	for controller, actions := range c.handlers {
 		for action, handler := range actions {
-			if _, isIncluded := included[router.ActionDescriptor(controller, action)]; isIncluded {
+			if _, isIncluded := included[ActionDescriptor(controller, action)]; isIncluded {
 				handler.injectMiddleware(uint8(i))
 			}
 		}

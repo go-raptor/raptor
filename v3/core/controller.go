@@ -3,7 +3,30 @@ package core
 import (
 	"fmt"
 	"reflect"
+	"strings"
 )
+
+const controllerSuffix = "Controller"
+const descriptorSeparator = "."
+
+func NormalizeController(controller string) string {
+	if !strings.HasSuffix(controller, controllerSuffix) {
+		return controller + controllerSuffix
+	}
+	return controller
+}
+
+func ParseActionDescriptor(descriptor string) (controller, action string) {
+	parts := strings.Split(descriptor, descriptorSeparator)
+	if len(parts) == 2 {
+		return NormalizeController(parts[0]), parts[1]
+	}
+	return NormalizeController(descriptor), ""
+}
+
+func ActionDescriptor(controller, action string) string {
+	return controller + descriptorSeparator + action
+}
 
 func (c *Controller) Init(u *Utils) {
 	c.Utils = u
@@ -77,7 +100,7 @@ func (c *Core) isValidActionMethod(methodType reflect.Type) bool {
 		methodType.Out(0) == reflect.TypeOf((*error)(nil)).Elem()
 }
 
-func (c *Core) hasControllerAction(controller, action string) bool {
+func (c *Core) HasControllerAction(controller, action string) bool {
 	_, ok := c.handlers[controller][action]
 	return ok
 }

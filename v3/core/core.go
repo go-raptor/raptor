@@ -6,7 +6,6 @@ import (
 
 	"github.com/go-raptor/connector"
 	"github.com/go-raptor/raptor/v3/config"
-	"github.com/go-raptor/raptor/v3/router"
 	"github.com/labstack/echo/v4"
 )
 
@@ -23,7 +22,6 @@ type Core struct {
 	contextPool sync.Pool
 	services    map[string]ServiceInterface
 	middlewares []MiddlewareInterface
-	routes      router.Routes
 }
 
 func NewCore(u *Utils) *Core {

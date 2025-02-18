@@ -1,12 +1,12 @@
 package router
 
 import (
+	"fmt"
 	"regexp"
-	"strings"
-)
 
-const controllerSuffix = "Controller"
-const descriptorSeparator = "."
+	"github.com/go-raptor/raptor/v3/core"
+	"github.com/labstack/echo/v4"
+)
 
 var pathRegex = regexp.MustCompile(`/+`)
 
@@ -17,6 +17,31 @@ type Route struct {
 	Path       string
 	Controller string
 	Action     string
+}
+
+type Router struct {
+	Routes Routes
+}
+
+func New(routes Routes, core *core.Core, server *echo.Echo) (*Router, error) {
+	router := &Router{
+		Routes: routes,
+	}
+
+	for _, route := range router.Routes {
+		if !core.HasControllerAction(route.Controller, route.Action) {
+			return nil, fmt.Errorf("action %s not found in controller %s for path %s", route.Action, route.Controller, route.Path)
+		}
+
+		routeHandler := core.CreateActionWrapper(route.Controller, route.Action, core.Handle)
+		if route.Method != "*" {
+			server.Add(route.Method, route.Path, routeHandler)
+		} else {
+			server.Any(route.Path, routeHandler)
+		}
+	}
+
+	return router, nil
 }
 
 func normalizePath(path string) string {
@@ -30,25 +55,6 @@ func normalizePath(path string) string {
 	}
 
 	return path
-}
-
-func normalizeController(controller string) string {
-	if !strings.HasSuffix(controller, controllerSuffix) {
-		return controller + controllerSuffix
-	}
-	return controller
-}
-
-func ParseActionDescriptor(descriptor string) (controller, action string) {
-	parts := strings.Split(descriptor, descriptorSeparator)
-	if len(parts) == 2 {
-		return normalizeController(parts[0]), parts[1]
-	}
-	return normalizeController(descriptor), ""
-}
-
-func ActionDescriptor(controller, action string) string {
-	return controller + descriptorSeparator + action
 }
 
 func Scope(path string, routes ...Routes) Routes {
@@ -72,7 +78,7 @@ func MethodRoute(method, path string, actionDescriptor ...string) Routes {
 	var controller, action string
 
 	if len(actionDescriptor) == 1 {
-		controller, action = ParseActionDescriptor(actionDescriptor[0])
+		controller, action = core.ParseActionDescriptor(actionDescriptor[0])
 	} else if len(actionDescriptor) == 2 {
 		controller, action = actionDescriptor[0], actionDescriptor[1]
 	}
@@ -81,7 +87,7 @@ func MethodRoute(method, path string, actionDescriptor ...string) Routes {
 		Route{
 			Method:     method,
 			Path:       normalizePath(path),
-			Controller: normalizeController(controller),
+			Controller: core.NormalizeController(controller),
 			Action:     action,
 		},
 	}

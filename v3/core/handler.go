@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/go-raptor/raptor/v3/router"
 )
 
 type handler struct {
@@ -24,7 +22,7 @@ func (h *handler) injectMiddleware(middlewareIndex uint8) {
 	h.middlewares = append(h.middlewares, uint8(middlewareIndex))
 }
 
-func (c *Core) handle(ctx *Context) error {
+func (c *Core) Handle(ctx *Context) error {
 	startTime := time.Now()
 	c.logActionStart(ctx)
 	err := c.handlers[ctx.Controller][ctx.Action].action(ctx)
@@ -34,7 +32,7 @@ func (c *Core) handle(ctx *Context) error {
 
 func (c *Core) logActionStart(ctx *Context) {
 	c.utils.Log.Info(fmt.Sprintf("Started %s \"%s\" for %s", ctx.Request().Method, ctx.Request().URL.Path, ctx.RealIP()))
-	c.utils.Log.Info(fmt.Sprintf("Processing by %s", router.ActionDescriptor(ctx.Controller, ctx.Action)))
+	c.utils.Log.Info(fmt.Sprintf("Processing by %s", ActionDescriptor(ctx.Controller, ctx.Action)))
 }
 
 func (c *Core) logActionFinish(ctx *Context, startTime time.Time) {
