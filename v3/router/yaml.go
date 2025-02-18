@@ -14,11 +14,15 @@ func LoadFromYAML(path string) Routes {
 		return Routes{}
 	}
 
+	return ParseYAML(data)
+}
+
+func ParseYAML(content []byte) Routes {
 	var yamlConfig struct {
 		Routes map[string]interface{} `yaml:"routes"`
 	}
 
-	if err := yaml.Unmarshal(data, &yamlConfig); err != nil {
+	if err := yaml.Unmarshal(content, &yamlConfig); err != nil {
 		return Routes{}
 	}
 
