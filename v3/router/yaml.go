@@ -36,53 +36,54 @@ func ParseYAML(content []byte) Routes {
 }
 
 func processYAMLRoutes(routeData map[string]interface{}, parentPath string, routes *Routes) {
-	for scope, data := range routeData {
-		currentPath := joinPaths(parentPath, scope)
+	for path, data := range routeData {
+		currentPath := joinPaths(parentPath, path)
 
-		switch routeList := data.(type) {
-		case []interface{}:
-			for _, routeDef := range routeList {
-				if route, ok := routeDef.(map[string]interface{}); ok {
-					handler, handlerExists := route["handler"]
-					if !handlerExists {
+		switch nested := data.(type) {
+		case map[string]interface{}:
+			hasHttpMethods := false
+			for key := range nested {
+				method := strings.ToUpper(key)
+				if isHttpMethod(method) {
+					hasHttpMethods = true
+					break
+				}
+			}
+
+			if hasHttpMethods {
+				for method, handlerValue := range nested {
+					httpMethod := strings.ToUpper(method)
+					if !isHttpMethod(httpMethod) {
 						continue
 					}
 
-					handlerStr, ok := handler.(string)
+					handlerStr, ok := handlerValue.(string)
 					if !ok {
 						continue
 					}
 
-					for method, pathValue := range route {
-						if method == "handler" {
-							continue
-						}
+					controller, action := core.ParseActionDescriptor(handlerStr)
 
-						pathStr, ok := pathValue.(string)
-						if !ok {
-							continue
-						}
-
-						httpMethod := strings.ToUpper(method)
-						if httpMethod == "ANY" {
-							httpMethod = "*"
-						}
-
-						fullPath := joinPaths(currentPath, pathStr)
-						controller, action := core.ParseActionDescriptor(handlerStr)
-
-						*routes = append(*routes, Route{
-							Method:     httpMethod,
-							Path:       fullPath,
-							Controller: core.NormalizeController(controller),
-							Action:     action,
-						})
-					}
+					*routes = append(*routes, Route{
+						Method:     httpMethod,
+						Path:       currentPath,
+						Controller: core.NormalizeController(controller),
+						Action:     action,
+					})
 				}
+			} else {
+				processYAMLRoutes(nested, currentPath, routes)
 			}
-		case map[string]interface{}:
-			processYAMLRoutes(routeList, currentPath, routes)
 		}
+	}
+}
+
+func isHttpMethod(method string) bool {
+	switch method {
+	case "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "CONNECT", "TRACE", "ANY", "*":
+		return true
+	default:
+		return false
 	}
 }
 
