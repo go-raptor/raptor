@@ -1,6 +1,7 @@
 package raptor
 
 import (
+	"github.com/go-raptor/errs"
 	"github.com/go-raptor/raptor/v3/config"
 	"github.com/go-raptor/raptor/v3/core"
 )
@@ -14,6 +15,6 @@ type Services = core.Services
 type Middleware = core.Middleware
 type Middlewares = core.Middlewares
 type Context = core.Context
-type Error = core.Error
+type Error = errs.Error
 type Map = core.Map
 type Utils = core.Utils

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/go-raptor/errs"
 	"github.com/labstack/echo/v4"
 )
 
@@ -16,7 +17,7 @@ func (c *Core) CreateActionWrapper(controller, action string, handler func(*Cont
 			currentChain := chain
 			chain = func(ctx *Context) error {
 				if err := mw.New(ctx, currentChain); err != nil {
-					if _, ok := err.(*Error); ok {
+					if _, ok := err.(*errs.Error); ok {
 						ctx.JSONError(err)
 						return nil
 					}
