@@ -99,9 +99,3 @@ type Utils struct {
 
 	DB connector.DatabaseConnector
 }
-
-type Error struct {
-	Code        int    `json:"code"`
-	Message     string `json:"message"`
-	Description string `json:"description,omitempty"`
-}
