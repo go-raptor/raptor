@@ -18,15 +18,14 @@ func (m *Middleware) OnInit(callback func()) {
 	m.onInit = callback
 }
 
-func (m *echoMiddleware) New(c *Context) error {
-	return m.handler(c.Context)
-}
-
 func (m *echoMiddleware) InitMiddleware(u *Utils) {
+	m.utils = u
 }
 
-func UseEcho(h echo.HandlerFunc) *echoMiddleware {
-	return &echoMiddleware{handler: h}
+func (m *echoMiddleware) New(c *Context, next func(*Context) error) error {
+	return m.middleware(func(ec echo.Context) error {
+		return next(c)
+	})(c.Context)
 }
 
 func Use(middleware MiddlewareInterface) ScopedMiddleware {
@@ -34,6 +33,10 @@ func Use(middleware MiddlewareInterface) ScopedMiddleware {
 		middleware: middleware,
 		global:     true,
 	}
+}
+
+func UseEcho(m echo.MiddlewareFunc) MiddlewareInterface {
+	return &echoMiddleware{middleware: m}
 }
 
 func UseExcept(middleware MiddlewareInterface, except ...string) ScopedMiddleware {

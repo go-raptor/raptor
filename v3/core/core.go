@@ -78,7 +78,7 @@ type Middlewares []ScopedMiddleware
 
 type MiddlewareInterface interface {
 	InitMiddleware(u *Utils)
-	New(*Context) error
+	New(c *Context, next func(*Context) error) error
 }
 
 type Middleware struct {
@@ -87,7 +87,8 @@ type Middleware struct {
 }
 
 type echoMiddleware struct {
-	handler echo.HandlerFunc
+	middleware echo.MiddlewareFunc
+	utils      *Utils
 }
 
 type Utils struct {

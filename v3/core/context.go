@@ -17,13 +17,15 @@ func (c *Context) JSON(data interface{}, status ...int) error {
 func (c *Context) JSONError(err error, status ...int) error {
 	var e *Error
 	if errors.As(err, &e) {
-		return c.JSON(e, e.Code)
+		c.JSON(e, e.Code)
+		return nil
 	}
 
 	if len(status) == 0 {
 		status = append(status, http.StatusInternalServerError)
 	}
-	return c.JSON(NewError(status[0], err.Error()), status[0])
+	c.JSON(NewError(status[0], err.Error()), status[0])
+	return nil
 }
 
 func (c *Core) acquireContext(echoContext echo.Context, controller, action string) *Context {

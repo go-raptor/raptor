@@ -9,27 +9,23 @@ func (c *Core) CreateActionWrapper(controller, action string, handler func(*Cont
 		ctx := c.acquireContext(echoCtx, controller, action)
 		defer c.releaseContext(ctx)
 
-		for _, middlewareIndex := range c.handlers[controller][action].middlewares {
-			if err := c.middlewares[middlewareIndex].New(ctx); err != nil {
-				return ctx.JSONError(err)
+		chain := handler
+		for i := len(c.handlers[controller][action].middlewares) - 1; i >= 0; i-- {
+			mwIndex := c.handlers[controller][action].middlewares[i]
+			mw := c.middlewares[mwIndex]
+			currentChain := chain
+			chain = func(ctx *Context) error {
+				if err := mw.New(ctx, currentChain); err != nil {
+					if _, ok := err.(*Error); ok {
+						ctx.JSONError(err)
+						return nil
+					}
+					return err
+				}
+				return nil
 			}
 		}
 
-		return handler(ctx)
-	}
-}
-
-func (c *Core) CreateMiddlewareWrapper(handler func(*Context) error) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(echoCtx echo.Context) error {
-			ctx := c.acquireContext(echoCtx, "middleware", "handler")
-			defer c.releaseContext(ctx)
-
-			if err := handler(ctx); err != nil {
-				return ctx.JSONError(err)
-			}
-
-			return next(echoCtx)
-		}
+		return chain(ctx)
 	}
 }
