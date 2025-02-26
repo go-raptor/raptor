@@ -2,19 +2,20 @@ package raptor
 
 import (
 	"github.com/go-raptor/errs"
+	"github.com/go-raptor/raptor/v3/components"
 	"github.com/go-raptor/raptor/v3/config"
 	"github.com/go-raptor/raptor/v3/core"
 )
 
 type Components = core.Components
 type Config = config.Config
-type Controller = core.Controller
-type Controllers = core.Controllers
-type Service = core.Service
-type Services = core.Services
-type Middleware = core.Middleware
-type Middlewares = core.Middlewares
-type Context = core.Context
+type Controller = components.Controller
+type Controllers = components.Controllers
+type Service = components.Service
+type Services = components.Services
+type Middleware = components.Middleware
+type Middlewares = components.Middlewares
+type Context = components.Context
 type Error = errs.Error
-type Map = core.Map
-type Utils = core.Utils
+type Utils = components.Utils
+type Map = map[string]interface{}

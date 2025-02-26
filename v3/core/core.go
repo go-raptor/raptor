@@ -1,101 +1,43 @@
 package core
 
 import (
-	"log/slog"
 	"sync"
 
 	"github.com/go-raptor/connector"
-	"github.com/go-raptor/raptor/v3/config"
+	"github.com/go-raptor/raptor/v3/components"
 	"github.com/labstack/echo/v4"
 )
 
 type Components struct {
 	DatabaseConnector connector.DatabaseConnector
-	Middlewares       Middlewares
-	Services          Services
-	Controllers       Controllers
+	Middlewares       components.Middlewares
+	Services          components.Services
+	Controllers       components.Controllers
 }
 
 type Core struct {
-	utils       *Utils
+	utils       *components.Utils
 	handlers    map[string]map[string]*handler
 	contextPool sync.Pool
-	services    map[string]ServiceInterface
-	middlewares []MiddlewareInterface
+	services    map[string]components.ServiceInterface
+	middlewares []components.MiddlewareInterface
 }
 
-func NewCore(u *Utils) *Core {
+func NewCore(u *components.Utils) *Core {
 	return &Core{
 		utils:    u,
 		handlers: make(map[string]map[string]*handler),
 		contextPool: sync.Pool{
 			New: func() interface{} {
-				return new(Context)
+				return new(components.Context)
 			},
 		},
-		services:    make(map[string]ServiceInterface),
-		middlewares: make([]MiddlewareInterface, 0),
+		services:    make(map[string]components.ServiceInterface),
+		middlewares: make([]components.MiddlewareInterface, 0),
 	}
-}
-
-type Map map[string]interface{}
-
-type Context struct {
-	echo.Context
-	Controller string
-	Action     string
-}
-
-type Controllers []interface{}
-
-type ControllerInterface interface {
-	Init(u *Utils)
-}
-
-type Controller struct {
-	*Utils
-	onInit func()
-}
-
-type Services []ServiceInterface
-
-type ServiceInterface interface {
-	InitService(u *Utils) error
-}
-
-type Service struct {
-	*Utils
-	onInit func() error
-}
-
-type ScopedMiddleware struct {
-	middleware MiddlewareInterface
-	only       []string
-	except     []string
-	global     bool
-}
-type Middlewares []ScopedMiddleware
-
-type MiddlewareInterface interface {
-	InitMiddleware(u *Utils)
-	New(c *Context, next func(*Context) error) error
-}
-
-type Middleware struct {
-	*Utils
-	onInit func()
 }
 
 type echoMiddleware struct {
 	middleware echo.MiddlewareFunc
-	utils      *Utils
-}
-
-type Utils struct {
-	Config *config.Config
-
-	Log      *slog.Logger
-	logLevel *slog.LevelVar
-
-	DB connector.DatabaseConnector
+	utils      *components.Utils
 }

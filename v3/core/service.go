@@ -3,19 +3,9 @@ package core
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/go-raptor/raptor/v3/components"
 )
-
-func (s *Service) InitService(utils *Utils) error {
-	s.Utils = utils
-	if s.onInit != nil {
-		return s.onInit()
-	}
-	return nil
-}
-
-func (s *Service) OnInit(callback func() error) {
-	s.onInit = callback
-}
 
 func (c *Core) RegisterServices(components *Components) error {
 	for _, service := range components.Services {
@@ -57,7 +47,7 @@ func (c *Core) injectServicesToController(controllerValue reflect.Value, control
 			continue
 		}
 
-		serviceInterfaceType := reflect.TypeOf((*ServiceInterface)(nil)).Elem()
+		serviceInterfaceType := reflect.TypeOf((*components.ServiceInterface)(nil)).Elem()
 		if fieldType.Type.Implements(serviceInterfaceType) {
 			return fmt.Errorf("%s requires %s, but the service was not found in services initializer", controller, service)
 		}
@@ -66,7 +56,7 @@ func (c *Core) injectServicesToController(controllerValue reflect.Value, control
 	return nil
 }
 
-func (c *Core) injectServicesToService(service ServiceInterface) error {
+func (c *Core) injectServicesToService(service components.ServiceInterface) error {
 	serviceValue := reflect.ValueOf(service).Elem()
 	serviceType := reflect.TypeOf(service).Elem()
 
@@ -83,7 +73,7 @@ func (c *Core) injectServicesToService(service ServiceInterface) error {
 			continue
 		}
 
-		serviceInterfaceType := reflect.TypeOf((*ServiceInterface)(nil)).Elem()
+		serviceInterfaceType := reflect.TypeOf((*components.ServiceInterface)(nil)).Elem()
 		if fieldType.Type.Implements(serviceInterfaceType) {
 			err := fmt.Errorf("%s requires %s, but the service was not found in services initializer", serviceType.Name(), fieldType.Type.Elem().Name())
 			c.utils.Log.Error("Error while registering service", "service", serviceType.Name(), "error", err)
@@ -94,7 +84,7 @@ func (c *Core) injectServicesToService(service ServiceInterface) error {
 	return nil
 }
 
-func (c *Core) injectServicesToMiddleware(middleware MiddlewareInterface) error {
+func (c *Core) injectServicesToMiddleware(middleware components.MiddlewareInterface) error {
 	middlewareValue := reflect.ValueOf(middleware).Elem()
 	middlewareType := reflect.TypeOf(middleware).Elem()
 
@@ -112,7 +102,7 @@ func (c *Core) injectServicesToMiddleware(middleware MiddlewareInterface) error 
 			continue
 		}
 
-		serviceInterfaceType := reflect.TypeOf((*ServiceInterface)(nil)).Elem()
+		serviceInterfaceType := reflect.TypeOf((*components.ServiceInterface)(nil)).Elem()
 		if fieldType.Type.Implements(serviceInterfaceType) {
 			err := fmt.Errorf("%s requires %s, but the service was not found in services initializer", middlewareType.Name(), serviceName)
 			c.utils.Log.Error("Error while registering middleware", "middleware", middlewareType.Name(), "error", err)

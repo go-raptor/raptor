@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/go-raptor/raptor/v3/components"
 )
 
 const controllerSuffix = "Controller"
@@ -28,17 +30,6 @@ func ActionDescriptor(controller, action string) string {
 	return controller + descriptorSeparator + action
 }
 
-func (c *Controller) Init(u *Utils) {
-	c.Utils = u
-	if c.onInit != nil {
-		c.onInit()
-	}
-}
-
-func (c *Controller) OnInit(callback func()) {
-	c.onInit = callback
-}
-
 func (c *Core) RegisterControllers(components *Components) error {
 	for _, controller := range components.Controllers {
 		if err := c.registerController(controller); err != nil {
@@ -58,7 +49,7 @@ func (c *Core) registerController(controller interface{}) error {
 
 	controllerElem := controllerValue.Elem()
 	controllerName := controllerElem.Type().Name()
-	controllerElem.FieldByName("Controller").Addr().Interface().(*Controller).Init(c.utils)
+	controllerElem.FieldByName("Controller").Addr().Interface().(*components.Controller).Init(c.utils)
 
 	if err := c.registerControllerActions(controllerValue, controllerName); err != nil {
 		return err
@@ -68,7 +59,7 @@ func (c *Core) registerController(controller interface{}) error {
 }
 
 func (c *Core) validateController(val reflect.Value) error {
-	if val.Kind() != reflect.Pointer || val.Elem().FieldByName("Controller").Type() != reflect.TypeOf(Controller{}) {
+	if val.Kind() != reflect.Pointer || val.Elem().FieldByName("Controller").Type() != reflect.TypeOf(components.Controller{}) {
 		c.utils.Log.Error("Error while registering controller", "controller", val.Type().Name(), "error", "controller must be a pointer to a struct that embeds raptor.Controller")
 		return fmt.Errorf("controller must be a pointer to a struct that embeds raptor.Controller")
 	}
@@ -86,7 +77,7 @@ func (c *Core) registerControllerActions(val reflect.Value, controller string) e
 
 		if c.isValidActionMethod(methodType) {
 			action := val.Type().Method(i).Name
-			c.handlers[controller][action] = newHandler(method.Interface().(func(*Context) error))
+			c.handlers[controller][action] = newHandler(method.Interface().(func(*components.Context) error))
 		}
 	}
 
@@ -95,7 +86,7 @@ func (c *Core) registerControllerActions(val reflect.Value, controller string) e
 
 func (c *Core) isValidActionMethod(methodType reflect.Type) bool {
 	return methodType.NumIn() == 1 &&
-		methodType.In(0) == reflect.TypeOf(&Context{}) &&
+		methodType.In(0) == reflect.TypeOf(&components.Context{}) &&
 		methodType.NumOut() == 1 &&
 		methodType.Out(0) == reflect.TypeOf((*error)(nil)).Elem()
 }

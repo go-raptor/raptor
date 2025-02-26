@@ -4,69 +4,59 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/go-raptor/raptor/v3/components"
 	"github.com/labstack/echo/v4"
 )
 
-func (m *Middleware) InitMiddleware(u *Utils) {
-	m.Utils = u
-	if m.onInit != nil {
-		m.onInit()
-	}
-}
-
-func (m *Middleware) OnInit(callback func()) {
-	m.onInit = callback
-}
-
-func (m *echoMiddleware) InitMiddleware(u *Utils) {
+func (m *echoMiddleware) InitMiddleware(u *components.Utils) {
 	m.utils = u
 }
 
-func (m *echoMiddleware) New(c *Context, next func(*Context) error) error {
+func (m *echoMiddleware) New(c *components.Context, next func(*components.Context) error) error {
 	return m.middleware(func(ec echo.Context) error {
 		return next(c)
 	})(c.Context)
 }
 
-func Use(middleware MiddlewareInterface) ScopedMiddleware {
-	return ScopedMiddleware{
-		middleware: middleware,
-		global:     true,
+func Use(middleware components.MiddlewareInterface) components.ScopedMiddleware {
+	return components.ScopedMiddleware{
+		Middleware: middleware,
+		Global:     true,
 	}
 }
 
-func UseEcho(m echo.MiddlewareFunc) MiddlewareInterface {
+func UseEcho(m echo.MiddlewareFunc) components.MiddlewareInterface {
 	return &echoMiddleware{middleware: m}
 }
 
-func UseExcept(middleware MiddlewareInterface, except ...string) ScopedMiddleware {
-	return ScopedMiddleware{
-		middleware: middleware,
-		except:     except,
+func UseExcept(middleware components.MiddlewareInterface, except ...string) components.ScopedMiddleware {
+	return components.ScopedMiddleware{
+		Middleware: middleware,
+		Except:     except,
 	}
 }
 
-func UseOnly(middleware MiddlewareInterface, only ...string) ScopedMiddleware {
-	return ScopedMiddleware{
-		middleware: middleware,
-		only:       only,
+func UseOnly(middleware components.MiddlewareInterface, only ...string) components.ScopedMiddleware {
+	return components.ScopedMiddleware{
+		Middleware: middleware,
+		Only:       only,
 	}
 }
 
 func (c *Core) RegisterMiddlewares(components *Components) error {
 	for i, scopedMiddleware := range components.Middlewares {
-		scopedMiddleware.middleware.InitMiddleware(c.utils)
-		c.middlewares = append(c.middlewares, scopedMiddleware.middleware)
+		scopedMiddleware.Middleware.InitMiddleware(c.utils)
+		c.middlewares = append(c.middlewares, scopedMiddleware.Middleware)
 		var err error
-		if scopedMiddleware.global {
+		if scopedMiddleware.Global {
 			err = c.injectMiddlewareGlobal(i)
-		} else if scopedMiddleware.except != nil {
-			err = c.injectMiddlewareExcept(i, scopedMiddleware.except)
-		} else if scopedMiddleware.only != nil {
-			err = c.injectMiddlewareOnly(i, scopedMiddleware.only)
+		} else if scopedMiddleware.Except != nil {
+			err = c.injectMiddlewareExcept(i, scopedMiddleware.Except)
+		} else if scopedMiddleware.Only != nil {
+			err = c.injectMiddlewareOnly(i, scopedMiddleware.Only)
 		}
 		if err != nil {
-			c.utils.Log.Error("Error while registering middleware", "middleware", reflect.TypeOf(scopedMiddleware.middleware).Elem().Name(), "error", err)
+			c.utils.Log.Error("Error while registering middleware", "middleware", reflect.TypeOf(scopedMiddleware.Middleware).Elem().Name(), "error", err)
 			return err
 		}
 	}

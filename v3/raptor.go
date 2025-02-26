@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"strings"
 
+	"github.com/go-raptor/raptor/v3/components"
 	"github.com/go-raptor/raptor/v3/config"
 	"github.com/go-raptor/raptor/v3/core"
 	"github.com/go-raptor/raptor/v3/router"
@@ -17,7 +18,7 @@ import (
 )
 
 type Raptor struct {
-	Utils  *core.Utils
+	Utils  *components.Utils
 	Server *echo.Echo
 	Core   *core.Core
 	Router *router.Router
@@ -25,7 +26,7 @@ type Raptor struct {
 type RaptorOption func(*Raptor)
 
 func New(opts ...RaptorOption) *Raptor {
-	utils := core.NewUtils()
+	utils := components.NewUtils()
 	config, err := config.NewConfig(utils.Log)
 	if err != nil {
 		os.Exit(1)

@@ -2,10 +2,11 @@ package core
 
 import (
 	"github.com/go-raptor/errs"
+	"github.com/go-raptor/raptor/v3/components"
 	"github.com/labstack/echo/v4"
 )
 
-func (c *Core) CreateActionWrapper(controller, action string, handler func(*Context) error) echo.HandlerFunc {
+func (c *Core) CreateActionWrapper(controller, action string, handler func(*components.Context) error) echo.HandlerFunc {
 	return func(echoCtx echo.Context) error {
 		ctx := c.acquireContext(echoCtx, controller, action)
 		defer c.releaseContext(ctx)
@@ -15,7 +16,7 @@ func (c *Core) CreateActionWrapper(controller, action string, handler func(*Cont
 			mwIndex := c.handlers[controller][action].middlewares[i]
 			mw := c.middlewares[mwIndex]
 			currentChain := chain
-			chain = func(ctx *Context) error {
+			chain = func(ctx *components.Context) error {
 				if err := mw.New(ctx, currentChain); err != nil {
 					if _, ok := err.(*errs.Error); ok {
 						ctx.JSONError(err)
