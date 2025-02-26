@@ -14,6 +14,7 @@ type Controllers = components.Controllers
 type Service = components.Service
 type Services = components.Services
 type Middleware = components.Middleware
+type MiddlewareInterface = components.MiddlewareInterface
 type Middlewares = components.Middlewares
 type Context = components.Context
 type Error = errs.Error
