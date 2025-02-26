@@ -9,8 +9,8 @@ import (
 	"os/signal"
 	"strings"
 
-	"github.com/go-raptor/raptor/v3/components"
-	"github.com/go-raptor/raptor/v3/config"
+	"github.com/go-raptor/components"
+	"github.com/go-raptor/config"
 	"github.com/go-raptor/raptor/v3/core"
 	"github.com/go-raptor/raptor/v3/router"
 	"github.com/labstack/echo/v4"

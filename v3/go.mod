@@ -2,15 +2,11 @@ module github.com/go-raptor/raptor/v3
 
 go 1.24.0
 
-replace github.com/go-raptor/raptor/v3/config => ./config
-
-replace github.com/go-raptor/raptor/v3/components => ./components
-
 require (
+	github.com/go-raptor/components v1.0.0
+	github.com/go-raptor/config v1.0.0
 	github.com/go-raptor/connector v1.0.1
 	github.com/go-raptor/errs v1.0.0
-	github.com/go-raptor/raptor/v3/components v0.0.0-00010101000000-000000000000
-	github.com/go-raptor/raptor/v3/config v0.0.0-00010101000000-000000000000
 	github.com/labstack/echo/v4 v4.13.3
 	gopkg.in/yaml.v3 v3.0.1
 )

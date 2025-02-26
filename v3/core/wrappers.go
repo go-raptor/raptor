@@ -1,8 +1,8 @@
 package core
 
 import (
+	"github.com/go-raptor/components"
 	"github.com/go-raptor/errs"
-	"github.com/go-raptor/raptor/v3/components"
 	"github.com/labstack/echo/v4"
 )
 

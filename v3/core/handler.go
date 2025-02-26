@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-raptor/raptor/v3/components"
+	"github.com/go-raptor/components"
 )
 
 type handler struct {

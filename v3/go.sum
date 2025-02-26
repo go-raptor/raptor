@@ -1,5 +1,9 @@
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/go-raptor/components v1.0.0 h1:0fdxfYZ9/ZrRhuG7YitPOU56OhZKgUQR6ZeB6y1Pn+4=
+github.com/go-raptor/components v1.0.0/go.mod h1:UCc/a6d43s2JvO/gi2OZLmIeXFQ8nkbQlljmiDNLtXE=
+github.com/go-raptor/config v1.0.0 h1:yLDOrHhGsSPsbQZlXs85DbT7AhUPNhzcfm4U2ck68VQ=
+github.com/go-raptor/config v1.0.0/go.mod h1:SkoS8NFSnDxB6qpO7RvY2ndM3GlbvAVAyyFwKJlX8tA=
 github.com/go-raptor/connector v1.0.1 h1:wlfLqEM8GWrMQXtDThTCVSoPbFCeUZuYMH7CKXUn7yc=
 github.com/go-raptor/connector v1.0.1/go.mod h1:PhsrQUzoy0XBqUXTK7clyBT0ou0gDVMnxH0EpgpHcrI=
 github.com/go-raptor/errs v1.0.0 h1:0oTG63Ci9pM0FBPlPRcN71QkPMLHZnm3FXB8zmg4FKU=

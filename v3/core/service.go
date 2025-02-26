@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/go-raptor/raptor/v3/components"
+	"github.com/go-raptor/components"
 )
 
 func (c *Core) RegisterServices(components *Components) error {

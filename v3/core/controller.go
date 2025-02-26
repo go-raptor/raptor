@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/go-raptor/raptor/v3/components"
+	"github.com/go-raptor/components"
 )
 
 const controllerSuffix = "Controller"

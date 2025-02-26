@@ -3,8 +3,8 @@ package core
 import (
 	"sync"
 
+	"github.com/go-raptor/components"
 	"github.com/go-raptor/connector"
-	"github.com/go-raptor/raptor/v3/components"
 	"github.com/labstack/echo/v4"
 )
 

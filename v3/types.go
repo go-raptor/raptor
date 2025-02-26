@@ -1,9 +1,9 @@
 package raptor
 
 import (
+	"github.com/go-raptor/components"
+	"github.com/go-raptor/config"
 	"github.com/go-raptor/errs"
-	"github.com/go-raptor/raptor/v3/components"
-	"github.com/go-raptor/raptor/v3/config"
 	"github.com/go-raptor/raptor/v3/core"
 )
 
