@@ -8,6 +8,11 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+type echoMiddleware struct {
+	middleware echo.MiddlewareFunc
+	utils      *components.Utils
+}
+
 func (m *echoMiddleware) InitMiddleware(u *components.Utils) {
 	m.utils = u
 }

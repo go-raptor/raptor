@@ -5,7 +5,6 @@ import (
 
 	"github.com/go-raptor/components"
 	"github.com/go-raptor/connector"
-	"github.com/labstack/echo/v4"
 )
 
 type Components struct {
@@ -35,9 +34,4 @@ func NewCore(u *components.Utils) *Core {
 		services:    make(map[string]components.ServiceInterface),
 		middlewares: make([]components.MiddlewareInterface, 0),
 	}
-}
-
-type echoMiddleware struct {
-	middleware echo.MiddlewareFunc
-	utils      *components.Utils
 }
