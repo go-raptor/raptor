@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -26,17 +27,15 @@ func (h *handler) injectMiddleware(middlewareIndex uint8) {
 
 func (c *Core) Handle(ctx *components.Context) error {
 	startTime := time.Now()
-	c.logActionStart(ctx)
 	err := c.handlers[ctx.Controller][ctx.Action].action(ctx)
-	c.logActionFinish(ctx, startTime)
+	if c.utils.LogLevel.Level() < slog.LevelWarn {
+		c.logAction(ctx, startTime)
+	}
 	return err
 }
 
-func (c *Core) logActionStart(ctx *components.Context) {
+func (c *Core) logAction(ctx *components.Context, startTime time.Time) {
 	c.utils.Log.Info(fmt.Sprintf("Started %s \"%s\" for %s", ctx.Request().Method, ctx.Request().URL.Path, ctx.RealIP()))
 	c.utils.Log.Info(fmt.Sprintf("Processing by %s", ActionDescriptor(ctx.Controller, ctx.Action)))
-}
-
-func (c *Core) logActionFinish(ctx *components.Context, startTime time.Time) {
 	c.utils.Log.Info(fmt.Sprintf("Completed %d %s in %dms", ctx.Response().Status, http.StatusText(ctx.Response().Status), time.Since(startTime).Milliseconds()))
 }
