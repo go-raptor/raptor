@@ -1,9 +1,7 @@
 package core
 
 import (
-	"fmt"
 	"log/slog"
-	"net/http"
 	"time"
 
 	"github.com/go-raptor/components"
@@ -35,7 +33,12 @@ func (c *Core) Handle(ctx *components.Context) error {
 }
 
 func (c *Core) logAction(ctx *components.Context, startTime time.Time) {
-	c.utils.Log.Info(fmt.Sprintf("Started %s \"%s\" for %s", ctx.Request().Method, ctx.Request().URL.Path, ctx.RealIP()))
-	c.utils.Log.Info(fmt.Sprintf("Processing by %s", ActionDescriptor(ctx.Controller, ctx.Action)))
-	c.utils.Log.Info(fmt.Sprintf("Completed %d %s in %dms", ctx.Response().Status, http.StatusText(ctx.Response().Status), time.Since(startTime).Milliseconds()))
+	c.utils.Log.Info("Request processed",
+		"ip", ctx.RealIP(),
+		"method", ctx.Request().Method,
+		"path", ctx.Request().URL.Path,
+		"status", ctx.Response().Status,
+		"handler", ActionDescriptor(ctx.Controller, ctx.Action),
+		"duration", time.Since(startTime).Milliseconds(),
+	)
 }
