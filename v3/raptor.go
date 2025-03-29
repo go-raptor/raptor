@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/go-raptor/components"
 	"github.com/go-raptor/config"
@@ -138,13 +140,22 @@ func (r *Raptor) info() {
 
 func (r *Raptor) waitForShutdown() {
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+
 	<-quit
 	r.Utils.Log.Warn("Shutting down Raptor...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	r.Core.ShutdownServices()
-	if err := r.Server.Shutdown(context.Background()); err != nil {
-		r.Utils.Log.Error("Server Shutdown", "error", err)
+	if err := r.Server.Shutdown(ctx); err != nil {
+		r.Utils.Log.Error("Server shutdown", "error", err)
+		if err := r.Server.Close(); err != nil {
+			r.Utils.Log.Error("Server force close", "error", err)
+		}
 	}
+
 	r.Utils.Log.Warn("Raptor exited, bye bye!")
 }
 
