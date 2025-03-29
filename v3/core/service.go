@@ -25,6 +25,14 @@ func (c *Core) RegisterServices(components *Components) error {
 	return nil
 }
 
+func (c *Core) ShutdownServices() {
+	for _, service := range c.services {
+		if err := service.ShutdownService(); err != nil {
+			c.utils.Log.Error("Service shutdown failed", "service", reflect.TypeOf(service).Elem().Name(), "error", err)
+		}
+	}
+}
+
 func (c *Core) injectServicesToController(controllerValue reflect.Value, controller string) error {
 	controllerElem := controllerValue.Elem()
 

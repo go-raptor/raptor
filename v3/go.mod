@@ -3,7 +3,7 @@ module github.com/go-raptor/raptor/v3
 go 1.24.1
 
 require (
-	github.com/go-raptor/components v1.0.6
+	github.com/go-raptor/components v1.0.7
 	github.com/go-raptor/config v1.0.1
 	github.com/go-raptor/connector v1.0.1
 	github.com/go-raptor/errs v1.0.0

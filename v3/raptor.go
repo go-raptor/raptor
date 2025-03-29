@@ -141,6 +141,7 @@ func (r *Raptor) waitForShutdown() {
 	signal.Notify(quit, os.Interrupt)
 	<-quit
 	r.Utils.Log.Warn("Shutting down Raptor...")
+	r.Core.ShutdownServices()
 	if err := r.Server.Shutdown(context.Background()); err != nil {
 		r.Utils.Log.Error("Server Shutdown", "error", err)
 	}
