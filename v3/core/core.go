@@ -4,11 +4,11 @@ import (
 	"sync"
 
 	"github.com/go-raptor/components"
-	"github.com/go-raptor/connector"
+	"github.com/go-raptor/connectors"
 )
 
 type Components struct {
-	DatabaseConnector connector.DatabaseConnector
+	DatabaseConnector connectors.DatabaseConnector
 	Middlewares       components.Middlewares
 	Services          components.Services
 	Controllers       components.Controllers
