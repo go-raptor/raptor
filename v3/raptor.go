@@ -13,7 +13,6 @@ import (
 
 	"github.com/go-raptor/components"
 	"github.com/go-raptor/config"
-	"github.com/go-raptor/errs"
 	"github.com/go-raptor/raptor/v3/core"
 	"github.com/go-raptor/raptor/v3/router"
 	"github.com/labstack/echo/v4"
@@ -119,11 +118,6 @@ func newServer(config *config.Config) *echo.Echo {
 			server.Static(config.StaticConfig.Prefix, config.StaticConfig.Root)
 		}
 	}
-
-	server.RouteNotFound("/*", func(c echo.Context) error {
-		e := errs.NewErrorNotFound("No handler for requested path: " + c.Request().URL.Path)
-		return c.JSON(e.Code, e)
-	})
 
 	return server
 }
