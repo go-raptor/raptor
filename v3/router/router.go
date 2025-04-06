@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/go-raptor/components"
 	"github.com/go-raptor/raptor/v3/core"
 	"github.com/labstack/echo/v4"
 )
@@ -33,11 +34,17 @@ func New(routes Routes, core *core.Core, server *echo.Echo) (*Router, error) {
 			return nil, fmt.Errorf("action %s not found in controller %s for path %s", route.Action, route.Controller, route.Path)
 		}
 
-		routeHandler := core.CreateActionWrapper(route.Controller, route.Action, core.Handle)
+		handler := func(echoCtx echo.Context) error {
+			ctx := echoCtx.(*components.Context)
+			ctx.Controller = route.Controller
+			ctx.Action = route.Action
+			return core.Handle(ctx)
+		}
+
 		if route.Method != "*" {
-			server.Add(route.Method, route.Path, routeHandler)
+			server.Add(route.Method, route.Path, handler)
 		} else {
-			server.Any(route.Path, routeHandler)
+			server.Any(route.Path, handler)
 		}
 	}
 
