@@ -77,7 +77,7 @@ func (c *Core) registerControllerActions(val reflect.Value, controller string) e
 
 		if c.isValidActionMethod(methodType) {
 			action := val.Type().Method(i).Name
-			c.handlers[controller][action] = newHandler(method.Interface().(func(*components.Context) error))
+			c.handlers[controller][action] = newHandler(method.Interface().(func(*Context) error))
 		}
 	}
 
@@ -86,7 +86,7 @@ func (c *Core) registerControllerActions(val reflect.Value, controller string) e
 
 func (c *Core) isValidActionMethod(methodType reflect.Type) bool {
 	return methodType.NumIn() == 1 &&
-		methodType.In(0) == reflect.TypeOf(&components.Context{}) &&
+		methodType.In(0) == reflect.TypeOf((*Context)(nil)) &&
 		methodType.NumOut() == 1 &&
 		methodType.Out(0) == reflect.TypeOf((*error)(nil)).Elem()
 }

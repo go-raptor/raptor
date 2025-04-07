@@ -17,10 +17,10 @@ func (m *echoMiddleware) InitMiddleware(u *components.Utils) {
 	m.utils = u
 }
 
-func (m *echoMiddleware) New(c *components.Context, next func(*components.Context) error) error {
+func (m *echoMiddleware) New(c components.ContextInterface, next func(components.ContextInterface) error) error {
 	return m.middleware(func(ec echo.Context) error {
 		return next(c)
-	})(c.Context)
+	})(c.(echo.Context))
 }
 
 func Use(middleware components.MiddlewareInterface) components.ScopedMiddleware {

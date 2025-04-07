@@ -121,7 +121,7 @@ func newServer(config *config.Config) *echo.Echo {
 
 	server.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(echoCtx echo.Context) error {
-			raptorCtx := &components.Context{
+			raptorCtx := &core.Context{
 				Context: echoCtx,
 			}
 			return next(raptorCtx)

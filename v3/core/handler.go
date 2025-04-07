@@ -1,15 +1,11 @@
 package core
 
-import (
-	"github.com/go-raptor/components"
-)
-
 type handler struct {
-	action      func(*components.Context) error
+	action      func(*Context) error
 	middlewares []uint8
 }
 
-func newHandler(action func(*components.Context) error) *handler {
+func newHandler(action func(*Context) error) *handler {
 	return &handler{
 		action:      action,
 		middlewares: make([]uint8, 0),

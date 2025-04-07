@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/go-raptor/components"
 	"github.com/go-raptor/raptor/v3/core"
 	"github.com/labstack/echo/v4"
 )
@@ -24,21 +23,20 @@ type Router struct {
 	Routes Routes
 }
 
-func New(routes Routes, core *core.Core, server *echo.Echo) (*Router, error) {
+func New(routes Routes, c *core.Core, server *echo.Echo) (*Router, error) {
 	router := &Router{
 		Routes: routes,
 	}
 
 	for _, route := range router.Routes {
-		if !core.HasControllerAction(route.Controller, route.Action) {
+		if !c.HasControllerAction(route.Controller, route.Action) {
 			return nil, fmt.Errorf("action %s not found in controller %s for path %s", route.Action, route.Controller, route.Path)
 		}
 
 		handler := func(echoCtx echo.Context) error {
-			ctx := echoCtx.(*components.Context)
-			ctx.Controller = route.Controller
-			ctx.Action = route.Action
-			return core.Handle(ctx)
+			echoCtx.Set(string(core.ControllerKey), route.Controller)
+			echoCtx.Set(string(core.ActionKey), route.Action)
+			return c.Handle(echoCtx)
 		}
 
 		if route.Method != "*" {
