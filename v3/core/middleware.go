@@ -2,7 +2,9 @@ package core
 
 import (
 	"fmt"
+	"log/slog"
 	"reflect"
+	"time"
 
 	"github.com/go-raptor/components"
 	"github.com/labstack/echo/v4"
@@ -139,13 +141,6 @@ func (c *Core) registerCoreMiddlewares(server *echo.Echo) {
 		MaxAge:           c.utils.Config.CORSConfig.MaxAge,
 	}))
 
-	server.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(echoCtx echo.Context) error {
-			raptorCtx := NewContext(echoCtx)
-			return next(raptorCtx)
-		}
-	})
-
 	if c.utils.Config.StaticConfig.Enabled {
 		if c.utils.Config.StaticConfig.HTML5 {
 			server.Use(middleware.StaticWithConfig(middleware.StaticConfig{
@@ -158,4 +153,25 @@ func (c *Core) registerCoreMiddlewares(server *echo.Echo) {
 			server.Static(c.utils.Config.StaticConfig.Prefix, c.utils.Config.StaticConfig.Root)
 		}
 	}
+
+	if c.utils.LogLevel.Level() < slog.LevelWarn {
+		server.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+			return func(echoCtx echo.Context) error {
+				startTime := time.Now()
+				err := next(echoCtx)
+				if err != nil {
+					c.utils.Log.Error("Error while processing request", "error", err)
+				}
+				c.logRequest(GetContext(echoCtx), startTime)
+				return err
+			}
+		})
+	}
+
+	server.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(echoCtx echo.Context) error {
+			raptorCtx := GetContext(echoCtx)
+			return next(raptorCtx)
+		}
+	})
 }

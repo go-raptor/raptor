@@ -1,7 +1,6 @@
 package core
 
 import (
-	"log/slog"
 	"time"
 
 	"github.com/go-raptor/components"
@@ -35,7 +34,6 @@ func NewCore(u *components.Utils) *Core {
 
 func (c *Core) Handle(echoCtx echo.Context) error {
 	ctx := GetContext(echoCtx)
-	startTime := time.Now()
 
 	h := c.handlers[ctx.Controller()][ctx.Action()]
 	chain := h.action
@@ -58,16 +56,10 @@ func (c *Core) Handle(echoCtx echo.Context) error {
 		}
 	}
 
-	err := chain(ctx)
-
-	if c.utils.LogLevel.Level() < slog.LevelWarn {
-		c.logAction(ctx, startTime)
-	}
-
-	return err
+	return chain(ctx)
 }
 
-func (c *Core) logAction(ctx *Context, startTime time.Time) {
+func (c *Core) logRequest(ctx *Context, startTime time.Time) {
 	c.utils.Log.Info("Request processed",
 		"ip", ctx.RealIP(),
 		"method", ctx.Request().Method,
