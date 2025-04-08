@@ -106,6 +106,13 @@ func newServer(config *config.Config) *echo.Echo {
 		MaxAge:           config.CORSConfig.MaxAge,
 	}))
 
+	server.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(echoCtx echo.Context) error {
+			raptorCtx := core.NewContext(echoCtx)
+			return next(raptorCtx)
+		}
+	})
+
 	if config.StaticConfig.Enabled {
 		if config.StaticConfig.HTML5 {
 			server.Use(middleware.StaticWithConfig(middleware.StaticConfig{
@@ -118,15 +125,6 @@ func newServer(config *config.Config) *echo.Echo {
 			server.Static(config.StaticConfig.Prefix, config.StaticConfig.Root)
 		}
 	}
-
-	server.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(echoCtx echo.Context) error {
-			raptorCtx := &core.Context{
-				Context: echoCtx,
-			}
-			return next(raptorCtx)
-		}
-	})
 
 	return server
 }
