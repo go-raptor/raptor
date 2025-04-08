@@ -62,3 +62,7 @@ func (c *Context) JSONError(err error, status ...int) error {
 	}
 	return c.JSON(status[0], errs.NewError(status[0], err.Error()))
 }
+
+func (c *Context) ResponseWriter() http.ResponseWriter {
+	return c.Context.Response().Writer
+}
