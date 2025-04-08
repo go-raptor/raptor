@@ -20,16 +20,16 @@ type Components struct {
 type Core struct {
 	utils       *components.Utils
 	handlers    map[string]map[string]*handler
-	services    map[string]components.ServiceInterface
-	middlewares []components.MiddlewareInterface
+	services    map[string]components.ServiceProvider
+	middlewares []components.MiddlewareProvider
 }
 
 func NewCore(u *components.Utils) *Core {
 	return &Core{
 		utils:       u,
 		handlers:    make(map[string]map[string]*handler),
-		services:    make(map[string]components.ServiceInterface),
-		middlewares: make([]components.MiddlewareInterface, 0),
+		services:    make(map[string]components.ServiceProvider),
+		middlewares: make([]components.MiddlewareProvider, 0),
 	}
 }
 
@@ -44,12 +44,12 @@ func (c *Core) Handle(echoCtx echo.Context) error {
 		mwIndex := c.handlers[ctx.Controller()][ctx.Action()].middlewares[i]
 		mw := c.middlewares[mwIndex]
 		currentChain := chain
-		chain = func(coreCtx *Context) error {
-			if err := mw.New(coreCtx, func(ctxInt components.ContextInterface) error {
-				return currentChain(coreCtx)
+		chain = func(state components.State) error {
+			if err := mw.New(state, func(nextState components.State) error {
+				return currentChain(nextState)
 			}); err != nil {
 				if _, ok := err.(*errs.Error); ok {
-					coreCtx.JSONError(err)
+					ctx.JSONError(err)
 					return nil
 				}
 				return err

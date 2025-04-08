@@ -55,7 +55,7 @@ func (c *Core) injectServicesToController(controllerValue reflect.Value, control
 			continue
 		}
 
-		serviceInterfaceType := reflect.TypeOf((*components.ServiceInterface)(nil)).Elem()
+		serviceInterfaceType := reflect.TypeOf((*components.ServiceProvider)(nil)).Elem()
 		if fieldType.Type.Implements(serviceInterfaceType) {
 			return fmt.Errorf("%s requires %s, but the service was not found in services initializer", controller, service)
 		}
@@ -64,7 +64,7 @@ func (c *Core) injectServicesToController(controllerValue reflect.Value, control
 	return nil
 }
 
-func (c *Core) injectServicesToService(service components.ServiceInterface) error {
+func (c *Core) injectServicesToService(service components.ServiceProvider) error {
 	serviceValue := reflect.ValueOf(service).Elem()
 	serviceType := reflect.TypeOf(service).Elem()
 
@@ -81,7 +81,7 @@ func (c *Core) injectServicesToService(service components.ServiceInterface) erro
 			continue
 		}
 
-		serviceInterfaceType := reflect.TypeOf((*components.ServiceInterface)(nil)).Elem()
+		serviceInterfaceType := reflect.TypeOf((*components.ServiceProvider)(nil)).Elem()
 		if fieldType.Type.Implements(serviceInterfaceType) {
 			err := fmt.Errorf("%s requires %s, but the service was not found in services initializer", serviceType.Name(), fieldType.Type.Elem().Name())
 			c.utils.Log.Error("Error while registering service", "service", serviceType.Name(), "error", err)
@@ -92,7 +92,7 @@ func (c *Core) injectServicesToService(service components.ServiceInterface) erro
 	return nil
 }
 
-func (c *Core) injectServicesToMiddleware(middleware components.MiddlewareInterface) error {
+func (c *Core) injectServicesToMiddleware(middleware components.MiddlewareProvider) error {
 	middlewareValue := reflect.ValueOf(middleware).Elem()
 	middlewareType := reflect.TypeOf(middleware).Elem()
 
@@ -110,7 +110,7 @@ func (c *Core) injectServicesToMiddleware(middleware components.MiddlewareInterf
 			continue
 		}
 
-		serviceInterfaceType := reflect.TypeOf((*components.ServiceInterface)(nil)).Elem()
+		serviceInterfaceType := reflect.TypeOf((*components.ServiceProvider)(nil)).Elem()
 		if fieldType.Type.Implements(serviceInterfaceType) {
 			err := fmt.Errorf("%s requires %s, but the service was not found in services initializer", middlewareType.Name(), serviceName)
 			c.utils.Log.Error("Error while registering middleware", "middleware", middlewareType.Name(), "error", err)

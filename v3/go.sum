@@ -4,6 +4,8 @@ github.com/go-raptor/components v1.0.8 h1:g/m8wJH11Bp2PKvMzzOyETBCUdM04d9UioJwiV
 github.com/go-raptor/components v1.0.8/go.mod h1:niUi4f9weapA1oCb6+KK2SZ8uk7wmyOVKiULkrKDPxY=
 github.com/go-raptor/components v1.1.0 h1:kPEd6b4c9xnjkjL9iCP/5Pe71X4+iVi/n2i20NemRFM=
 github.com/go-raptor/components v1.1.0/go.mod h1:5GOauvxQnVn0qqhbQU6ZDs1LRcR9OVzEZjzTVV+fg2g=
+github.com/go-raptor/components v1.1.1 h1:2kR/2ut/KFbp7ekKG03FiZJwsGX1jbMuI9kFsJg2TPo=
+github.com/go-raptor/components v1.1.1/go.mod h1:5GOauvxQnVn0qqhbQU6ZDs1LRcR9OVzEZjzTVV+fg2g=
 github.com/go-raptor/config v1.0.1 h1:kBB+XmV6Hj8TueNTjf/FfwuB7q4eP0GObNh6NddSWl4=
 github.com/go-raptor/config v1.0.1/go.mod h1:SkoS8NFSnDxB6qpO7RvY2ndM3GlbvAVAyyFwKJlX8tA=
 github.com/go-raptor/connectors v1.0.2 h1:aAFXlSssExRE0HC6YIj+mSMR2ZP7tZn8qNxRADcekoE=
@@ -34,6 +36,8 @@ golang.org/x/crypto v0.37.0 h1:kJNSjF/Xp7kU0iB2Z+9viTPMW4EqqsrywMXLJOOsXSE=
 golang.org/x/crypto v0.37.0/go.mod h1:vg+k43peMZ0pUMhYmVAWysMK35e6ioLh3wB8ZCAfbVc=
 golang.org/x/net v0.38.0 h1:vRMAPTMaeGqVhG5QyLJHqNDwecKTomGeqbnfZyKlBI8=
 golang.org/x/net v0.38.0/go.mod h1:ivrbrMbzFq5J41QOQh0siUuly180yBYtLp+CKbEaFx8=
+golang.org/x/net v0.39.0 h1:ZCu7HMWDxpXpaiKdhzIfaltL9Lp31x/3fCP11bc6/fY=
+golang.org/x/net v0.39.0/go.mod h1:X7NRbYVEA+ewNkCNyJ513WmMdQ3BineSwVtN2zD/d+E=
 golang.org/x/sys v0.6.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.32.0 h1:s77OFDvIQeibCmezSnk/q6iAfkdiQaJi4VzroCFrN20=
 golang.org/x/sys v0.32.0/go.mod h1:BJP2sWEmIv4KK5OTEluFJCKSidICx8ciO85XgH3Ak8k=

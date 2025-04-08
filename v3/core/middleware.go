@@ -17,31 +17,31 @@ func (m *echoMiddleware) InitMiddleware(u *components.Utils) {
 	m.utils = u
 }
 
-func (m *echoMiddleware) New(c components.ContextInterface, next func(components.ContextInterface) error) error {
+func (m *echoMiddleware) New(c components.State, next func(components.State) error) error {
 	return m.middleware(func(ec echo.Context) error {
 		return next(c)
 	})(c.(echo.Context))
 }
 
-func Use(middleware components.MiddlewareInterface) components.ScopedMiddleware {
+func Use(middleware components.MiddlewareProvider) components.ScopedMiddleware {
 	return components.ScopedMiddleware{
 		Middleware: middleware,
 		Global:     true,
 	}
 }
 
-func UseEcho(m echo.MiddlewareFunc) components.MiddlewareInterface {
+func UseEcho(m echo.MiddlewareFunc) components.MiddlewareProvider {
 	return &echoMiddleware{middleware: m}
 }
 
-func UseExcept(middleware components.MiddlewareInterface, except ...string) components.ScopedMiddleware {
+func UseExcept(middleware components.MiddlewareProvider, except ...string) components.ScopedMiddleware {
 	return components.ScopedMiddleware{
 		Middleware: middleware,
 		Except:     except,
 	}
 }
 
-func UseOnly(middleware components.MiddlewareInterface, only ...string) components.ScopedMiddleware {
+func UseOnly(middleware components.MiddlewareProvider, only ...string) components.ScopedMiddleware {
 	return components.ScopedMiddleware{
 		Middleware: middleware,
 		Only:       only,
