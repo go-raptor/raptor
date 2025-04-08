@@ -16,7 +16,6 @@ import (
 	"github.com/go-raptor/raptor/v3/core"
 	"github.com/go-raptor/raptor/v3/router"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 )
 
 type Raptor struct {
@@ -98,34 +97,6 @@ func newServer(config *config.Config) *echo.Echo {
 	server.HideBanner = true
 	server.HidePort = true
 
-	server.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     config.CORSConfig.AllowOrigins,
-		AllowHeaders:     config.CORSConfig.AllowHeaders,
-		AllowMethods:     config.CORSConfig.AllowMethods,
-		AllowCredentials: config.CORSConfig.AllowCredentials,
-		MaxAge:           config.CORSConfig.MaxAge,
-	}))
-
-	server.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(echoCtx echo.Context) error {
-			raptorCtx := core.NewContext(echoCtx)
-			return next(raptorCtx)
-		}
-	})
-
-	if config.StaticConfig.Enabled {
-		if config.StaticConfig.HTML5 {
-			server.Use(middleware.StaticWithConfig(middleware.StaticConfig{
-				Root:   config.StaticConfig.Root,
-				Index:  config.StaticConfig.Index,
-				Browse: config.StaticConfig.Browse,
-				HTML5:  config.StaticConfig.HTML5,
-			}))
-		} else {
-			server.Static(config.StaticConfig.Prefix, config.StaticConfig.Root)
-		}
-	}
-
 	return server
 }
 
@@ -181,7 +152,7 @@ func (r *Raptor) Configure(components *core.Components) *Raptor {
 	if err := r.Core.RegisterControllers(components); err != nil {
 		os.Exit(1)
 	}
-	if err := r.Core.RegisterMiddlewares(components); err != nil {
+	if err := r.Core.RegisterMiddlewares(r.Server, components); err != nil {
 		os.Exit(1)
 	}
 

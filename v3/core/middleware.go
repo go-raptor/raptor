@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-raptor/components"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 type echoMiddleware struct {
@@ -48,7 +49,9 @@ func UseOnly(middleware components.MiddlewareProvider, only ...string) component
 	}
 }
 
-func (c *Core) RegisterMiddlewares(components *Components) error {
+func (c *Core) RegisterMiddlewares(server *echo.Echo, components *Components) error {
+	c.registerCoreMiddlewares(server)
+
 	for i, scopedMiddleware := range components.Middlewares {
 		scopedMiddleware.Middleware.InitMiddleware(c.utils)
 		c.middlewares = append(c.middlewares, scopedMiddleware.Middleware)
@@ -125,4 +128,34 @@ func (c *Core) injectMiddlewareOnly(i int, onlyDescriptors []string) error {
 	}
 
 	return nil
+}
+
+func (c *Core) registerCoreMiddlewares(server *echo.Echo) {
+	server.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins:     c.utils.Config.CORSConfig.AllowOrigins,
+		AllowHeaders:     c.utils.Config.CORSConfig.AllowHeaders,
+		AllowMethods:     c.utils.Config.CORSConfig.AllowMethods,
+		AllowCredentials: c.utils.Config.CORSConfig.AllowCredentials,
+		MaxAge:           c.utils.Config.CORSConfig.MaxAge,
+	}))
+
+	server.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(echoCtx echo.Context) error {
+			raptorCtx := NewContext(echoCtx)
+			return next(raptorCtx)
+		}
+	})
+
+	if c.utils.Config.StaticConfig.Enabled {
+		if c.utils.Config.StaticConfig.HTML5 {
+			server.Use(middleware.StaticWithConfig(middleware.StaticConfig{
+				Root:   c.utils.Config.StaticConfig.Root,
+				Index:  c.utils.Config.StaticConfig.Index,
+				Browse: c.utils.Config.StaticConfig.Browse,
+				HTML5:  c.utils.Config.StaticConfig.HTML5,
+			}))
+		} else {
+			server.Static(c.utils.Config.StaticConfig.Prefix, c.utils.Config.StaticConfig.Root)
+		}
+	}
 }
