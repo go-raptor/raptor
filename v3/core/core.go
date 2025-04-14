@@ -56,11 +56,19 @@ func (c *Core) Handle(echoCtx echo.Context) error {
 }
 
 func (c *Core) logRequest(ctx *Context, startTime time.Time, err error) {
+	durationSinceStart := time.Since(startTime)
+	var duration float64
+	if durationSinceStart < time.Millisecond {
+		duration = float64(durationSinceStart.Microseconds()) / 1000
+	} else {
+		duration = float64(durationSinceStart.Milliseconds())
+	}
+
 	attrs := []any{
 		"ip", ctx.RealIP(),
 		"method", ctx.Request().Method,
 		"path", ctx.Request().URL.Path,
-		"duration", time.Since(startTime).Milliseconds(),
+		"duration", duration,
 	}
 
 	var (
