@@ -1,10 +1,8 @@
 package core
 
 import (
-	"errors"
 	"net/http"
 
-	"github.com/go-raptor/errs"
 	"github.com/labstack/echo/v4"
 )
 
@@ -50,20 +48,6 @@ func (c *Context) JSONResponse(data interface{}, status ...int) error {
 	}
 	c.Context.JSON(status[0], data)
 	return nil
-}
-
-func (c *Context) JSONError(err error, status ...int) error {
-	var e *errs.Error
-	if errors.As(err, &e) {
-		c.JSON(e.Code, e)
-		return e
-	}
-
-	if len(status) == 0 {
-		status = append(status, http.StatusInternalServerError)
-	}
-	c.JSON(status[0], errs.NewError(status[0], err.Error()))
-	return err
 }
 
 func (c *Context) ResponseWriter() http.ResponseWriter {

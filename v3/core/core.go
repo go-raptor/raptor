@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/go-raptor/components"
@@ -45,15 +46,9 @@ func (c *Core) Handle(echoCtx echo.Context) error {
 		mw := c.middlewares[mwIndex]
 		currentChain := chain
 		chain = func(state components.State) error {
-			if err := mw.New(state, func(nextState components.State) error {
+			return mw.New(state, func(nextState components.State) error {
 				return currentChain(nextState)
-			}); err != nil {
-				if _, ok := err.(*errs.Error); ok {
-					ctx.JSONError(err)
-				}
-				return err
-			}
-			return nil
+			})
 		}
 	}
 
@@ -61,28 +56,70 @@ func (c *Core) Handle(echoCtx echo.Context) error {
 }
 
 func (c *Core) logRequest(ctx *Context, startTime time.Time, err error) {
-	var logLevel slog.Level
-	var message string
-	if err != nil {
-		if raptorError, ok := err.(*errs.Error); ok {
-			if raptorError.Code >= 400 && raptorError.Code < 500 {
-				logLevel = slog.LevelWarn
-			} else {
-				logLevel = slog.LevelError
-			}
-		}
-		message = "Error while processing request"
-	} else {
-		logLevel = slog.LevelInfo
-		message = "Request processed"
-	}
-
-	c.utils.Log.Log(context.Background(), logLevel, message,
+	attrs := []any{
 		"ip", ctx.RealIP(),
 		"method", ctx.Request().Method,
 		"path", ctx.Request().URL.Path,
-		"status", ctx.Response().Status,
-		"handler", ActionDescriptor(ctx.Controller(), ctx.Action()),
 		"duration", time.Since(startTime).Milliseconds(),
+	}
+
+	var (
+		logLevel slog.Level
+		message  string
+		status   int
 	)
+
+	if err == nil {
+		logLevel = slog.LevelInfo
+		message = "Request processed"
+		attrs = append(attrs,
+			"status", ctx.Response().Status,
+			"handler", ActionDescriptor(ctx.Controller(), ctx.Action()),
+		)
+		c.utils.Log.Log(context.Background(), logLevel, message, attrs...)
+		return
+	}
+
+	// Handle error case
+	logLevel = slog.LevelError
+	if raptorErr, ok := err.(*errs.Error); ok {
+		status = raptorErr.Code
+		if status == http.StatusNotFound {
+			message = "Handler not found"
+		} else {
+			message = "Error while processing request"
+		}
+		attrs = append(attrs, "message", raptorErr.Message)
+		errAttrs := raptorErr.AttrsToSlice()
+		for i := 0; i < len(errAttrs); i += 2 {
+			if i+1 < len(errAttrs) {
+				key := errAttrs[i]
+				keyExists := false
+				for j := 0; j < len(attrs); j += 2 {
+					if j+1 < len(attrs) && attrs[j] == key {
+						keyExists = true
+						break
+					}
+				}
+				if !keyExists {
+					attrs = append(attrs, errAttrs[i], errAttrs[i+1])
+				}
+			}
+		}
+	} else {
+		status = http.StatusInternalServerError
+	}
+
+	attrs = append(attrs, "status", status)
+	c.utils.Log.Log(context.Background(), logLevel, message, attrs...)
+}
+
+func (c *Core) RegisterErrorHandler(server *echo.Echo) {
+	server.HTTPErrorHandler = func(err error, ctx echo.Context) {
+		if raptorError, ok := err.(*errs.Error); ok {
+			ctx.JSON(raptorError.Code, raptorError)
+		} else {
+			ctx.JSON(http.StatusInternalServerError, errs.NewError(http.StatusInternalServerError, err.Error()))
+		}
+	}
 }

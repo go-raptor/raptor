@@ -155,6 +155,7 @@ func (r *Raptor) Configure(components *core.Components) *Raptor {
 	if err := r.Core.RegisterMiddlewares(r.Server, components); err != nil {
 		os.Exit(1)
 	}
+	r.Core.RegisterErrorHandler(r.Server)
 
 	return r
 }

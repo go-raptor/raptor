@@ -2,8 +2,10 @@ package router
 
 import (
 	"fmt"
+	"net/http"
 	"regexp"
 
+	"github.com/go-raptor/errs"
 	"github.com/go-raptor/raptor/v3/core"
 	"github.com/labstack/echo/v4"
 )
@@ -44,6 +46,22 @@ func New(routes Routes, c *core.Core, server *echo.Echo) (*Router, error) {
 		} else {
 			server.Any(route.Path, handler)
 		}
+	}
+
+	hasCatchAll := false
+	for _, route := range router.Routes {
+		if route.Path == "/*" {
+			hasCatchAll = true
+			break
+		}
+	}
+	if !hasCatchAll {
+		server.Any("/*", func(ctx echo.Context) error {
+			return errs.NewError(http.StatusNotFound, "Handler not found",
+				"method", ctx.Request().Method,
+				"path", ctx.Request().URL.Path,
+			)
+		})
 	}
 
 	return router, nil

@@ -153,21 +153,18 @@ func (c *Core) registerCoreMiddlewares(server *echo.Echo) {
 		}
 	}
 
-	if c.utils.Config.GeneralConfig.LogRequests {
-		server.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
-			return func(echoCtx echo.Context) error {
-				startTime := time.Now()
-				err := next(echoCtx)
-				c.logRequest(GetContext(echoCtx), startTime, err)
-				return err
-			}
-		})
-	}
-
 	server.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(echoCtx echo.Context) error {
-			raptorCtx := GetContext(echoCtx)
-			return next(raptorCtx)
+			startTime := time.Now()
+			err := next(echoCtx)
+			if err != nil {
+				c.logRequest(GetContext(echoCtx), startTime, err)
+			} else {
+				if c.utils.Config.GeneralConfig.LogRequests {
+					c.logRequest(GetContext(echoCtx), startTime, nil)
+				}
+			}
+			return err
 		}
 	})
 }
