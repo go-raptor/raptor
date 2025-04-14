@@ -2,7 +2,6 @@ package core
 
 import (
 	"fmt"
-	"log/slog"
 	"reflect"
 	"time"
 
@@ -154,7 +153,7 @@ func (c *Core) registerCoreMiddlewares(server *echo.Echo) {
 		}
 	}
 
-	if c.utils.LogLevel.Level() < slog.LevelWarn {
+	if c.utils.Config.GeneralConfig.LogRequests {
 		server.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 			return func(echoCtx echo.Context) error {
 				startTime := time.Now()

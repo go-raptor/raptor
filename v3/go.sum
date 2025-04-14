@@ -10,6 +10,8 @@ github.com/go-raptor/components v1.1.2 h1:M4oTUvhC8KJV98rEBFZN1SvmZrWv0Ei0ZupeZQ
 github.com/go-raptor/components v1.1.2/go.mod h1:5GOauvxQnVn0qqhbQU6ZDs1LRcR9OVzEZjzTVV+fg2g=
 github.com/go-raptor/config v1.0.1 h1:kBB+XmV6Hj8TueNTjf/FfwuB7q4eP0GObNh6NddSWl4=
 github.com/go-raptor/config v1.0.1/go.mod h1:SkoS8NFSnDxB6qpO7RvY2ndM3GlbvAVAyyFwKJlX8tA=
+github.com/go-raptor/config v1.0.2 h1:GMaUYQ9SLB/vEK9h/JSYOqs2WLbnhgJcLVzgZhZHZ2Y=
+github.com/go-raptor/config v1.0.2/go.mod h1:SkoS8NFSnDxB6qpO7RvY2ndM3GlbvAVAyyFwKJlX8tA=
 github.com/go-raptor/connectors v1.0.2 h1:aAFXlSssExRE0HC6YIj+mSMR2ZP7tZn8qNxRADcekoE=
 github.com/go-raptor/connectors v1.0.2/go.mod h1:o5EsfDhvcxtH00SOh6ehIa2nE/Y2oCrSoorxrSGeEys=
 github.com/go-raptor/errs v1.0.0 h1:0oTG63Ci9pM0FBPlPRcN71QkPMLHZnm3FXB8zmg4FKU=
