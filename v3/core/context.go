@@ -48,19 +48,22 @@ func (c *Context) JSONResponse(data interface{}, status ...int) error {
 	if len(status) == 0 {
 		status = append(status, http.StatusOK)
 	}
-	return c.Context.JSON(status[0], data)
+	c.Context.JSON(status[0], data)
+	return nil
 }
 
 func (c *Context) JSONError(err error, status ...int) error {
 	var e *errs.Error
 	if errors.As(err, &e) {
-		return c.JSON(e.Code, e)
+		c.JSON(e.Code, e)
+		return e
 	}
 
 	if len(status) == 0 {
 		status = append(status, http.StatusInternalServerError)
 	}
-	return c.JSON(status[0], errs.NewError(status[0], err.Error()))
+	c.JSON(status[0], errs.NewError(status[0], err.Error()))
+	return err
 }
 
 func (c *Context) ResponseWriter() http.ResponseWriter {

@@ -1,6 +1,8 @@
 package core
 
 import (
+	"context"
+	"log/slog"
 	"time"
 
 	"github.com/go-raptor/components"
@@ -48,7 +50,6 @@ func (c *Core) Handle(echoCtx echo.Context) error {
 			}); err != nil {
 				if _, ok := err.(*errs.Error); ok {
 					ctx.JSONError(err)
-					return nil
 				}
 				return err
 			}
@@ -59,8 +60,24 @@ func (c *Core) Handle(echoCtx echo.Context) error {
 	return chain(ctx)
 }
 
-func (c *Core) logRequest(ctx *Context, startTime time.Time) {
-	c.utils.Log.Info("Request processed",
+func (c *Core) logRequest(ctx *Context, startTime time.Time, err error) {
+	var logLevel slog.Level
+	var message string
+	if err != nil {
+		if raptorError, ok := err.(*errs.Error); ok {
+			if raptorError.Code >= 400 && raptorError.Code < 500 {
+				logLevel = slog.LevelWarn
+			} else {
+				logLevel = slog.LevelError
+			}
+		}
+		message = "Error while processing request"
+	} else {
+		logLevel = slog.LevelInfo
+		message = "Request processed"
+	}
+
+	c.utils.Log.Log(context.Background(), logLevel, message,
 		"ip", ctx.RealIP(),
 		"method", ctx.Request().Method,
 		"path", ctx.Request().URL.Path,

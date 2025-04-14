@@ -158,10 +158,7 @@ func (c *Core) registerCoreMiddlewares(server *echo.Echo) {
 			return func(echoCtx echo.Context) error {
 				startTime := time.Now()
 				err := next(echoCtx)
-				if err != nil {
-					c.utils.Log.Error("Error while processing request", "error", err)
-				}
-				c.logRequest(GetContext(echoCtx), startTime)
+				c.logRequest(GetContext(echoCtx), startTime, err)
 				return err
 			}
 		})
