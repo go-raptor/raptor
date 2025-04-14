@@ -132,27 +132,6 @@ func (c *Core) injectMiddlewareOnly(i int, onlyDescriptors []string) error {
 }
 
 func (c *Core) registerCoreMiddlewares(server *echo.Echo) {
-	server.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     c.utils.Config.CORSConfig.AllowOrigins,
-		AllowHeaders:     c.utils.Config.CORSConfig.AllowHeaders,
-		AllowMethods:     c.utils.Config.CORSConfig.AllowMethods,
-		AllowCredentials: c.utils.Config.CORSConfig.AllowCredentials,
-		MaxAge:           c.utils.Config.CORSConfig.MaxAge,
-	}))
-
-	if c.utils.Config.StaticConfig.Enabled {
-		if c.utils.Config.StaticConfig.HTML5 {
-			server.Use(middleware.StaticWithConfig(middleware.StaticConfig{
-				Root:   c.utils.Config.StaticConfig.Root,
-				Index:  c.utils.Config.StaticConfig.Index,
-				Browse: c.utils.Config.StaticConfig.Browse,
-				HTML5:  c.utils.Config.StaticConfig.HTML5,
-			}))
-		} else {
-			server.Static(c.utils.Config.StaticConfig.Prefix, c.utils.Config.StaticConfig.Root)
-		}
-	}
-
 	server.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(echoCtx echo.Context) error {
 			startTime := time.Now()
@@ -167,4 +146,25 @@ func (c *Core) registerCoreMiddlewares(server *echo.Echo) {
 			return err
 		}
 	})
+
+	if c.utils.Config.StaticConfig.Enabled {
+		if c.utils.Config.StaticConfig.HTML5 {
+			server.Use(middleware.StaticWithConfig(middleware.StaticConfig{
+				Root:   c.utils.Config.StaticConfig.Root,
+				Index:  c.utils.Config.StaticConfig.Index,
+				Browse: c.utils.Config.StaticConfig.Browse,
+				HTML5:  c.utils.Config.StaticConfig.HTML5,
+			}))
+		} else {
+			server.Static(c.utils.Config.StaticConfig.Prefix, c.utils.Config.StaticConfig.Root)
+		}
+	}
+
+	server.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins:     c.utils.Config.CORSConfig.AllowOrigins,
+		AllowHeaders:     c.utils.Config.CORSConfig.AllowHeaders,
+		AllowMethods:     c.utils.Config.CORSConfig.AllowMethods,
+		AllowCredentials: c.utils.Config.CORSConfig.AllowCredentials,
+		MaxAge:           c.utils.Config.CORSConfig.MaxAge,
+	}))
 }
