@@ -8,4 +8,4 @@ require (
 	github.com/pwntr/tinter v1.2.0
 )
 
-require gopkg.in/yaml.v3 v3.0.1 // indirect
+require gopkg.in/yaml.v3 v3.0.1

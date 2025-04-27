@@ -13,11 +13,13 @@ import (
 	"github.com/go-raptor/config"
 	"github.com/go-raptor/raptor/v4/core"
 	raptorcore "github.com/go-raptor/raptor/v4/core"
+	"github.com/go-raptor/raptor/v4/router"
 )
 
 type Raptor struct {
 	Server *core.Server
 	Core   *core.Core
+	Router *router.Router
 }
 type RaptorOption func(*Raptor)
 
@@ -30,9 +32,11 @@ func New(opts ...RaptorOption) *Raptor {
 	utils.SetConfig(config)
 
 	core := raptorcore.NewCore(utils)
+	router, err := router.New()
 	raptor := &Raptor{
 		Core:   core,
-		Server: raptorcore.NewServer(&config.ServerConfig, core),
+		Server: raptorcore.NewServer(&config.ServerConfig, router.Mux, core),
+		Router: router,
 	}
 
 	for _, opt := range opts {
@@ -86,7 +90,6 @@ func (r *Raptor) waitForShutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// r.Core.ShutdownServices()
 	if err := r.Server.Shutdown(ctx); err != nil {
 		r.Core.Utils.Log.Error("Server shutdown", "error", err)
 		if err := r.Server.Close(); err != nil {
@@ -97,36 +100,18 @@ func (r *Raptor) waitForShutdown() {
 	r.Core.Utils.Log.Warn("Raptor exited, bye bye!")
 }
 
-/*
-func (r *Raptor) Configure(components *core.Components) *Raptor {
-	if components.DatabaseConnector != nil {
-		r.Core.Utils.DB = components.DatabaseConnector
-		if err := r.Core.Utils.DB.Init(); err != nil {
-			r.Core.Utils.Log.Error("Database connector initalization failed", "error", err)
-			os.Exit(1)
-		}
+func (r *Raptor) Configure() error {
+	if err := r.Router.RegisterRoutes(r.Router.Routes, r.Core); err != nil {
+		r.Core.Utils.Log.Error("Error while registering routes", "error", err)
+		os.Exit(1)
 	}
 
-	if err := r.Core.RegisterServices(components); err != nil {
-		os.Exit(1)
-	}
-	if err := r.Core.RegisterControllers(components); err != nil {
-		os.Exit(1)
-	}
-	if err := r.Core.RegisterMiddlewares(r.Server, components); err != nil {
-		os.Exit(1)
-	}
-	r.Core.RegisterErrorHandler(r.Server)
-
-	return r
+	return nil
 }
 
 func (r *Raptor) RegisterRoutes(routes router.Routes) {
-	router, err := router.New(routes, r.Core, r.Server)
-	if err != nil {
-		r.Utils.Log.Error("Error while registering routes", "error", err)
+	if err := r.Router.RegisterRoutes(routes, r.Core); err != nil {
+		r.Core.Utils.Log.Error("Error while registering routes", "error", err)
 		os.Exit(1)
 	}
-	r.Router = router
 }
-*/
