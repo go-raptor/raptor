@@ -32,7 +32,7 @@ func New(opts ...RaptorOption) *Raptor {
 	utils.SetConfig(config)
 
 	core := raptorcore.NewCore(utils)
-	router, err := router.New()
+	router, err := router.NewRouter()
 	raptor := &Raptor{
 		Core:   core,
 		Server: raptorcore.NewServer(&config.ServerConfig, router.Mux, core),

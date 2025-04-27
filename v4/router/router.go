@@ -1,6 +1,7 @@
 package router
 
 import (
+	"fmt"
 	"net/http"
 	"regexp"
 
@@ -23,7 +24,7 @@ type Router struct {
 	Mux    *http.ServeMux
 }
 
-func New() (*Router, error) {
+func NewRouter() (*Router, error) {
 	router := &Router{
 		Mux: http.NewServeMux(),
 	}
@@ -33,24 +34,24 @@ func New() (*Router, error) {
 func (r *Router) RegisterRoutes(routes Routes, c *core.Core) error {
 	r.Routes = routes
 	for _, route := range r.Routes {
-		c.Utils.Log.Info("Registering route", "method", route.Method, "path", route.Path, "controller", route.Controller, "action", route.Action)
-		r.Mux.Handle(route.Method+" "+route.Path, c)
+		if isHttpMethod(route.Method) {
+			c.Utils.Log.Debug("Registering route", "method", route.Method, "path", route.Path, "controller", route.Controller, "action", route.Action)
+			r.Mux.Handle(route.Method+" "+route.Path, c)
+		} else {
+			return fmt.Errorf("invalid method %s on %s", route.Method, route.Path)
+		}
 	}
 
 	return nil
 }
 
-func normalizePath(path string) string {
-	if path == "" {
-		return "/"
+func isHttpMethod(method string) bool {
+	switch method {
+	case "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "CONNECT", "TRACE", "ANY", "*":
+		return true
+	default:
+		return false
 	}
-
-	path = pathRegex.ReplaceAllString("/"+path+"/", "/")
-	if len(path) > 1 {
-		path = path[:len(path)-1]
-	}
-
-	return path
 }
 
 func Scope(path string, routes ...Routes) Routes {
@@ -79,6 +80,19 @@ func MethodRoute(method, path string, actionDescriptor ...string) Routes {
 			Action:     "",
 		},
 	}
+}
+
+func normalizePath(path string) string {
+	if path == "" {
+		return "/"
+	}
+
+	path = pathRegex.ReplaceAllString("/"+path+"/", "/")
+	if len(path) > 1 {
+		path = path[:len(path)-1]
+	}
+
+	return path
 }
 
 func Get(path string, handler ...string) Routes {

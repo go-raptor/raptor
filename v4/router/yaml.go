@@ -70,15 +70,6 @@ func processYAMLRoutes(routeData map[string]interface{}, parentPath string, rout
 	}
 }
 
-func isHttpMethod(method string) bool {
-	switch method {
-	case "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "CONNECT", "TRACE", "ANY", "*":
-		return true
-	default:
-		return false
-	}
-}
-
 func joinPaths(parent, child string) string {
 	parent = strings.TrimPrefix(parent, "/")
 	child = strings.TrimPrefix(child, "/")
