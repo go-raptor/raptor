@@ -26,19 +26,6 @@ type Router struct {
 	Mux    *http.ServeMux
 }
 
-type routeHandler struct {
-	core       *core.Core
-	controller string
-	action     string
-}
-
-func (rh *routeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if err := rh.core.Handle(w, r, rh.controller, rh.action); err != nil {
-		rh.core.Resources.Log.Error("Handle error", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-	}
-}
-
 func NewRouter() (*Router, error) {
 	router := &Router{
 		Mux: http.NewServeMux(),
