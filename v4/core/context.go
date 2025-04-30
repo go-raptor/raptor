@@ -11,15 +11,6 @@ type Context struct {
 	Action     string
 }
 
-func NewContext(w http.ResponseWriter, r *http.Request, controller, action string) *Context {
-	return &Context{
-		Writer:     w,
-		Request:    r,
-		Controller: controller,
-		Action:     action,
-	}
-}
-
 func (c *Context) Reset() {
 	c.Request = nil
 	c.Writer = nil
