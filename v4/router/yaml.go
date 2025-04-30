@@ -4,7 +4,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/go-raptor/raptor/v4/components"
 	"gopkg.in/yaml.v3"
 )
 
@@ -37,7 +36,7 @@ func ParseYAML(content []byte) Routes {
 
 func processYAMLRoutes(routeData map[string]interface{}, parentPath string, routes *Routes) {
 	for path, data := range routeData {
-		currentPath := joinPaths(parentPath, path)
+		currentPath := normalizePath(joinPaths(parentPath, path))
 
 		switch nested := data.(type) {
 		case map[string]interface{}:
@@ -58,13 +57,7 @@ func processYAMLRoutes(routeData map[string]interface{}, parentPath string, rout
 					}
 
 					if descriptor, ok := handler.(string); ok {
-						controller, action := components.ParseActionDescriptor(descriptor)
-						*routes = append(*routes, Route{
-							Method:     httpMethod,
-							Path:       currentPath,
-							Controller: controller,
-							Action:     action,
-						})
+						*routes = append(*routes, MethodRoute(httpMethod, currentPath, descriptor)...)
 					}
 				}
 			} else {
@@ -75,9 +68,6 @@ func processYAMLRoutes(routeData map[string]interface{}, parentPath string, rout
 }
 
 func joinPaths(parent, child string) string {
-	parent = strings.TrimPrefix(parent, "/")
-	child = strings.TrimPrefix(child, "/")
-
 	if parent == "" {
 		return normalizePath(child)
 	}
