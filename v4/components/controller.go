@@ -5,6 +5,28 @@ import "strings"
 const controllerSuffix = "Controller"
 const descriptorSeparator = "."
 
+type Controllers []ControllerInitializer
+
+type ControllerInitializer interface {
+	Init(u *Resources)
+}
+
+type Controller struct {
+	*Resources
+	onInit func()
+}
+
+func (c *Controller) Init(u *Resources) {
+	c.Resources = u
+	if c.onInit != nil {
+		c.onInit()
+	}
+}
+
+func (c *Controller) OnInit(callback func()) {
+	c.onInit = callback
+}
+
 func NormalizeController(controller string) string {
 	if !strings.HasSuffix(controller, controllerSuffix) {
 		return controller + controllerSuffix
@@ -18,4 +40,8 @@ func ParseActionDescriptor(descriptor string) (controller, action string) {
 		return NormalizeController(parts[0]), parts[1]
 	}
 	return NormalizeController(descriptor), ""
+}
+
+func ActionDescriptor(controller, action string) string {
+	return controller + descriptorSeparator + action
 }

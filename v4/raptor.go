@@ -18,9 +18,10 @@ import (
 )
 
 type Raptor struct {
-	Core   *core.Core
-	Server *server.Server
-	Router *router.Router
+	Core      *core.Core
+	Server    *server.Server
+	Router    *router.Router
+	Resources *components.Resources
 }
 type RaptorOption func(*Raptor)
 
@@ -35,9 +36,10 @@ func New(opts ...RaptorOption) *Raptor {
 	core := core.NewCore(resources)
 	router, err := router.NewRouter()
 	raptor := &Raptor{
-		Core:   core,
-		Server: server.NewServer(&config.ServerConfig, router.Mux, core),
-		Router: router,
+		Core:      core,
+		Server:    server.NewServer(&config.ServerConfig, router.Mux, core),
+		Router:    router,
+		Resources: resources,
 	}
 
 	for _, opt := range opts {
@@ -101,9 +103,8 @@ func (r *Raptor) waitForShutdown() {
 	r.Core.Resources.Log.Warn("Raptor exited, bye bye!")
 }
 
-func (r *Raptor) Configure() error {
-	if err := r.Router.RegisterRoutes(r.Router.Routes, r.Core); err != nil {
-		r.Core.Resources.Log.Error("Error while registering routes", "error", err)
+func (r *Raptor) Configure(components *components.Components) error {
+	if err := r.Core.RegisterControllers(components); err != nil {
 		os.Exit(1)
 	}
 
