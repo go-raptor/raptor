@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/go-raptor/raptor/v4/components"
 	"gopkg.in/yaml.v3"
 )
 
@@ -50,18 +51,21 @@ func processYAMLRoutes(routeData map[string]interface{}, parentPath string, rout
 			}
 
 			if hasHttpMethods {
-				for method, _ := range nested {
+				for method, handler := range nested {
 					httpMethod := strings.ToUpper(method)
 					if !isHttpMethod(httpMethod) {
 						continue
 					}
 
-					*routes = append(*routes, Route{
-						Method:     httpMethod,
-						Path:       currentPath,
-						Controller: "",
-						Action:     "",
-					})
+					if descriptor, ok := handler.(string); ok {
+						controller, action := components.ParseActionDescriptor(descriptor)
+						*routes = append(*routes, Route{
+							Method:     httpMethod,
+							Path:       currentPath,
+							Controller: controller,
+							Action:     action,
+						})
+					}
 				}
 			} else {
 				processYAMLRoutes(nested, currentPath, routes)

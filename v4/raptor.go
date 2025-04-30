@@ -17,8 +17,8 @@ import (
 )
 
 type Raptor struct {
-	Server *server.Server
 	Core   *core.Core
+	Server *server.Server
 	Router *router.Router
 }
 type RaptorOption func(*Raptor)

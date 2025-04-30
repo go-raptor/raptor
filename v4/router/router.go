@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"regexp"
 
+	"github.com/go-raptor/raptor/v4/components"
 	"github.com/go-raptor/raptor/v4/core"
 )
 
@@ -17,11 +18,25 @@ type Route struct {
 	Path       string
 	Controller string
 	Action     string
+	Handler    func(*core.Context) error
 }
 
 type Router struct {
 	Routes Routes
 	Mux    *http.ServeMux
+}
+
+type routeHandler struct {
+	core       *core.Core
+	controller string
+	action     string
+}
+
+func (rh *routeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if err := rh.core.Handle(w, r, rh.controller, rh.action); err != nil {
+		rh.core.Utils.Log.Error("Handle error", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 func NewRouter() (*Router, error) {
@@ -35,13 +50,16 @@ func (r *Router) RegisterRoutes(routes Routes, c *core.Core) error {
 	r.Routes = routes
 	for _, route := range r.Routes {
 		if isHttpMethod(route.Method) {
-			c.Utils.Log.Debug("Registering route", "method", route.Method, "path", route.Path, "controller", route.Controller, "action", route.Action)
-			r.Mux.Handle(route.Method+" "+route.Path, c)
+			routeHandler := &routeHandler{
+				core:       c,
+				controller: route.Controller,
+				action:     route.Action,
+			}
+			r.Mux.Handle(route.Method+" "+route.Path, routeHandler)
 		} else {
 			return fmt.Errorf("invalid method %s on %s", route.Method, route.Path)
 		}
 	}
-
 	return nil
 }
 
@@ -71,13 +89,21 @@ func Scope(path string, routes ...Routes) Routes {
 	return result
 }
 
-func MethodRoute(method, path string, actionDescriptor ...string) Routes {
+func MethodRoute(method, path string, handler ...string) Routes {
+	var controller, action string
+
+	if len(handler) == 1 {
+		controller, action = components.ParseActionDescriptor(handler[0])
+	} else if len(handler) == 2 {
+		controller, action = handler[0], handler[1]
+	}
+
 	return Routes{
 		Route{
 			Method:     method,
 			Path:       normalizePath(path),
-			Controller: "",
-			Action:     "",
+			Controller: controller,
+			Action:     action,
 		},
 	}
 }
