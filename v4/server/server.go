@@ -1,4 +1,4 @@
-package core
+package server
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/go-raptor/config"
+	"github.com/go-raptor/raptor/v4/core"
 )
 
 type Server struct {
@@ -14,12 +15,12 @@ type Server struct {
 	address string
 }
 
-func NewServer(config *config.ServerConfig, mux *http.ServeMux, core *Core) *Server {
-	addr := address(config)
+func NewServer(config *config.ServerConfig, mux *http.ServeMux, core *core.Core) *Server {
+	address := fmt.Sprintf("%s:%d", config.Address, config.Port)
 	return &Server{
-		address: addr,
+		address: address,
 		server: &http.Server{
-			Addr:    addr,
+			Addr:    address,
 			Handler: mux,
 		},
 	}
@@ -30,10 +31,6 @@ func (s *Server) Start() error {
 		return fmt.Errorf("port %s is already in use", s.address)
 	}
 	return s.server.ListenAndServe()
-}
-
-func (s *Server) Address() string {
-	return s.address
 }
 
 func (s *Server) Shutdown(ctx context.Context) error {
@@ -52,6 +49,6 @@ func (s *Server) checkPort() bool {
 	return err == nil
 }
 
-func address(config *config.ServerConfig) string {
-	return config.Address + ":" + fmt.Sprint(config.Port)
+func (s *Server) Address() string {
+	return s.address
 }

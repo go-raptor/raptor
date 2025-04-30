@@ -12,12 +12,12 @@ import (
 
 	"github.com/go-raptor/config"
 	"github.com/go-raptor/raptor/v4/core"
-	raptorcore "github.com/go-raptor/raptor/v4/core"
 	"github.com/go-raptor/raptor/v4/router"
+	"github.com/go-raptor/raptor/v4/server"
 )
 
 type Raptor struct {
-	Server *core.Server
+	Server *server.Server
 	Core   *core.Core
 	Router *router.Router
 }
@@ -31,11 +31,11 @@ func New(opts ...RaptorOption) *Raptor {
 	}
 	utils.SetConfig(config)
 
-	core := raptorcore.NewCore(utils)
+	core := core.NewCore(utils)
 	router, err := router.NewRouter()
 	raptor := &Raptor{
 		Core:   core,
-		Server: raptorcore.NewServer(&config.ServerConfig, router.Mux, core),
+		Server: server.NewServer(&config.ServerConfig, router.Mux, core),
 		Router: router,
 	}
 
