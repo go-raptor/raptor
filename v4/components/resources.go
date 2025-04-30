@@ -1,4 +1,4 @@
-package core
+package components
 
 import (
 	"log/slog"
@@ -10,7 +10,7 @@ import (
 	"github.com/pwntr/tinter"
 )
 
-type Utils struct {
+type Resources struct {
 	Config *config.Config
 
 	Log      *slog.Logger
@@ -19,33 +19,33 @@ type Utils struct {
 	DB connectors.DatabaseConnector
 }
 
-func NewUtils() *Utils {
+func NewResources() *Resources {
 	levelVar := &slog.LevelVar{}
 
 	opts := &tinter.Options{
 		Level: levelVar,
 	}
 
-	return &Utils{
+	return &Resources{
 		Log:      slog.New(tinter.NewHandler(os.Stderr, opts)),
 		LogLevel: levelVar,
 	}
 }
 
-func (u *Utils) SetDB(db connectors.DatabaseConnector) {
+func (u *Resources) SetDB(db connectors.DatabaseConnector) {
 	u.DB = db
 }
 
-func (u *Utils) SetConfig(config *config.Config) {
+func (u *Resources) SetConfig(config *config.Config) {
 	u.Config = config
 	u.SetLogLevel(config.GeneralConfig.LogLevel)
 }
 
-func (u *Utils) SetLogLevel(logLevel string) {
+func (u *Resources) SetLogLevel(logLevel string) {
 	u.LogLevel.Set(ParseLogLevel(logLevel))
 }
 
-func (u *Utils) SetHandler(handler slog.Handler) {
+func (u *Resources) SetHandler(handler slog.Handler) {
 	u.Log = slog.New(handler)
 }
 

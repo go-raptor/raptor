@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-raptor/config"
+	"github.com/go-raptor/raptor/v4/components"
 	"github.com/go-raptor/raptor/v4/core"
 	"github.com/go-raptor/raptor/v4/router"
 	"github.com/go-raptor/raptor/v4/server"
@@ -24,14 +25,14 @@ type Raptor struct {
 type RaptorOption func(*Raptor)
 
 func New(opts ...RaptorOption) *Raptor {
-	utils := core.NewUtils()
-	config, err := config.NewConfig(utils.Log)
+	resources := components.NewResources()
+	config, err := config.NewConfig(resources.Log)
 	if err != nil {
 		os.Exit(1)
 	}
-	utils.SetConfig(config)
+	resources.SetConfig(config)
 
-	core := core.NewCore(utils)
+	core := core.NewCore(resources)
 	router, err := router.NewRouter()
 	raptor := &Raptor{
 		Core:   core,
@@ -49,7 +50,7 @@ func New(opts ...RaptorOption) *Raptor {
 func WithConfig(c *config.Config) RaptorOption {
 	return func(r *Raptor) {
 		if c != nil {
-			config.MergeConfig(r.Core.Utils.Config, c)
+			config.MergeConfig(r.Core.Resources.Config, c)
 		}
 	}
 }
@@ -77,7 +78,7 @@ func (r *Raptor) info() {
 		fmt.Sprintf("🟢 Raptor %s running on %s", Version, r.Server.Address()),
 	}
 
-	r.Core.Utils.Log.Info(strings.Join(content, "\n"))
+	r.Core.Resources.Log.Info(strings.Join(content, "\n"))
 }
 
 func (r *Raptor) waitForShutdown() {
@@ -85,24 +86,24 @@ func (r *Raptor) waitForShutdown() {
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
 	<-quit
-	r.Core.Utils.Log.Warn("Shutting down Raptor...")
+	r.Core.Resources.Log.Warn("Shutting down Raptor...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := r.Server.Shutdown(ctx); err != nil {
-		r.Core.Utils.Log.Error("Server shutdown", "error", err)
+		r.Core.Resources.Log.Error("Server shutdown", "error", err)
 		if err := r.Server.Close(); err != nil {
-			r.Core.Utils.Log.Error("Server force close", "error", err)
+			r.Core.Resources.Log.Error("Server force close", "error", err)
 		}
 	}
 
-	r.Core.Utils.Log.Warn("Raptor exited, bye bye!")
+	r.Core.Resources.Log.Warn("Raptor exited, bye bye!")
 }
 
 func (r *Raptor) Configure() error {
 	if err := r.Router.RegisterRoutes(r.Router.Routes, r.Core); err != nil {
-		r.Core.Utils.Log.Error("Error while registering routes", "error", err)
+		r.Core.Resources.Log.Error("Error while registering routes", "error", err)
 		os.Exit(1)
 	}
 
@@ -111,7 +112,7 @@ func (r *Raptor) Configure() error {
 
 func (r *Raptor) RegisterRoutes(routes router.Routes) {
 	if err := r.Router.RegisterRoutes(routes, r.Core); err != nil {
-		r.Core.Utils.Log.Error("Error while registering routes", "error", err)
+		r.Core.Resources.Log.Error("Error while registering routes", "error", err)
 		os.Exit(1)
 	}
 }

@@ -3,18 +3,20 @@ package core
 import (
 	"net/http"
 	"sync"
+
+	"github.com/go-raptor/raptor/v4/components"
 )
 
 type Core struct {
-	Utils       *Utils
+	Resources   *components.Resources
 	Handlers    map[string]map[string]*Handler
 	ContextPool *sync.Pool
 }
 
-func NewCore(utils *Utils) *Core {
+func NewCore(resources *components.Resources) *Core {
 	return &Core{
-		Utils:    utils,
-		Handlers: make(map[string]map[string]*Handler),
+		Resources: resources,
+		Handlers:  make(map[string]map[string]*Handler),
 		ContextPool: &sync.Pool{
 			New: func() interface{} {
 				return &Context{}
