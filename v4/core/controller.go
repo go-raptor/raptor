@@ -4,10 +4,54 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/go-raptor/raptor/v4/components"
+	"strings"
 )
 
-func (c *Core) RegisterControllers(components *components.Components) error {
+const controllerSuffix = "Controller"
+const descriptorSeparator = "."
+
+type Controllers []ControllerInitializer
+
+type ControllerInitializer interface {
+	Init(*Resources)
+}
+
+type Controller struct {
+	*Resources
+	onInit func()
+}
+
+func (c *Controller) Init(resources *Resources) {
+	c.Resources = resources
+	if c.onInit != nil {
+		c.onInit()
+	}
+}
+
+func (c *Controller) OnInit(callback func()) {
+	c.onInit = callback
+}
+
+func NormalizeController(controller string) string {
+	if !strings.HasSuffix(controller, controllerSuffix) {
+		return controller + controllerSuffix
+	}
+	return controller
+}
+
+func ParseActionDescriptor(descriptor string) (controller, action string) {
+	parts := strings.Split(descriptor, descriptorSeparator)
+	if len(parts) == 2 {
+		return NormalizeController(parts[0]), parts[1]
+	}
+	return NormalizeController(descriptor), ""
+}
+
+func ActionDescriptor(controller, action string) string {
+	return controller + descriptorSeparator + action
+}
+
+func (c *Core) RegisterControllers(components *Components) error {
 	for _, controller := range components.Controllers {
 		controllerName := reflect.TypeOf(controller).Elem().Name()
 		if err := c.registerController(controller, controllerName); err != nil {
@@ -18,7 +62,7 @@ func (c *Core) RegisterControllers(components *components.Components) error {
 	return nil
 }
 
-func (c *Core) registerController(controller components.ControllerInitializer, controllerName string) error {
+func (c *Core) registerController(controller ControllerInitializer, controllerName string) error {
 	if err := c.validateController(controller, controllerName); err != nil {
 		return err
 	}
@@ -42,7 +86,7 @@ func (c *Core) validateController(controller interface{}, controllerName string)
 		c.Resources.Log.Error("Error while registering controller", "controller", controllerName, "error", err)
 		return err
 	}
-	if val.Elem().FieldByName("Controller").Type() != reflect.TypeOf(components.Controller{}) {
+	if val.Elem().FieldByName("Controller").Type() != reflect.TypeOf(Controller{}) {
 		err := fmt.Errorf("controller must embed raptor.Controller")
 		c.Resources.Log.Error("Error while registering controller", "controller", controllerName, "error", err)
 		return err

@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/go-raptor/raptor/v4/components"
 	"github.com/go-raptor/raptor/v4/core"
 )
 
@@ -80,7 +79,7 @@ func MethodRoute(method, path string, handler ...string) Routes {
 	var controller, action string
 
 	if len(handler) == 1 {
-		controller, action = components.ParseActionDescriptor(handler[0])
+		controller, action = core.ParseActionDescriptor(handler[0])
 	} else if len(handler) == 2 {
 		controller, action = handler[0], handler[1]
 	}

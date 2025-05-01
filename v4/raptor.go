@@ -11,22 +11,20 @@ import (
 	"time"
 
 	"github.com/go-raptor/config"
-	"github.com/go-raptor/raptor/v4/components"
 	"github.com/go-raptor/raptor/v4/core"
 	"github.com/go-raptor/raptor/v4/router"
 	"github.com/go-raptor/raptor/v4/server"
 )
 
 type Raptor struct {
-	Core      *core.Core
-	Server    *server.Server
-	Router    *router.Router
-	Resources *components.Resources
+	Core   *core.Core
+	Server *server.Server
+	Router *router.Router
 }
 type RaptorOption func(*Raptor)
 
 func New(opts ...RaptorOption) *Raptor {
-	resources := components.NewResources()
+	resources := core.NewResources()
 	config, err := config.NewConfig(resources.Log)
 	if err != nil {
 		os.Exit(1)
@@ -36,10 +34,9 @@ func New(opts ...RaptorOption) *Raptor {
 	core := core.NewCore(resources)
 	router, err := router.NewRouter()
 	raptor := &Raptor{
-		Core:      core,
-		Server:    server.NewServer(&config.ServerConfig, router.Mux, core),
-		Router:    router,
-		Resources: resources,
+		Core:   core,
+		Server: server.NewServer(&config.ServerConfig, router.Mux, core),
+		Router: router,
 	}
 
 	for _, opt := range opts {
@@ -107,11 +104,11 @@ func (r *Raptor) waitForShutdown() {
 	r.Core.Resources.Log.Warn("Raptor exited, bye bye!")
 }
 
-func (r *Raptor) Configure(components *components.Components) error {
+func (r *Raptor) Configure(components *core.Components) error {
 	if components.DatabaseConnector != nil {
-		r.Resources.DB = components.DatabaseConnector
-		if err := r.Resources.DB.Init(); err != nil {
-			r.Resources.Log.Error("Database connector initalization failed", "error", err)
+		r.Core.Resources.DB = components.DatabaseConnector
+		if err := r.Core.Resources.DB.Init(); err != nil {
+			r.Core.Resources.Log.Error("Database connector initalization failed", "error", err)
 			os.Exit(1)
 		}
 	}

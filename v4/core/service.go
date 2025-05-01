@@ -3,11 +3,45 @@ package core
 import (
 	"fmt"
 	"reflect"
-
-	"github.com/go-raptor/raptor/v4/components"
 )
 
-func (c *Core) RegisterServices(components *components.Components) error {
+type Services []ServiceInitializer
+
+type ServiceInitializer interface {
+	Init(*Resources) error
+	Shutdown() error
+}
+
+type Service struct {
+	*Resources
+	onInit     func() error
+	onShutdown func() error
+}
+
+func (s *Service) Init(resources *Resources) error {
+	s.Resources = resources
+	if s.onInit != nil {
+		return s.onInit()
+	}
+	return nil
+}
+
+func (s *Service) Shutdown() error {
+	if s.onShutdown != nil {
+		return s.onShutdown()
+	}
+	return nil
+}
+
+func (s *Service) OnInit(callback func() error) {
+	s.onInit = callback
+}
+
+func (s *Service) OnShutdown(callback func() error) {
+	s.onShutdown = callback
+}
+
+func (c *Core) RegisterServices(components *Components) error {
 	for _, service := range components.Services {
 		serviceName := reflect.TypeOf(service).Elem().Name()
 		if err := c.registerService(service, serviceName); err != nil {
@@ -25,7 +59,7 @@ func (c *Core) RegisterServices(components *components.Components) error {
 	return nil
 }
 
-func (c *Core) registerService(service components.ServiceInitializer, serviceName string) error {
+func (c *Core) registerService(service ServiceInitializer, serviceName string) error {
 	if err := c.validateService(service, serviceName); err != nil {
 		return err
 	}
@@ -47,12 +81,12 @@ func (c *Core) validateService(service interface{}, serviceName string) error {
 		c.Resources.Log.Error("Error while registering service", "service", serviceName, "error", err)
 		return err
 	}
-	if !val.Type().Implements(reflect.TypeOf((*components.ServiceInitializer)(nil)).Elem()) {
+	if !val.Type().Implements(reflect.TypeOf((*ServiceInitializer)(nil)).Elem()) {
 		err := fmt.Errorf("service must implement components.ServiceInitializer")
 		c.Resources.Log.Error("Error while registering service", "service", serviceName, "error", err)
 		return err
 	}
-	if val.Elem().FieldByName("Service").Type() != reflect.TypeOf(components.Service{}) {
+	if val.Elem().FieldByName("Service").Type() != reflect.TypeOf(Service{}) {
 		err := fmt.Errorf("service must embed components.Service")
 		c.Resources.Log.Error("Error while registering service", "service", serviceName, "error", err)
 		return err
@@ -94,7 +128,7 @@ func (c *Core) injectServices(component interface{}, componentName, componentTyp
 
 		serviceName := fieldType.Type.Elem().Name()
 		if service, exists := c.Services[serviceName]; exists {
-			if !reflect.TypeOf(service).Implements(reflect.TypeOf((*components.ServiceInitializer)(nil)).Elem()) {
+			if !reflect.TypeOf(service).Implements(reflect.TypeOf((*ServiceInitializer)(nil)).Elem()) {
 				err := fmt.Errorf("%s.%s expects a service, but %s does not implement ServiceInitializer", componentName, fieldType.Name, serviceName)
 				c.Resources.Log.Error(fmt.Sprintf("Error while injecting services into %s", componentType), componentType, componentName, "error", err)
 				return err
@@ -103,7 +137,7 @@ func (c *Core) injectServices(component interface{}, componentName, componentTyp
 			continue
 		}
 
-		if fieldType.Type.Implements(reflect.TypeOf((*components.ServiceInitializer)(nil)).Elem()) {
+		if fieldType.Type.Implements(reflect.TypeOf((*ServiceInitializer)(nil)).Elem()) {
 			err := fmt.Errorf("%s requires service %s, but it was not found", componentName, serviceName)
 			c.Resources.Log.Error(fmt.Sprintf("Error while injecting services into %s", componentType), componentType, componentName, "error", err)
 			return err

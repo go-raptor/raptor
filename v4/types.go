@@ -2,14 +2,13 @@ package raptor
 
 import (
 	"github.com/go-raptor/config"
-	"github.com/go-raptor/raptor/v4/components"
 	"github.com/go-raptor/raptor/v4/core"
 )
 
 type Context = core.Context
-type Controller = components.Controller
-type Controllers = components.Controllers
+type Controller = core.Controller
+type Controllers = core.Controllers
 type Config = config.Config
-type Components = components.Components
-type Service = components.Service
-type Services = components.Services
+type Components = core.Components
+type Service = core.Service
+type Services = core.Services
