@@ -10,15 +10,10 @@ type HandlerFunc func(ctx *Context) error
 
 func (c *Core) Handle(w http.ResponseWriter, r *http.Request, controller, action string) error {
 	ctx := c.ContextPool.Get().(*Context)
+	ctx.Reset(r, w, controller, action)
 	defer func() {
-		ctx.Reset()
 		c.ContextPool.Put(ctx)
 	}()
-
-	ctx.Writer = w
-	ctx.Request = r
-	ctx.Controller = controller
-	ctx.Action = action
 
 	handler, exists := c.Handlers[controller][action]
 	if !exists {

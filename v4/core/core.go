@@ -18,7 +18,7 @@ func NewCore(resources *components.Resources) *Core {
 		Handlers:  make(map[string]map[string]*Handler),
 		ContextPool: &sync.Pool{
 			New: func() interface{} {
-				return &Context{}
+				return NewContext(nil, nil)
 			},
 		},
 	}
