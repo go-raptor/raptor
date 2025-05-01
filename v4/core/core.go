@@ -13,12 +13,14 @@ type Core struct {
 }
 
 func NewCore(resources *components.Resources) *Core {
+	binder := &DefaultBinder{}
+
 	return &Core{
 		Resources: resources,
 		Handlers:  make(map[string]map[string]*Handler),
 		ContextPool: &sync.Pool{
 			New: func() interface{} {
-				return NewContext(nil, nil)
+				return NewContext(nil, nil, binder)
 			},
 		},
 	}
