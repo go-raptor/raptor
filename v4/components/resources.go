@@ -45,7 +45,7 @@ func (u *Resources) SetLogLevel(logLevel string) {
 	u.LogLevel.Set(ParseLogLevel(logLevel))
 }
 
-func (u *Resources) SetHandler(handler slog.Handler) {
+func (u *Resources) SetLogHandler(handler slog.Handler) {
 	u.Log = slog.New(handler)
 }
 
