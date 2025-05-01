@@ -3,8 +3,10 @@ package core
 import "net/http"
 
 type Handler struct {
-	Action func(*Context) error
+	Action HandlerFunc
 }
+
+type HandlerFunc func(ctx *Context) error
 
 func (c *Core) Handle(w http.ResponseWriter, r *http.Request, controller, action string) error {
 	ctx := c.ContextPool.Get().(*Context)
