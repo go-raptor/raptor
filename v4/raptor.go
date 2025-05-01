@@ -121,6 +121,10 @@ func (r *Raptor) Configure(components *core.Components) error {
 		os.Exit(1)
 	}
 
+	if err := r.Core.RegisterMiddlewares(components); err != nil {
+		os.Exit(1)
+	}
+
 	return nil
 }
 

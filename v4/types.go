@@ -12,3 +12,5 @@ type Config = config.Config
 type Components = core.Components
 type Service = core.Service
 type Services = core.Services
+type Middleware = core.Middleware
+type Middlewares = core.Middlewares

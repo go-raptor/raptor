@@ -8,6 +8,7 @@ type Core struct {
 	Resources   *Resources
 	Handlers    map[string]map[string]*Handler
 	Services    map[string]ServiceInitializer
+	Middlewares []MiddlewareInitializer
 	ContextPool *sync.Pool
 }
 

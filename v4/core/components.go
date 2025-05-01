@@ -8,5 +8,5 @@ type Components struct {
 	DatabaseConnector connectors.DatabaseConnector
 	Controllers       Controllers
 	Services          Services
-	//Middlewares       Middlewares
+	Middlewares       Middlewares
 }
