@@ -28,6 +28,7 @@ type Context struct {
 	store map[string]interface{}
 	lock  sync.RWMutex
 
+	binder Binder
 	// following fields are set by Router
 	handler HandlerFunc
 
@@ -59,12 +60,13 @@ const (
 	defaultIndent = "  "
 )
 
-func NewContext(r *http.Request, w http.ResponseWriter) *Context {
+func NewContext(r *http.Request, w http.ResponseWriter, binder Binder) *Context {
 	return &Context{
 		request:  r,
 		response: NewResponse(w),
 		store:    make(map[string]interface{}),
 		pvalues:  make([]string, 0),
+		binder:   binder,
 		handler:  nil,
 	}
 }
@@ -276,12 +278,9 @@ func (c *Context) Set(key string, val interface{}) {
 	c.store[key] = val
 }
 
-// TODO:
-/*
 func (c *Context) Bind(i interface{}) error {
-	return c.echo.Binder.Bind(i, c)
+	return c.binder.Bind(i, c)
 }
-*/
 
 // TODO:
 /*
@@ -395,6 +394,14 @@ func (c *Context) Redirect(code int, url string) error {
 	}
 	c.response.Header().Set(HeaderLocation, url)
 	c.response.WriteHeader(code)
+	return nil
+}
+
+func (c *Context) Data(data interface{}, status ...int) error {
+	if len(status) == 0 {
+		status = append(status, http.StatusOK)
+	}
+	c.JSON(status[0], data)
 	return nil
 }
 
