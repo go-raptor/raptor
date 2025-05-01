@@ -11,13 +11,6 @@ import (
 	"sync"
 )
 
-/*type Context struct {
-	Request    *http.Request
-	Writer     http.ResponseWriter
-	Controller string
-	Action     string
-}*/
-
 type Context struct {
 	controller string
 	action     string
