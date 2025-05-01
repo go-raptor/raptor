@@ -9,6 +9,7 @@ import (
 type Core struct {
 	Resources   *components.Resources
 	Handlers    map[string]map[string]*Handler
+	Services    map[string]components.ServiceInitializer
 	ContextPool *sync.Pool
 }
 
@@ -18,6 +19,7 @@ func NewCore(resources *components.Resources) *Core {
 	return &Core{
 		Resources: resources,
 		Handlers:  make(map[string]map[string]*Handler),
+		Services:  make(map[string]components.ServiceInitializer),
 		ContextPool: &sync.Pool{
 			New: func() interface{} {
 				return NewContext(nil, nil, binder)

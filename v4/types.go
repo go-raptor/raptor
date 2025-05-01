@@ -11,3 +11,5 @@ type Controller = components.Controller
 type Controllers = components.Controllers
 type Config = config.Config
 type Components = components.Components
+type Service = components.Service
+type Services = components.Services

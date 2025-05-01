@@ -90,6 +90,10 @@ func (r *Raptor) waitForShutdown() {
 	<-quit
 	r.Core.Resources.Log.Warn("Shutting down Raptor...")
 
+	if err := r.Core.ShutdownServices(); err != nil {
+		r.Core.Resources.Log.Error("Error shutting down services", "error", err)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -104,6 +108,18 @@ func (r *Raptor) waitForShutdown() {
 }
 
 func (r *Raptor) Configure(components *components.Components) error {
+	if components.DatabaseConnector != nil {
+		r.Resources.DB = components.DatabaseConnector
+		if err := r.Resources.DB.Init(); err != nil {
+			r.Resources.Log.Error("Database connector initalization failed", "error", err)
+			os.Exit(1)
+		}
+	}
+
+	if err := r.Core.RegisterServices(components); err != nil {
+		os.Exit(1)
+	}
+
 	if err := r.Core.RegisterControllers(components); err != nil {
 		os.Exit(1)
 	}

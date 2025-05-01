@@ -28,6 +28,10 @@ func (c *Core) registerController(controller components.ControllerInitializer, c
 		return err
 	}
 
+	if err := c.injectServices(controller, controllerName, "controller"); err != nil {
+		return err
+	}
+
 	return nil
 }
 

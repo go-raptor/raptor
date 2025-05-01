@@ -7,6 +7,6 @@ import (
 type Components struct {
 	DatabaseConnector connectors.DatabaseConnector
 	Controllers       Controllers
-	//Services          Services
+	Services          Services
 	//Middlewares       Middlewares
 }

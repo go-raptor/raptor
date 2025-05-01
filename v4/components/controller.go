@@ -8,7 +8,7 @@ const descriptorSeparator = "."
 type Controllers []ControllerInitializer
 
 type ControllerInitializer interface {
-	Init(u *Resources)
+	Init(*Resources)
 }
 
 type Controller struct {
@@ -16,8 +16,8 @@ type Controller struct {
 	onInit func()
 }
 
-func (c *Controller) Init(u *Resources) {
-	c.Resources = u
+func (c *Controller) Init(resources *Resources) {
+	c.Resources = resources
 	if c.onInit != nil {
 		c.onInit()
 	}
