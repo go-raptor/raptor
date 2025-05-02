@@ -151,14 +151,7 @@ func (c *Context) SetPath(p string) {
 }
 
 func (c *Context) Param(name string) string {
-	for i, n := range c.pnames {
-		if i < len(c.pvalues) {
-			if n == name {
-				return c.pvalues[i]
-			}
-		}
-	}
-	return ""
+	return c.request.PathValue("id")
 }
 
 func (c *Context) ParamNames() []string {
