@@ -1,5 +1,3 @@
-github.com/go-raptor/config v1.0.2 h1:GMaUYQ9SLB/vEK9h/JSYOqs2WLbnhgJcLVzgZhZHZ2Y=
-github.com/go-raptor/config v1.0.2/go.mod h1:SkoS8NFSnDxB6qpO7RvY2ndM3GlbvAVAyyFwKJlX8tA=
 github.com/go-raptor/connectors v1.0.2 h1:aAFXlSssExRE0HC6YIj+mSMR2ZP7tZn8qNxRADcekoE=
 github.com/go-raptor/connectors v1.0.2/go.mod h1:o5EsfDhvcxtH00SOh6ehIa2nE/Y2oCrSoorxrSGeEys=
 github.com/pwntr/tinter v1.2.0 h1:rcsHgSXxtUsKdxOMWPK4lEmhr26itgwGcDOZBNIyV3I=

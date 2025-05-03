@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/go-raptor/config"
 	"github.com/go-raptor/connectors"
+	"github.com/go-raptor/raptor/v4/config"
 	"github.com/pwntr/tinter"
 )
 

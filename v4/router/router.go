@@ -25,11 +25,10 @@ type Router struct {
 	Mux    *http.ServeMux
 }
 
-func NewRouter() (*Router, error) {
-	router := &Router{
+func NewRouter() *Router {
+	return &Router{
 		Mux: http.NewServeMux(),
 	}
-	return router, nil
 }
 
 func (r *Router) RegisterRoutes(routes Routes, c *core.Core) error {

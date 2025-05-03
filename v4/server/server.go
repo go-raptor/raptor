@@ -6,7 +6,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/go-raptor/config"
+	"github.com/go-raptor/raptor/v4/config"
 	"github.com/go-raptor/raptor/v4/core"
 )
 

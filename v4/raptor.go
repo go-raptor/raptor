@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-raptor/config"
+	"github.com/go-raptor/raptor/v4/config"
 	"github.com/go-raptor/raptor/v4/core"
 	"github.com/go-raptor/raptor/v4/router"
 	"github.com/go-raptor/raptor/v4/server"
@@ -32,7 +32,7 @@ func New(opts ...RaptorOption) *Raptor {
 	resources.SetConfig(config)
 
 	core := core.NewCore(resources)
-	router, err := router.NewRouter()
+	router := router.NewRouter()
 	raptor := &Raptor{
 		Core:   core,
 		Server: server.NewServer(&config.ServerConfig, router.Mux, core),
