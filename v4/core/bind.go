@@ -13,6 +13,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/go-raptor/raptor/v4/errs"
 )
 
 // Binder is the interface that wraps the Bind method.
@@ -47,7 +49,7 @@ func (b *DefaultBinder) BindPathParams(c *Context, i interface{}) error {
 		params[name] = []string{values[i]}
 	}
 	if err := b.bindData(i, params, "param", nil); err != nil {
-		return NewErrorBadRequest(err.Error())
+		return errs.NewErrorBadRequest(err.Error())
 	}
 	return nil
 }
@@ -55,7 +57,7 @@ func (b *DefaultBinder) BindPathParams(c *Context, i interface{}) error {
 // BindQueryParams binds query params to bindable object
 func (b *DefaultBinder) BindQueryParams(c *Context, i interface{}) error {
 	if err := b.bindData(i, c.QueryParams(), "query", nil); err != nil {
-		return NewErrorBadRequest(err.Error())
+		return errs.NewErrorBadRequest(err.Error())
 	}
 	return nil
 }
@@ -79,39 +81,39 @@ func (b *DefaultBinder) BindBody(c *Context, i interface{}) (err error) {
 	case MIMEApplicationJSON:
 		if err = JSONDeserialize(c, i); err != nil {
 			switch err.(type) {
-			case *Error:
+			case *errs.Error:
 				return err
 			default:
-				return NewErrorBadRequest(err.Error())
+				return errs.NewErrorBadRequest(err.Error())
 			}
 		}
 	case MIMEApplicationXML, MIMETextXML:
 		if err = xml.NewDecoder(req.Body).Decode(i); err != nil {
 			if ute, ok := err.(*xml.UnsupportedTypeError); ok {
-				return NewErrorBadRequest(fmt.Sprintf("Unsupported type error: type=%v, error=%v", ute.Type, ute.Error()))
+				return errs.NewErrorBadRequest(fmt.Sprintf("Unsupported type error: type=%v, error=%v", ute.Type, ute.Error()))
 			} else if se, ok := err.(*xml.SyntaxError); ok {
-				return NewErrorBadRequest(fmt.Sprintf("Syntax error: line=%v, error=%v", se.Line, se.Error()))
+				return errs.NewErrorBadRequest(fmt.Sprintf("Syntax error: line=%v, error=%v", se.Line, se.Error()))
 			}
-			return NewErrorBadRequest(err.Error())
+			return errs.NewErrorBadRequest(err.Error())
 		}
 	case MIMEApplicationForm:
 		params, err := c.FormParams()
 		if err != nil {
-			return NewErrorBadRequest(err.Error())
+			return errs.NewErrorBadRequest(err.Error())
 		}
 		if err = b.bindData(i, params, "form", nil); err != nil {
-			return NewErrorBadRequest(err.Error())
+			return errs.NewErrorBadRequest(err.Error())
 		}
 	case MIMEMultipartForm:
 		params, err := c.MultipartForm()
 		if err != nil {
-			return NewErrorBadRequest(err.Error())
+			return errs.NewErrorBadRequest(err.Error())
 		}
 		if err = b.bindData(i, params.Value, "form", params.File); err != nil {
-			return NewErrorBadRequest(err.Error())
+			return errs.NewErrorBadRequest(err.Error())
 		}
 	default:
-		return ErrUnsupportedMediaType
+		return errs.ErrUnsupportedMediaType
 	}
 	return nil
 }
@@ -119,7 +121,7 @@ func (b *DefaultBinder) BindBody(c *Context, i interface{}) (err error) {
 // BindHeaders binds HTTP headers to a bindable object
 func (b *DefaultBinder) BindHeaders(c *Context, i interface{}) error {
 	if err := b.bindData(i, c.Request().Header, "header", nil); err != nil {
-		return NewErrorBadRequest(err.Error())
+		return errs.NewErrorBadRequest(err.Error())
 	}
 	return nil
 }

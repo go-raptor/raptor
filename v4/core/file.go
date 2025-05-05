@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"github.com/go-raptor/raptor/v4/errs"
 )
 
 // File serves a file from the local file system.
@@ -30,7 +32,7 @@ func (c *Context) FileFS(file string, filesystem fs.FS) error {
 func fsFile(c *Context, file string, filesystem fs.FS) error {
 	f, err := filesystem.Open(file)
 	if err != nil {
-		return ErrNotFound
+		return errs.ErrNotFound
 	}
 	defer f.Close()
 
@@ -39,7 +41,7 @@ func fsFile(c *Context, file string, filesystem fs.FS) error {
 		file = filepath.ToSlash(filepath.Join(file, indexPage)) // ToSlash is necessary for Windows. fs.Open and os.Open are different in that aspect.
 		f, err = filesystem.Open(file)
 		if err != nil {
-			return ErrNotFound
+			return errs.ErrNotFound
 		}
 		defer f.Close()
 		if fi, err = f.Stat(); err != nil {

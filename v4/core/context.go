@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+
+	"github.com/go-raptor/raptor/v4/errs"
 )
 
 type Context struct {
@@ -376,7 +378,7 @@ func (c *Context) NoContent(code int) error {
 
 func (c *Context) Redirect(code int, url string) error {
 	if code < 300 || code > 308 {
-		return ErrInvalidRedirectCode
+		return errs.ErrInvalidRedirectCode
 	}
 	c.response.Header().Set(HeaderLocation, url)
 	c.response.WriteHeader(code)
@@ -392,7 +394,7 @@ func (c *Context) Data(data interface{}, status ...int) error {
 }
 
 func (c *Context) Error(err error) {
-	NewError(http.StatusInternalServerError, err.Error(), err)
+	errs.NewError(http.StatusInternalServerError, err.Error(), err)
 }
 
 func (c *Context) Handler() HandlerFunc {
