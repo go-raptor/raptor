@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-raptor/connectors"
 	"github.com/go-raptor/raptor/v4/config"
-	"github.com/pwntr/tinter"
+	"github.com/h00s/tint"
 )
 
 type Resources struct {
@@ -22,12 +22,12 @@ type Resources struct {
 func NewResources() *Resources {
 	levelVar := &slog.LevelVar{}
 
-	opts := &tinter.Options{
+	opts := &tint.Options{
 		Level: levelVar,
 	}
 
 	return &Resources{
-		Log:      slog.New(tinter.NewHandler(os.Stderr, opts)),
+		Log:      slog.New(tint.NewHandler(os.Stderr, opts)),
 		LogLevel: levelVar,
 	}
 }
