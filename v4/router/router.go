@@ -48,7 +48,26 @@ func (r *Router) RegisterRoutes(routes Routes, c *core.Core) error {
 			return fmt.Errorf("invalid method %s on %s", route.Method, route.Path)
 		}
 	}
+	r.RegisterErrorHandlers(c)
 	return nil
+}
+
+func (r *Router) RegisterErrorHandlers(c *core.Core) {
+	hasRootPath := false
+	for _, route := range r.Routes {
+		if route.Method == "GET" && route.Path == "/" {
+			hasRootPath = true
+			break
+		}
+	}
+
+	if !hasRootPath {
+		r.Mux.Handle("/", &routeHandler{
+			core:       c,
+			controller: "ErrorController",
+			action:     "NotFound",
+		})
+	}
 }
 
 func isHttpMethod(method string) bool {

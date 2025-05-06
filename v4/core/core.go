@@ -3,6 +3,8 @@ package core
 import (
 	"net/http"
 	"sync"
+
+	"github.com/go-raptor/raptor/v4/errs"
 )
 
 type Core struct {
@@ -28,7 +30,7 @@ func NewCore(resources *Resources) *Core {
 	}
 }
 
-func (c *Core) Handler(w http.ResponseWriter, r *http.Request, controller, action string) error {
+func (c *Core) Handler(w http.ResponseWriter, r *http.Request, controller, action string) {
 	ctx := c.ContextPool.Get().(*Context)
 	ctx.Reset(r, w, controller, action)
 	defer func() {
@@ -37,8 +39,7 @@ func (c *Core) Handler(w http.ResponseWriter, r *http.Request, controller, actio
 
 	handler, exists := c.Handlers[controller][action]
 	if !exists {
-		http.Error(w, "Handler not found", http.StatusNotFound)
-		return nil
+		ctx.Error(errs.NewErrorInternal("Handler not found"))
 	}
 
 	chain := handler.Action
@@ -55,5 +56,8 @@ func (c *Core) Handler(w http.ResponseWriter, r *http.Request, controller, actio
 		}
 	}
 
-	return chain(ctx)
+	err := chain(ctx)
+	if err != nil {
+		ctx.Error(err)
+	}
 }

@@ -394,7 +394,11 @@ func (c *Context) Data(data interface{}, status ...int) error {
 }
 
 func (c *Context) Error(err error) {
-	errs.NewError(http.StatusInternalServerError, err.Error(), err)
+	if e, ok := err.(*errs.Error); ok {
+		c.Data(e, e.Code)
+		return
+	}
+	c.Data(errs.NewErrorInternal(err.Error()), http.StatusInternalServerError)
 }
 
 func (c *Context) Handler() HandlerFunc {

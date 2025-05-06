@@ -5,6 +5,8 @@ import (
 	"reflect"
 
 	"strings"
+
+	"github.com/go-raptor/raptor/v4/errs"
 )
 
 const controllerSuffix = "Controller"
@@ -59,6 +61,7 @@ func (c *Core) RegisterControllers(components *Components) error {
 			return err
 		}
 	}
+	c.registerController(&ErrorController{}, "ErrorController")
 	return nil
 }
 
@@ -126,4 +129,12 @@ func (c *Core) RegisterHandler(controller, action string, handler func(*Context)
 func (c *Core) HasControllerAction(controller, action string) bool {
 	_, ok := c.Handlers[controller][action]
 	return ok
+}
+
+type ErrorController struct {
+	Controller
+}
+
+func (e *ErrorController) NotFound(ctx *Context) error {
+	return errs.NewErrorNotFound(fmt.Sprintf("Handler not found for %s %s", ctx.Request().Method, ctx.Request().URL.Path))
 }
