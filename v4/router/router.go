@@ -35,6 +35,9 @@ func (r *Router) RegisterRoutes(routes Routes, c *core.Core) error {
 	r.Routes = routes
 	for _, route := range r.Routes {
 		if isHttpMethod(route.Method) {
+			if _, exists := c.Handlers[route.Controller][route.Action]; !exists {
+				return fmt.Errorf("action %s not found for %s %s", core.ActionDescriptor(route.Controller, route.Action), route.Method, route.Path)
+			}
 			routeHandler := &routeHandler{
 				core:       c,
 				controller: route.Controller,

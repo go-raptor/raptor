@@ -13,5 +13,5 @@ type routeHandler struct {
 }
 
 func (rh *routeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	rh.core.Handle(w, r, rh.controller, rh.action)
+	rh.core.Handler(w, r, rh.controller, rh.action)
 }
