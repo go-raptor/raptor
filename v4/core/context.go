@@ -153,7 +153,7 @@ func (c *Context) SetPath(p string) {
 }
 
 func (c *Context) Param(name string) string {
-	return c.request.PathValue("id")
+	return c.request.PathValue(name)
 }
 
 func (c *Context) ParamNames() []string {
