@@ -16,7 +16,7 @@ type Middlewares []ScopedMiddleware
 
 type MiddlewareInitializer interface {
 	Init(*Resources)
-	New(c *Context, next func(*Context) error) error
+	Handle(c *Context, next func(*Context) error) error
 }
 
 type Middleware struct {

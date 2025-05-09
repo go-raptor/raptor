@@ -56,7 +56,7 @@ func (c *Core) Handler(w http.ResponseWriter, r *http.Request, controller, actio
 		mw := c.Middlewares[mwIndex]
 		currentChain := chain
 		chain = func(ctx *Context) error {
-			return mw.New(ctx, currentChain)
+			return mw.Handle(ctx, currentChain)
 		}
 	}
 
