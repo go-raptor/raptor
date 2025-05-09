@@ -38,15 +38,7 @@ type Context struct {
 }
 
 const (
-	// ContextKeyHeaderAllow is set by Router for getting value for `Allow` header in later stages of handler call chain.
-	// Allow header is mandatory for status 405 (method not found) and useful for OPTIONS method requests.
-	// It is added to context only when Router does not find matching method handler for request.
-	ContextKeyHeaderAllow = "echo_header_allow"
-)
-
-const (
 	defaultMemory = 32 << 20 // 32 MB
-	indexPage     = "index.html"
 	defaultIndent = "  "
 )
 
