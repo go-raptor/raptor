@@ -40,20 +40,6 @@ type bindMultipleUnmarshaler interface {
 	UnmarshalParams(params []string) error
 }
 
-// BindPathParams binds path params to bindable object
-func (b *DefaultBinder) BindPathParams(c *Context, i interface{}) error {
-	names := c.ParamNames()
-	values := c.ParamValues()
-	params := map[string][]string{}
-	for i, name := range names {
-		params[name] = []string{values[i]}
-	}
-	if err := b.bindData(i, params, "param", nil); err != nil {
-		return errs.NewErrorBadRequest(err.Error())
-	}
-	return nil
-}
-
 // BindQueryParams binds query params to bindable object
 func (b *DefaultBinder) BindQueryParams(c *Context, i interface{}) error {
 	if err := b.bindData(i, c.QueryParams(), "query", nil); err != nil {
@@ -130,9 +116,6 @@ func (b *DefaultBinder) BindHeaders(c *Context, i interface{}) error {
 // Binding is done in following order: 1) path params; 2) query params; 3) request body. Each step COULD override previous
 // step binded values. For single source binding use their own methods BindBody, BindQueryParams, BindPathParams.
 func (b *DefaultBinder) Bind(i interface{}, c *Context) (err error) {
-	if err := b.BindPathParams(c, i); err != nil {
-		return err
-	}
 	// Only bind query parameters for GET/DELETE/HEAD to avoid unexpected behavior with destination struct binding from body.
 	// For example a request URL `&id=1&lang=en` with body `{"id":100,"lang":"de"}` would lead to precedence issues.
 	// The HTTP method check restores pre-v4.1.11 behavior to avoid these problems (see issue #1670)

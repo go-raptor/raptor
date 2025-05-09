@@ -25,16 +25,6 @@ type Context struct {
 	controller string
 	action     string
 	handler    HandlerFunc
-
-	// Usually echo.Echo is sizing pvalues but there could be user created middlewares that decide to
-	// overwrite parameter by calling SetParamNames + SetParamValues.
-	// When echo.Echo allocated that slice it length/capacity is tied to echo.Echo.maxParam value.
-	//
-	// It is important that pvalues size is always equal or bigger to pnames length.
-	pvalues []string
-
-	// pnames length is tied to param count for the matched route
-	pnames []string
 }
 
 const (
@@ -47,7 +37,6 @@ func NewContext(c *Core, r *http.Request, w http.ResponseWriter) *Context {
 		request:  r,
 		response: NewResponse(w),
 		store:    make(map[string]interface{}),
-		pvalues:  make([]string, 0),
 		core:     c,
 		handler:  nil,
 	}
@@ -137,39 +126,6 @@ func (c *Context) Path() string {
 
 func (c *Context) Param(name string) string {
 	return c.request.PathValue(name)
-}
-
-func (c *Context) ParamNames() []string {
-	return c.pnames
-}
-
-func (c *Context) SetParamNames(names ...string) {
-	c.pnames = names
-
-	l := len(names)
-	if len(c.pvalues) < l {
-		// Keeping the old pvalues just for backward compatibility, but it sounds that doesn't make sense to keep them,
-		// probably those values will be overridden in a Context#SetParamValues
-		newPvalues := make([]string, l)
-		copy(newPvalues, c.pvalues)
-		c.pvalues = newPvalues
-	}
-}
-
-func (c *Context) ParamValues() []string {
-	return c.pvalues[:len(c.pnames)]
-}
-
-func (c *Context) SetParamValues(values ...string) {
-	// NOTE: Don't just set c.pvalues = values, because it has to have length c.echo.maxParam (or bigger) at all times
-	// It will brake the Router#Find code
-	limit := len(values)
-	if limit > len(c.pvalues) {
-		c.pvalues = make([]string, limit)
-	}
-	for i := 0; i < limit; i++ {
-		c.pvalues[i] = values[i]
-	}
 }
 
 func (c *Context) QueryParam(name string) string {
@@ -400,9 +356,4 @@ func (c *Context) Reset(r *http.Request, w http.ResponseWriter, controller, acti
 	c.query = nil
 	c.handler = nil
 	c.store = nil
-	c.pnames = nil
-	// NOTE: Don't reset because it has to have length c.echo.maxParam (or bigger) at all times
-	for i := 0; i < len(c.pvalues); i++ {
-		c.pvalues[i] = ""
-	}
 }
