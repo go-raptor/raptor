@@ -2,6 +2,7 @@ package core
 
 import (
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/go-raptor/raptor/v4/errs"
@@ -15,6 +16,7 @@ type Core struct {
 
 	contextPool *sync.Pool
 	Binder      Binder
+	IPExtractor IPExtractor
 }
 
 func NewCore(resources *Resources) *Core {
@@ -30,6 +32,14 @@ func NewCore(resources *Resources) *Core {
 		New: func() interface{} {
 			return NewContext(core, nil, nil)
 		},
+	}
+	switch strings.ToLower(resources.Config.ServerConfig.IPExtractor) {
+	case "x-forwarded-for":
+		core.IPExtractor = ExtractIPFromXFFHeader()
+	case "x-real-ip":
+		core.IPExtractor = ExtractIPFromRealIPHeader()
+	default:
+		core.IPExtractor = ExtractIPDirect()
 	}
 	return core
 }

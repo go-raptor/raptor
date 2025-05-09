@@ -21,14 +21,14 @@ type Config struct {
 }
 
 type GeneralConfig struct {
-	LogLevel string `yaml:"logLevel"`
+	LogLevel string `yaml:"log_level"`
 }
 
 type ServerConfig struct {
 	Address         string `yaml:"address"`
 	Port            int    `yaml:"port"`
-	ShutdownTimeout int    `yaml:"shutdownTimeout"`
-	IPExtractor     string `yaml:"ipExtractor"`
+	ShutdownTimeout int    `yaml:"shutdown_timeout"`
+	IPExtractor     string `yaml:"ip_extractor"`
 }
 
 type DatabaseConfig struct {

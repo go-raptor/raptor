@@ -96,10 +96,9 @@ func (c *Context) Scheme() string {
 }
 
 func (c *Context) RealIP() string {
-	// TODO:
-	/*if c.echo != nil && c.echo.IPExtractor != nil {
-		return c.echo.IPExtractor(c.request)
-	}*/
+	if c.core != nil && c.core.IPExtractor != nil {
+		return c.core.IPExtractor(c.request)
+	}
 	// Fall back to legacy behavior
 	if ip := c.request.Header.Get(HeaderXForwardedFor); ip != "" {
 		i := strings.IndexAny(ip, ",")
