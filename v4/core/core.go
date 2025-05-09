@@ -12,22 +12,26 @@ type Core struct {
 	Handlers    map[string]map[string]*Handler
 	Services    map[string]ServiceInitializer
 	Middlewares []MiddlewareInitializer
+
 	contextPool *sync.Pool
+	Binder      Binder
 }
 
 func NewCore(resources *Resources) *Core {
 	binder := &DefaultBinder{}
 
-	return &Core{
+	core := &Core{
 		Resources: resources,
 		Handlers:  make(map[string]map[string]*Handler),
 		Services:  make(map[string]ServiceInitializer),
-		contextPool: &sync.Pool{
-			New: func() interface{} {
-				return NewContext(nil, nil, binder)
-			},
+		Binder:    binder,
+	}
+	core.contextPool = &sync.Pool{
+		New: func() interface{} {
+			return NewContext(core, nil, nil)
 		},
 	}
+	return core
 }
 
 func (c *Core) Handler(w http.ResponseWriter, r *http.Request, controller, action string) {

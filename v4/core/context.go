@@ -14,18 +14,17 @@ import (
 )
 
 type Context struct {
-	controller string
-	action     string
-	request    *http.Request
-	response   *Response
-	query      url.Values
+	core     *Core
+	request  *http.Request
+	response *Response
+	query    url.Values
 
 	store map[string]interface{}
 	lock  sync.RWMutex
 
-	binder Binder
-	// following fields are set by Router
-	handler HandlerFunc
+	controller string
+	action     string
+	handler    HandlerFunc
 
 	// path is route path that Router matched. It is empty string where there is no route match.
 	// Route registered with RouteNotFound is considered as a match and path therefore is not empty.
@@ -55,13 +54,13 @@ const (
 	defaultIndent = "  "
 )
 
-func NewContext(r *http.Request, w http.ResponseWriter, binder Binder) *Context {
+func NewContext(c *Core, r *http.Request, w http.ResponseWriter) *Context {
 	return &Context{
 		request:  r,
 		response: NewResponse(w),
 		store:    make(map[string]interface{}),
 		pvalues:  make([]string, 0),
-		binder:   binder,
+		core:     c,
 		handler:  nil,
 	}
 }
@@ -267,7 +266,7 @@ func (c *Context) Set(key string, val interface{}) {
 }
 
 func (c *Context) Bind(i interface{}) error {
-	return c.binder.Bind(i, c)
+	return c.core.Binder.Bind(i, c)
 }
 
 // TODO:
