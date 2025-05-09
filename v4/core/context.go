@@ -26,10 +26,6 @@ type Context struct {
 	action     string
 	handler    HandlerFunc
 
-	// path is route path that Router matched. It is empty string where there is no route match.
-	// Route registered with RouteNotFound is considered as a match and path therefore is not empty.
-	path string
-
 	// Usually echo.Echo is sizing pvalues but there could be user created middlewares that decide to
 	// overwrite parameter by calling SetParamNames + SetParamValues.
 	// When echo.Echo allocated that slice it length/capacity is tied to echo.Echo.maxParam value.
@@ -144,11 +140,7 @@ func (c *Context) RealIP() string {
 }
 
 func (c *Context) Path() string {
-	return c.path
-}
-
-func (c *Context) SetPath(p string) {
-	c.path = p
+	return c.Request().URL.Path
 }
 
 func (c *Context) Param(name string) string {
@@ -416,7 +408,6 @@ func (c *Context) Reset(r *http.Request, w http.ResponseWriter, controller, acti
 	c.query = nil
 	c.handler = nil
 	c.store = nil
-	c.path = ""
 	c.pnames = nil
 	// NOTE: Don't reset because it has to have length c.echo.maxParam (or bigger) at all times
 	for i := 0; i < len(c.pvalues); i++ {
