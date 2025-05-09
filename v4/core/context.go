@@ -49,6 +49,14 @@ func (c *Context) writeContentType(value string) {
 	}
 }
 
+func (c *Context) Controller() string {
+	return c.controller
+}
+
+func (c *Context) Action() string {
+	return c.action
+}
+
 func (c *Context) Request() *http.Request {
 	return c.request
 }
