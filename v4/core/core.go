@@ -12,7 +12,7 @@ type Core struct {
 	Handlers    map[string]map[string]*Handler
 	Services    map[string]ServiceInitializer
 	Middlewares []MiddlewareInitializer
-	ContextPool *sync.Pool
+	contextPool *sync.Pool
 }
 
 func NewCore(resources *Resources) *Core {
@@ -22,7 +22,7 @@ func NewCore(resources *Resources) *Core {
 		Resources: resources,
 		Handlers:  make(map[string]map[string]*Handler),
 		Services:  make(map[string]ServiceInitializer),
-		ContextPool: &sync.Pool{
+		contextPool: &sync.Pool{
 			New: func() interface{} {
 				return NewContext(nil, nil, binder)
 			},
@@ -31,10 +31,10 @@ func NewCore(resources *Resources) *Core {
 }
 
 func (c *Core) Handler(w http.ResponseWriter, r *http.Request, controller, action string) {
-	ctx := c.ContextPool.Get().(*Context)
+	ctx := c.contextPool.Get().(*Context)
 	ctx.Reset(r, w, controller, action)
 	defer func() {
-		c.ContextPool.Put(ctx)
+		c.contextPool.Put(ctx)
 	}()
 
 	handler, exists := c.Handlers[controller][action]
