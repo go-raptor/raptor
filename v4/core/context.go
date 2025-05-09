@@ -57,6 +57,10 @@ func (c *Context) Action() string {
 	return c.action
 }
 
+func (c *Context) Core() *Core {
+	return c.core
+}
+
 func (c *Context) Request() *http.Request {
 	return c.request
 }
