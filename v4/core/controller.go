@@ -138,3 +138,7 @@ type ErrorController struct {
 func (e *ErrorController) NotFound(ctx *Context) error {
 	return errs.NewErrorNotFound(fmt.Sprintf("Handler not found for %s %s", ctx.Request().Method, ctx.Request().URL.Path))
 }
+
+func (e *ErrorController) MethodNotAllowed(ctx *Context) error {
+	return errs.NewErrorMethodNotAllowed(fmt.Sprintf("Method %s not allowed for %s", ctx.Request().Method, ctx.Request().URL.Path))
+}

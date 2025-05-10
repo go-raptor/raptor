@@ -4,9 +4,14 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 
 	"github.com/go-raptor/raptor/v4/core"
 )
+
+var standardMethods = []string{
+	"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "CONNECT", "TRACE",
+}
 
 var pathRegex = regexp.MustCompile(`/+`)
 
@@ -53,11 +58,34 @@ func (r *Router) RegisterRoutes(routes Routes, c *core.Core) error {
 }
 
 func (r *Router) RegisterErrorHandlers(c *core.Core) {
+	pathMethods := make(map[string]map[string]struct{})
 	hasRootPath := false
+
 	for _, route := range r.Routes {
-		if route.Method == "GET" && route.Path == "/" {
+		if route.Path == "/" && route.Method == "GET" {
 			hasRootPath = true
-			break
+		}
+		if route.Method == "*" || route.Method == "ANY" {
+			continue
+		}
+		if _, exists := pathMethods[route.Path]; !exists {
+			pathMethods[route.Path] = make(map[string]struct{})
+		}
+		pathMethods[route.Path][route.Method] = struct{}{}
+	}
+
+	for path, allowed := range pathMethods {
+		if path == "/" {
+			continue
+		}
+		for _, method := range standardMethods {
+			if _, exists := allowed[method]; !exists {
+				r.Mux.Handle(method+" "+path, &routeHandler{
+					core:       c,
+					controller: "ErrorController",
+					action:     "MethodNotAllowed",
+				})
+			}
 		}
 	}
 
@@ -71,12 +99,7 @@ func (r *Router) RegisterErrorHandlers(c *core.Core) {
 }
 
 func isHttpMethod(method string) bool {
-	switch method {
-	case "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "CONNECT", "TRACE", "ANY", "*":
-		return true
-	default:
-		return false
-	}
+	return slices.Contains(standardMethods, method) || method == "ANY" || method == "*"
 }
 
 func Scope(path string, routes ...Routes) Routes {
