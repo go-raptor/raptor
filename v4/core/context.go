@@ -77,10 +77,6 @@ func (c *Context) SetResponse(r *Response) {
 	c.response = r
 }
 
-func (c *Context) IsTLS() bool {
-	return c.request.TLS != nil
-}
-
 func (c *Context) IsWebSocket() bool {
 	upgrade := c.request.Header.Get(HeaderUpgrade)
 	return strings.EqualFold(upgrade, "websocket")
@@ -89,9 +85,6 @@ func (c *Context) IsWebSocket() bool {
 func (c *Context) Scheme() string {
 	// Can't use `r.Request.URL.Scheme`
 	// See: https://groups.google.com/forum/#!topic/golang-nuts/pMUkBlQBDF0
-	if c.IsTLS() {
-		return "https"
-	}
 	if scheme := c.request.Header.Get(HeaderXForwardedProto); scheme != "" {
 		return scheme
 	}
@@ -353,10 +346,6 @@ func (c *Context) Error(err error) {
 
 func (c *Context) Handler() HandlerFunc {
 	return c.handler
-}
-
-func (c *Context) SetHandler(h HandlerFunc) {
-	c.handler = h
 }
 
 func (c *Context) Reset(r *http.Request, w http.ResponseWriter, controller, action string) {
