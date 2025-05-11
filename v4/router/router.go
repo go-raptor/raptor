@@ -18,11 +18,15 @@ var pathRegex = regexp.MustCompile(`/+`)
 type Routes []Route
 
 type Route struct {
+	core       *core.Core
 	Method     string
 	Path       string
 	Controller string
 	Action     string
-	Handler    core.HandlerFunc
+}
+
+func (route *Route) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	route.core.Handler(w, r, route.Controller, route.Action, route.Path)
 }
 
 type Router struct {
@@ -43,13 +47,8 @@ func (r *Router) RegisterRoutes(routes Routes, c *core.Core) error {
 			if _, exists := c.Handlers[route.Controller][route.Action]; !exists {
 				return fmt.Errorf("action %s not found for %s %s", core.ActionDescriptor(route.Controller, route.Action), route.Method, route.Path)
 			}
-			routeHandler := &routeHandler{
-				core:       c,
-				controller: route.Controller,
-				action:     route.Action,
-				path:       route.Path,
-			}
-			r.Mux.Handle(route.Method+" "+route.Path, routeHandler)
+			route.core = c
+			r.Mux.Handle(route.Method+" "+route.Path, &route)
 		} else {
 			return fmt.Errorf("invalid method %s on %s", route.Method, route.Path)
 		}
@@ -81,20 +80,20 @@ func (r *Router) RegisterErrorHandlers(c *core.Core) {
 		}
 		for _, method := range standardMethods {
 			if _, exists := allowed[method]; !exists {
-				r.Mux.Handle(method+" "+path, &routeHandler{
+				r.Mux.Handle(method+" "+path, &Route{
 					core:       c,
-					controller: "ErrorController",
-					action:     "MethodNotAllowed",
+					Controller: "ErrorController",
+					Action:     "MethodNotAllowed",
 				})
 			}
 		}
 	}
 
 	if !hasRootPath {
-		r.Mux.Handle("/", &routeHandler{
+		r.Mux.Handle("/", &Route{
 			core:       c,
-			controller: "ErrorController",
-			action:     "NotFound",
+			Controller: "ErrorController",
+			Action:     "NotFound",
 		})
 	}
 }
