@@ -17,6 +17,7 @@ type Context struct {
 	core     *Core
 	request  *http.Request
 	response *Response
+	path     string
 	query    url.Values
 
 	store map[string]interface{}
@@ -125,7 +126,7 @@ func (c *Context) RealIP() string {
 }
 
 func (c *Context) Path() string {
-	return c.Request().URL.Path
+	return c.path
 }
 
 func (c *Context) Param(name string) string {
@@ -348,9 +349,10 @@ func (c *Context) Handler() HandlerFunc {
 	return c.handler
 }
 
-func (c *Context) Reset(r *http.Request, w http.ResponseWriter, controller, action string) {
+func (c *Context) Reset(r *http.Request, w http.ResponseWriter, controller, action, path string) {
 	c.controller = controller
 	c.action = action
+	c.path = path
 	c.request = r
 	c.response.reset(w)
 	c.query = nil

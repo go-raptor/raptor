@@ -22,7 +22,7 @@ type Route struct {
 	Path       string
 	Controller string
 	Action     string
-	Handler    func(*core.Context) error
+	Handler    core.HandlerFunc
 }
 
 type Router struct {
@@ -47,6 +47,7 @@ func (r *Router) RegisterRoutes(routes Routes, c *core.Core) error {
 				core:       c,
 				controller: route.Controller,
 				action:     route.Action,
+				path:       route.Path,
 			}
 			r.Mux.Handle(route.Method+" "+route.Path, routeHandler)
 		} else {

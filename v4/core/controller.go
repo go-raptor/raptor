@@ -117,7 +117,7 @@ func (c *Core) isValidActionMethod(methodType reflect.Type) bool {
 		methodType.Out(0) == reflect.TypeOf((*error)(nil)).Elem()
 }
 
-func (c *Core) RegisterHandler(controller, action string, handler func(*Context) error) {
+func (c *Core) RegisterHandler(controller, action string, handler HandlerFunc) {
 	if c.Handlers[controller] == nil {
 		c.Handlers[controller] = make(map[string]*Handler)
 	}
