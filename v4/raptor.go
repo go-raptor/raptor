@@ -57,7 +57,8 @@ func WithConfig(c *config.Config) RaptorOption {
 func (r *Raptor) Run() {
 	go func() {
 		if err := r.Server.Start(); err != nil && err != http.ErrServerClosed {
-			panic(err)
+			r.Core.Resources.Log.Error("Error while starting Raptor", "error", err)
+			os.Exit(1)
 		}
 	}()
 	r.info()
