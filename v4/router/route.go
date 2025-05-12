@@ -31,10 +31,10 @@ func NewRoute(method, path, controller, action string, c ...*core.Core) Route {
 	}
 }
 
-func (route *Route) Pattern() string {
-	return route.Method + " " + route.Path
+func (r *Route) Pattern() string {
+	return r.Method + " " + r.Path
 }
 
-func (route *Route) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	route.core.Handler(w, r, route.Controller, route.Action, route.Path)
+func (r *Route) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	r.core.Handler(writer, request, r.Controller, r.Action, r.Path)
 }
