@@ -35,16 +35,17 @@ func (r *Router) RegisterRoutes(routes Routes, c *core.Core) error {
 				return fmt.Errorf("action %s not found for %s %s", core.ActionDescriptor(route.Controller, route.Action), route.Method, route.Path)
 			}
 			route.core = c
-			r.Mux.Handle(route.Pattern(), &route)
+			if err := r.registerRoute(&route); err != nil {
+				return err
+			}
 		} else {
 			return fmt.Errorf("invalid method %s on %s", route.Method, route.Path)
 		}
 	}
-	r.RegisterErrorHandlers(c)
-	return nil
+	return r.RegisterErrorHandlers(c)
 }
 
-func (r *Router) RegisterErrorHandlers(c *core.Core) {
+func (r *Router) RegisterErrorHandlers(c *core.Core) error {
 	pathMethods := make(map[string]map[string]struct{})
 	hasCatchAllRoute := false
 
@@ -74,15 +75,32 @@ func (r *Router) RegisterErrorHandlers(c *core.Core) {
 					"allowedMethods": strings.Join(allowedMethods, ", "),
 				}
 				route := NewRoute(method, path, "ErrorController", "MethodNotAllowed", store, c)
-				r.Mux.Handle(route.Pattern(), &route)
+				if err := r.registerRoute(&route); err != nil {
+					return err
+				}
 			}
 		}
 	}
 
 	if !hasCatchAllRoute {
 		route := NewRoute("ANY", "/", "ErrorController", "NotFound", nil, c)
-		r.Mux.Handle(route.Pattern(), &route)
+		if err := r.registerRoute(&route); err != nil {
+			return err
+		}
 	}
+
+	return nil
+}
+
+func (r *Router) registerRoute(route *Route) error {
+	var err error
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("rrror registering route %s: %v", route.Pattern(), r)
+		}
+	}()
+	r.Mux.Handle(route.Pattern(), route)
+	return err
 }
 
 func isHttpMethod(method string) bool {
