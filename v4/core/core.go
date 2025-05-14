@@ -44,8 +44,9 @@ func NewCore(resources *Resources) *Core {
 
 func (c *Core) Handler(w http.ResponseWriter, r *http.Request, controller, action, path string) {
 	ctx := c.contextPool.Get().(*Context)
-	ctx.Reset(r, w, controller, action, path)
+	ctx.Init(r, w, controller, action, path)
 	defer func() {
+		ctx.Reset()
 		c.contextPool.Put(ctx)
 	}()
 

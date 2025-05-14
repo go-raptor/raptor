@@ -104,7 +104,7 @@ func (r *Response) Unwrap() http.ResponseWriter {
 	return r.Writer
 }
 
-func (r *Response) reset(w http.ResponseWriter) {
+func (r *Response) init(w http.ResponseWriter) {
 	r.beforeFuncs = nil
 	r.afterFuncs = nil
 	r.Writer = w

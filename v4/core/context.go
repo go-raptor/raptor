@@ -83,24 +83,6 @@ func (c *Context) IsWebSocket() bool {
 	return strings.EqualFold(upgrade, "websocket")
 }
 
-func (c *Context) Scheme() string {
-	// Can't use `r.Request.URL.Scheme`
-	// See: https://groups.google.com/forum/#!topic/golang-nuts/pMUkBlQBDF0
-	if scheme := c.request.Header.Get(HeaderXForwardedProto); scheme != "" {
-		return scheme
-	}
-	if scheme := c.request.Header.Get(HeaderXForwardedProtocol); scheme != "" {
-		return scheme
-	}
-	if ssl := c.request.Header.Get(HeaderXForwardedSsl); ssl == "on" {
-		return "https"
-	}
-	if scheme := c.request.Header.Get(HeaderXUrlScheme); scheme != "" {
-		return scheme
-	}
-	return "http"
-}
-
 func (c *Context) RealIP() string {
 	if c.core != nil && c.core.IPExtractor != nil {
 		return c.core.IPExtractor(c.request)
@@ -197,6 +179,7 @@ func (c *Context) Cookies() []*http.Cookie {
 func (c *Context) Get(key string) interface{} {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
+
 	return c.store[key]
 }
 
@@ -204,9 +187,6 @@ func (c *Context) Set(key string, val interface{}) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	if c.store == nil {
-		c.store = make(map[string]interface{})
-	}
 	c.store[key] = val
 }
 
@@ -349,13 +329,16 @@ func (c *Context) Handler() HandlerFunc {
 	return c.handler
 }
 
-func (c *Context) Reset(r *http.Request, w http.ResponseWriter, controller, action, path string) {
+func (c *Context) Init(r *http.Request, w http.ResponseWriter, controller, action, path string) {
 	c.controller = controller
 	c.action = action
 	c.path = path
 	c.request = r
-	c.response.reset(w)
+	c.response.init(w)
 	c.query = nil
 	c.handler = nil
-	c.store = nil
+}
+
+func (c *Context) Reset() {
+	clear(c.store)
 }
