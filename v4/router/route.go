@@ -10,13 +10,14 @@ type Routes []Route
 
 type Route struct {
 	core       *core.Core
+	Store      map[string]interface{}
 	Method     string
 	Path       string
 	Controller string
 	Action     string
 }
 
-func NewRoute(method, path, controller, action string, c ...*core.Core) Route {
+func NewRoute(method, path, controller, action string, store map[string]interface{}, c ...*core.Core) Route {
 	var core *core.Core
 	if len(c) > 0 {
 		core = c[0]
@@ -24,6 +25,7 @@ func NewRoute(method, path, controller, action string, c ...*core.Core) Route {
 
 	return Route{
 		core:       core,
+		Store:      store,
 		Method:     method,
 		Path:       path,
 		Controller: controller,
@@ -36,5 +38,5 @@ func (r *Route) Pattern() string {
 }
 
 func (r *Route) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	r.core.Handler(writer, request, r.Controller, r.Action, r.Path)
+	r.core.Handler(writer, request, r.Controller, r.Action, r.Path, r.Store)
 }

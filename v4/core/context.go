@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"io"
+	"maps"
 	"mime/multipart"
 	"net"
 	"net/http"
@@ -329,7 +330,7 @@ func (c *Context) Handler() HandlerFunc {
 	return c.handler
 }
 
-func (c *Context) Init(r *http.Request, w http.ResponseWriter, controller, action, path string) {
+func (c *Context) Init(r *http.Request, w http.ResponseWriter, controller, action, path string, store map[string]interface{}) {
 	c.controller = controller
 	c.action = action
 	c.path = path
@@ -337,6 +338,7 @@ func (c *Context) Init(r *http.Request, w http.ResponseWriter, controller, actio
 	c.response.init(w)
 	c.query = nil
 	c.handler = nil
+	maps.Copy(c.store, store)
 }
 
 func (c *Context) Reset() {

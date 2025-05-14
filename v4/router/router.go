@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"regexp"
 	"slices"
+	"strings"
 
 	"github.com/go-raptor/raptor/v4/core"
 )
@@ -64,16 +65,26 @@ func (r *Router) RegisterErrorHandlers(c *core.Core) {
 		if path == "/" {
 			continue
 		}
+
+		var allowedMethods []string
+		for allowedMethod := range allowed {
+			allowedMethods = append(allowedMethods, allowedMethod)
+		}
+		slices.Sort(allowedMethods)
+
 		for _, method := range standardMethods {
 			if _, exists := allowed[method]; !exists {
-				route := NewRoute(method, path, "ErrorController", "MethodNotAllowed", c)
+				store := map[string]interface{}{
+					"allowedMethods": strings.Join(allowedMethods, ", "),
+				}
+				route := NewRoute(method, path, "ErrorController", "MethodNotAllowed", store, c)
 				r.Mux.Handle(route.Pattern(), &route)
 			}
 		}
 	}
 
 	if !hasRootPath {
-		route := NewRoute("GET", "/", "ErrorController", "NotFound", c)
+		route := NewRoute("GET", "/", "ErrorController", "NotFound", nil, c)
 		r.Mux.Handle(route.Pattern(), &route)
 	}
 }
@@ -109,7 +120,7 @@ func MethodRoute(method, path string, handler ...string) Routes {
 	}
 
 	return Routes{
-		NewRoute(method, normalizePath(path), controller, action),
+		NewRoute(method, normalizePath(path), controller, action, nil),
 	}
 }
 
