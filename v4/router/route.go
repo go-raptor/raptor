@@ -34,6 +34,9 @@ func NewRoute(method, path, controller, action string, store map[string]interfac
 }
 
 func (r *Route) Pattern() string {
+	if r.Method == "ANY" {
+		return r.Path
+	}
 	return r.Method + " " + r.Path
 }
 

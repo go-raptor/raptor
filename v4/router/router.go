@@ -46,11 +46,11 @@ func (r *Router) RegisterRoutes(routes Routes, c *core.Core) error {
 
 func (r *Router) RegisterErrorHandlers(c *core.Core) {
 	pathMethods := make(map[string]map[string]struct{})
-	hasRootPath := false
+	hasCatchAllRoute := false
 
 	for _, route := range r.Routes {
-		if route.Path == "/" && route.Method == "GET" {
-			hasRootPath = true
+		if route.Pattern() == "/" {
+			hasCatchAllRoute = true
 		}
 		if route.Method == "*" || route.Method == "ANY" {
 			continue
@@ -62,10 +62,6 @@ func (r *Router) RegisterErrorHandlers(c *core.Core) {
 	}
 
 	for path, allowed := range pathMethods {
-		if path == "/" {
-			continue
-		}
-
 		var allowedMethods []string
 		for allowedMethod := range allowed {
 			allowedMethods = append(allowedMethods, allowedMethod)
@@ -83,8 +79,8 @@ func (r *Router) RegisterErrorHandlers(c *core.Core) {
 		}
 	}
 
-	if !hasRootPath {
-		route := NewRoute("GET", "/", "ErrorController", "NotFound", nil, c)
+	if !hasCatchAllRoute {
+		route := NewRoute("ANY", "/", "ErrorController", "NotFound", nil, c)
 		r.Mux.Handle(route.Pattern(), &route)
 	}
 }
@@ -182,7 +178,7 @@ func Report(path string, handler ...string) Routes {
 }
 
 func Any(path string, handler ...string) Routes {
-	return MethodRoute("*", path, handler...)
+	return MethodRoute("ANY", path, handler...)
 }
 
 func CollectRoutes(r ...Routes) Routes {
