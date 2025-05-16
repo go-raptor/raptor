@@ -50,6 +50,14 @@ func ParseActionDescriptor(descriptor string) (controller, action string) {
 }
 
 func ActionDescriptor(controller, action string) string {
+	return NormalizeController(controller) + descriptorSeparator + action
+}
+
+func NormalizeDescriptor(descriptor string) string {
+	controller, action := ParseActionDescriptor(descriptor)
+	if action == "" {
+		return controller
+	}
 	return controller + descriptorSeparator + action
 }
 

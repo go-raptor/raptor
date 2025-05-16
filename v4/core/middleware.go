@@ -171,7 +171,7 @@ func (c *Core) injectMiddleware(middlewareIndex int, scoped ScopedMiddleware) er
 		}
 		if len(scoped.Only) > 0 {
 			for _, only := range scoped.Only {
-				if only == descriptor {
+				if NormalizeDescriptor(only) == descriptor {
 					return true
 				}
 			}
@@ -179,7 +179,7 @@ func (c *Core) injectMiddleware(middlewareIndex int, scoped ScopedMiddleware) er
 		}
 		if len(scoped.Except) > 0 {
 			for _, except := range scoped.Except {
-				if except == descriptor {
+				if NormalizeDescriptor(except) == descriptor {
 					return false
 				}
 			}
