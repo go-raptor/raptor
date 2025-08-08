@@ -62,6 +62,8 @@ func NormalizeDescriptor(descriptor string) string {
 }
 
 func (c *Core) RegisterControllers(components *Components) error {
+	c.registerController(&ErrorsController{}, "ErrorsController")
+
 	for _, controller := range components.Controllers {
 		controllerName := reflect.TypeOf(controller).Elem().Name()
 		if err := c.registerController(controller, controllerName); err != nil {
@@ -69,7 +71,7 @@ func (c *Core) RegisterControllers(components *Components) error {
 			return err
 		}
 	}
-	c.registerController(&ErrorController{}, "ErrorController")
+
 	return nil
 }
 
@@ -139,15 +141,15 @@ func (c *Core) HasControllerAction(controller, action string) bool {
 	return ok
 }
 
-type ErrorController struct {
+type ErrorsController struct {
 	Controller
 }
 
-func (e *ErrorController) NotFound(ctx *Context) error {
+func (e *ErrorsController) NotFound(ctx *Context) error {
 	return errs.NewErrorNotFound(fmt.Sprintf("Handler not found for %s %s", ctx.Request().Method, ctx.Request().URL.Path))
 }
 
-func (e *ErrorController) MethodNotAllowed(ctx *Context) error {
+func (e *ErrorsController) MethodNotAllowed(ctx *Context) error {
 	ctx.response.Header().Set("Allow", ctx.Get("allowedMethods").(string))
 	return errs.NewErrorMethodNotAllowed(fmt.Sprintf("Method %s not allowed for %s", ctx.Request().Method, ctx.Request().URL.Path))
 }

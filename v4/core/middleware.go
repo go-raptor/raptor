@@ -137,19 +137,30 @@ func (c *Core) validateScopedMiddleware(scoped ScopedMiddleware, middlewareName 
 		return fmt.Errorf("%s: middleware must specify one of Global, Only, or Except", middlewareName)
 	}
 
+	checkDescriptor := func(descriptor, scopeType string) error {
+		controller, action := ParseActionDescriptor(descriptor)
+
+		if _, ok := c.Handlers[controller]; !ok {
+			return fmt.Errorf("%s: controller '%s' in %s scope does not exist", middlewareName, controller, scopeType)
+		}
+
+		if action != "" && !c.HasControllerAction(controller, action) {
+			return fmt.Errorf("%s: action '%s#%s' in %s scope does not exist", middlewareName, controller, action, scopeType)
+		}
+		return nil
+	}
+
 	if hasOnly {
 		for _, descriptor := range scoped.Only {
-			controller, action := ParseActionDescriptor(descriptor)
-			if !c.HasControllerAction(controller, action) {
-				return fmt.Errorf("%s: action %s#%s in Only does not exist", middlewareName, controller, action)
+			if err := checkDescriptor(descriptor, "Only"); err != nil {
+				return err
 			}
 		}
 	}
 	if hasExcept {
 		for _, descriptor := range scoped.Except {
-			controller, action := ParseActionDescriptor(descriptor)
-			if !c.HasControllerAction(controller, action) {
-				return fmt.Errorf("%s: action %s#%s in Except does not exist", middlewareName, controller, action)
+			if err := checkDescriptor(descriptor, "Except"); err != nil {
+				return err
 			}
 		}
 	}
@@ -162,7 +173,6 @@ func (c *Core) registerMiddleware(middleware MiddlewareInitializer) error {
 	return nil
 }
 
-// injectMiddleware applies a middleware to handlers based on scoping rules.
 func (c *Core) injectMiddleware(middlewareIndex int, scoped ScopedMiddleware) error {
 	shouldInclude := func(handlerController, handlerAction string) bool {
 		if scoped.Global {

@@ -74,7 +74,7 @@ func (r *Router) RegisterErrorHandlers(c *core.Core) error {
 				store := map[string]interface{}{
 					"allowedMethods": strings.Join(allowedMethods, ", "),
 				}
-				route := NewRoute(method, path, "ErrorController", "MethodNotAllowed", store, c)
+				route := NewRoute(method, path, "ErrorsController", "MethodNotAllowed", store, c)
 				if err := r.registerRoute(&route); err != nil {
 					return err
 				}
@@ -83,7 +83,7 @@ func (r *Router) RegisterErrorHandlers(c *core.Core) error {
 	}
 
 	if !hasCatchAllRoute {
-		route := NewRoute("ANY", "/", "ErrorController", "NotFound", nil, c)
+		route := NewRoute("ANY", "/", "ErrorsController", "NotFound", nil, c)
 		if err := r.registerRoute(&route); err != nil {
 			return err
 		}
@@ -96,7 +96,7 @@ func (r *Router) registerRoute(route *Route) error {
 	var err error
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("rrror registering route %s: %v", route.Pattern(), r)
+			err = fmt.Errorf("error registering route %s: %v", route.Pattern(), r)
 		}
 	}()
 	r.Mux.Handle(route.Pattern(), route)
