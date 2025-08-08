@@ -164,27 +164,43 @@ func (c *Core) registerMiddleware(middleware MiddlewareInitializer) error {
 
 // injectMiddleware applies a middleware to handlers based on scoping rules.
 func (c *Core) injectMiddleware(middlewareIndex int, scoped ScopedMiddleware) error {
-	shouldInclude := func(controller, action string) bool {
-		descriptor := ActionDescriptor(controller, action)
+	shouldInclude := func(handlerController, handlerAction string) bool {
 		if scoped.Global {
 			return true
 		}
+
 		if len(scoped.Only) > 0 {
-			for _, only := range scoped.Only {
-				if NormalizeDescriptor(only) == descriptor {
-					return true
+			for _, onlyItem := range scoped.Only {
+				ruleController, ruleAction := ParseActionDescriptor(onlyItem)
+				if ruleAction == "" {
+					if ruleController == handlerController {
+						return true
+					}
+				} else {
+					if ruleController == handlerController && ruleAction == handlerAction {
+						return true
+					}
 				}
 			}
 			return false
 		}
+
 		if len(scoped.Except) > 0 {
-			for _, except := range scoped.Except {
-				if NormalizeDescriptor(except) == descriptor {
-					return false
+			for _, exceptItem := range scoped.Except {
+				ruleController, ruleAction := ParseActionDescriptor(exceptItem)
+				if ruleAction == "" {
+					if ruleController == handlerController {
+						return false
+					}
+				} else {
+					if ruleController == handlerController && ruleAction == handlerAction {
+						return false
+					}
 				}
 			}
 			return true
 		}
+
 		return false
 	}
 
