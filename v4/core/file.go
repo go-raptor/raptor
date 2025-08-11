@@ -17,7 +17,7 @@ func (c *Context) File(file string) error {
 	f, err := os.Open(cleanPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return c.NoContent(http.StatusNotFound)
+			return c.NotFound()
 		}
 		return errs.NewErrorInternal("Failed to open file", err)
 	}
@@ -28,7 +28,7 @@ func (c *Context) File(file string) error {
 		return errs.NewErrorInternal("Failed to stat file", err)
 	}
 	if fi.IsDir() {
-		return c.NoContent(http.StatusNotFound)
+		return c.NotFound()
 	}
 
 	http.ServeContent(c.Response(), c.Request(), fi.Name(), fi.ModTime(), f)

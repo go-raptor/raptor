@@ -296,8 +296,13 @@ func (c *Context) contentDisposition(file, name, dispositionType string) error {
 	return c.File(file)
 }
 
-func (c *Context) NoContent(code int) error {
-	c.response.WriteHeader(code)
+func (c *Context) NoContent() error {
+	c.response.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+func (c *Context) NotFound() error {
+	c.response.WriteHeader(http.StatusNotFound)
 	return nil
 }
 
