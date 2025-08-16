@@ -1,6 +1,6 @@
 module github.com/go-raptor/raptor/v4
 
-go 1.24.3
+go 1.25
 
 require (
 	github.com/go-raptor/connectors v1.0.2
