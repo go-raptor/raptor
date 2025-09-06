@@ -107,8 +107,8 @@ func (r *Raptor) waitForShutdown() {
 
 func (r *Raptor) Configure(components *core.Components) error {
 	if components.DatabaseConnector != nil {
-		r.Core.Resources.DB = components.DatabaseConnector
-		if err := r.Core.Resources.DB.Init(); err != nil {
+		r.Core.Resources.Database = components.DatabaseConnector
+		if err := r.Core.Resources.Database.Init(); err != nil {
 			r.Core.Resources.Log.Error("Database connector initalization failed", "error", err)
 			os.Exit(1)
 		}

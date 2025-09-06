@@ -16,7 +16,7 @@ type Resources struct {
 	Log      *slog.Logger
 	LogLevel *slog.LevelVar
 
-	DB connectors.DatabaseConnector
+	Database connectors.DatabaseConnector
 }
 
 func NewResources() *Resources {
@@ -33,7 +33,7 @@ func NewResources() *Resources {
 }
 
 func (u *Resources) SetDB(db connectors.DatabaseConnector) {
-	u.DB = db
+	u.Database = db
 }
 
 func (u *Resources) SetConfig(config *config.Config) {
