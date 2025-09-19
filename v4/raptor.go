@@ -67,8 +67,7 @@ func (r *Raptor) Run() {
 
 func (r *Raptor) info() {
 	content := []string{
-		"Raptor is running! 🦖💨",
-		fmt.Sprintf("🟢 Raptor %s running on %s", Version, r.Server.Address()),
+		fmt.Sprintf("🟢 Raptor %s is running on %s! 🦖💨", Version, r.Server.Address()),
 	}
 
 	r.Core.Resources.Log.Info(strings.Join(content, "\n"))
