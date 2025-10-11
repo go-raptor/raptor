@@ -1,5 +1,5 @@
 package raptor
 
 const (
-	Version = "v4.1.0"
+	Version = "v4.1.1"
 )
