@@ -13,18 +13,14 @@ type Core struct {
 	Middlewares []MiddlewareInitializer
 
 	contextPool *sync.Pool
-	Binder      Binder
 	IPExtractor IPExtractor
 }
 
 func NewCore(resources *Resources) *Core {
-	binder := &DefaultBinder{}
-
 	core := &Core{
 		Resources: resources,
 		Handlers:  make(map[string]map[string]*Handler),
 		Services:  make(map[string]ServiceInitializer),
-		Binder:    binder,
 	}
 	core.contextPool = &sync.Pool{
 		New: func() interface{} {

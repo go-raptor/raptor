@@ -6,5 +6,5 @@ Go MVCS web development eco-system based on Echo and heavily inspired by Ruby on
 
 ## Installation
 
-`go get github.com/go-raptor/raptor/v3`
+`go get github.com/go-raptor/raptor/v4`
 

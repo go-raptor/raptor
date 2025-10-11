@@ -116,6 +116,13 @@ func (c *Context) Param(name string) string {
 	return c.request.PathValue(name)
 }
 
+func (c *Context) Query() url.Values {
+	if c.query == nil {
+		c.query = c.request.URL.Query()
+	}
+	return c.query
+}
+
 func (c *Context) QueryParam(name string) string {
 	if c.query == nil {
 		c.query = c.request.URL.Query()
@@ -190,20 +197,6 @@ func (c *Context) Set(key string, val interface{}) {
 
 	c.store[key] = val
 }
-
-func (c *Context) Bind(i interface{}) error {
-	return c.core.Binder.Bind(i, c)
-}
-
-// TODO:
-/*
-func (c *Context) Validate(i interface{}) error {
-	if c.echo.Validator == nil {
-		return ErrValidatorNotRegistered
-	}
-	return c.echo.Validator.Validate(i)
-}
-*/
 
 func (c *Context) String(code int, s string) (err error) {
 	return c.Blob(code, MIMETextPlainCharsetUTF8, []byte(s))
