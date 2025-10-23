@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"maps"
@@ -114,6 +115,10 @@ func (c *Context) Path() string {
 
 func (c *Context) Param(name string) string {
 	return c.request.PathValue(name)
+}
+
+func (c *Context) Bind(v any) error {
+	return json.NewDecoder(c.request.Body).Decode(v)
 }
 
 func (c *Context) Query() url.Values {
