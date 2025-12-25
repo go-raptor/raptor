@@ -35,44 +35,26 @@ func ParseYAML(content []byte) Routes {
 }
 
 func processYAMLRoutes(routeData map[string]interface{}, parentPath string, routes *Routes) {
-	for path, data := range routeData {
-		currentPath := normalizePath(joinPaths(parentPath, path))
+	for key, data := range routeData {
+		upperKey := strings.ToUpper(key)
+		if isHttpMethod(upperKey) {
+			if descriptor, ok := data.(string); ok {
+				*routes = append(*routes, MethodRoute(upperKey, parentPath, descriptor)...)
+			}
+			continue
+		}
+
+		currentPath := joinPaths(parentPath, key)
 
 		switch nested := data.(type) {
 		case map[string]interface{}:
-			hasHttpMethods := false
-			for key := range nested {
-				method := strings.ToUpper(key)
-				if isHttpMethod(method) {
-					hasHttpMethods = true
-					break
-				}
-			}
-
-			if hasHttpMethods {
-				for method, handler := range nested {
-					httpMethod := strings.ToUpper(method)
-					if !isHttpMethod(httpMethod) {
-						continue
-					}
-
-					if descriptor, ok := handler.(string); ok {
-						*routes = append(*routes, MethodRoute(httpMethod, currentPath, descriptor)...)
-					}
-				}
-			} else {
-				processYAMLRoutes(nested, currentPath, routes)
-			}
+			processYAMLRoutes(nested, currentPath, routes)
+		case string:
+			*routes = append(*routes, MethodRoute("ANY", currentPath, nested)...)
 		}
 	}
 }
 
 func joinPaths(parent, child string) string {
-	if parent == "" {
-		return normalizePath(child)
-	}
-	if child == "" {
-		return normalizePath(parent)
-	}
 	return normalizePath(parent + "/" + child)
 }

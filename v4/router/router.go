@@ -109,15 +109,11 @@ func isHttpMethod(method string) bool {
 
 func Scope(path string, routes ...Routes) Routes {
 	var result Routes
-	normalizedPath := normalizePath(path)
+	parentPath := normalizePath(path)
 
-	for _, route := range routes {
-		for _, r := range route {
-			if r.Path == "/" {
-				r.Path = normalizedPath
-			} else {
-				r.Path = normalizedPath + r.Path
-			}
+	for _, routeSet := range routes {
+		for _, r := range routeSet {
+			r.Path = normalizePath(parentPath + "/" + r.Path)
 			result = append(result, r)
 		}
 	}
@@ -139,12 +135,12 @@ func MethodRoute(method, path string, handler ...string) Routes {
 }
 
 func normalizePath(path string) string {
-	if path == "" {
+	if path == "" || path == "/" {
 		return "/"
 	}
 
-	path = pathRegex.ReplaceAllString("/"+path+"/", "/")
-	if len(path) > 1 {
+	path = pathRegex.ReplaceAllString("/"+path, "/")
+	if len(path) > 1 && strings.HasSuffix(path, "/") {
 		path = path[:len(path)-1]
 	}
 
