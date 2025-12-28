@@ -40,9 +40,8 @@ func NewCore(resources *Resources) *Core {
 
 func (c *Core) Handler(w http.ResponseWriter, r *http.Request, controller, action, path string, store map[string]interface{}) {
 	ctx := c.contextPool.Get().(*Context)
-	ctx.Init(r, w, controller, action, path, store)
+	ctx.ResetAndInit(r, w, controller, action, path, store)
 	defer func() {
-		ctx.Reset()
 		c.contextPool.Put(ctx)
 	}()
 

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,11 +10,18 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/go-raptor/raptor/v4/errs"
 )
+
+var jsonBufferPool = sync.Pool{
+	New: func() interface{} {
+		return bytes.NewBuffer(make([]byte, 0, 1024))
+	},
+}
 
 type Context struct {
 	core     *Core
@@ -32,7 +40,6 @@ type Context struct {
 
 const (
 	defaultMemory = 32 << 20 // 32 MB
-	defaultIndent = "  "
 )
 
 func NewContext(c *Core, r *http.Request, w http.ResponseWriter) *Context {
@@ -89,24 +96,19 @@ func (c *Context) RealIP() string {
 	if c.core != nil && c.core.IPExtractor != nil {
 		return c.core.IPExtractor(c.request)
 	}
-	// Fall back to legacy behavior
-	if ip := c.request.Header.Get(HeaderXForwardedFor); ip != "" {
-		i := strings.IndexAny(ip, ",")
-		if i > 0 {
-			xffip := strings.TrimSpace(ip[:i])
-			xffip = strings.TrimPrefix(xffip, "[")
-			xffip = strings.TrimSuffix(xffip, "]")
-			return xffip
+
+	for _, header := range []string{HeaderXForwardedFor, HeaderXRealIP} {
+		if ip := c.request.Header.Get(header); ip != "" {
+			ip = strings.TrimSpace(strings.SplitN(ip, ",", 2)[0])
+			ip = strings.Trim(ip, "[]")
+			if ip != "" {
+				return ip
+			}
 		}
-		return ip
 	}
-	if ip := c.request.Header.Get(HeaderXRealIP); ip != "" {
-		ip = strings.TrimPrefix(ip, "[")
-		ip = strings.TrimSuffix(ip, "]")
-		return ip
-	}
-	ra, _, _ := net.SplitHostPort(c.request.RemoteAddr)
-	return ra
+
+	host, _, _ := net.SplitHostPort(c.request.RemoteAddr)
+	return host
 }
 
 func (c *Context) Path() string {
@@ -207,62 +209,31 @@ func (c *Context) String(code int, s string) (err error) {
 	return c.Blob(code, MIMETextPlainCharsetUTF8, []byte(s))
 }
 
-func (c *Context) jsonPBlob(code int, callback string, i interface{}) (err error) {
-	indent := ""
-	if _, pretty := c.QueryParams()["pretty"]; pretty {
-		indent = defaultIndent
-	}
-	c.writeContentType(MIMEApplicationJavaScriptCharsetUTF8)
-	c.response.WriteHeader(code)
-	if _, err = c.response.Write([]byte(callback + "(")); err != nil {
-		return
-	}
-	if err = JSONSerialize(c, i, indent); err != nil {
-		return
-	}
-	if _, err = c.response.Write([]byte(");")); err != nil {
-		return
-	}
-	return
-}
-
-func (c *Context) json(code int, i interface{}, indent string) error {
+func (c *Context) JSON(code int, i interface{}) error {
 	c.writeContentType(MIMEApplicationJSON)
 	c.response.Status = code
-	return JSONSerialize(c, i, indent)
-}
 
-func (c *Context) JSON(code int, i interface{}) (err error) {
-	indent := ""
-	if _, pretty := c.QueryParams()["pretty"]; pretty {
-		indent = defaultIndent
+	if b, ok := i.([]byte); ok {
+		c.response.Header().Set(HeaderContentLength, strconv.Itoa(len(b)))
+		_, err := c.response.Write(b)
+		return err
 	}
-	return c.json(code, i, indent)
+
+	buf := jsonBufferPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	defer jsonBufferPool.Put(buf)
+
+	if err := json.NewEncoder(buf).Encode(i); err != nil {
+		return err
+	}
+
+	c.response.Header().Set(HeaderContentLength, strconv.Itoa(buf.Len()))
+	_, err := c.response.Write(buf.Bytes())
+	return err
 }
 
-func (c *Context) JSONPretty(code int, i interface{}, indent string) (err error) {
-	return c.json(code, i, indent)
-}
-
-func (c *Context) JSONBlob(code int, b []byte) (err error) {
+func (c *Context) JSONBlob(code int, b []byte) error {
 	return c.Blob(code, MIMEApplicationJSON, b)
-}
-
-func (c *Context) JSONP(code int, callback string, i interface{}) (err error) {
-	return c.jsonPBlob(code, callback, i)
-}
-
-func (c *Context) JSONPBlob(code int, callback string, b []byte) (err error) {
-	c.writeContentType(MIMEApplicationJavaScriptCharsetUTF8)
-	c.response.WriteHeader(code)
-	if _, err = c.response.Write([]byte(callback + "(")); err != nil {
-		return
-	}
-	if _, err = c.response.Write(b); err != nil {
-		return
-	}
-	_, err = c.response.Write([]byte(");"))
-	return
 }
 
 func (c *Context) Blob(code int, contentType string, b []byte) (err error) {
@@ -317,11 +288,11 @@ func (c *Context) Redirect(code int, url string) error {
 }
 
 func (c *Context) Data(data interface{}, status ...int) error {
-	if len(status) == 0 {
-		status = append(status, http.StatusOK)
+	code := http.StatusOK
+	if len(status) > 0 {
+		code = status[0]
 	}
-	c.JSON(status[0], data)
-	return nil
+	return c.JSON(code, data)
 }
 
 func (c *Context) Error(err error) {
@@ -336,7 +307,7 @@ func (c *Context) Handler() HandlerFunc {
 	return c.handler
 }
 
-func (c *Context) Init(r *http.Request, w http.ResponseWriter, controller, action, path string, store map[string]interface{}) {
+func (c *Context) ResetAndInit(r *http.Request, w http.ResponseWriter, controller, action, path string, store map[string]interface{}) {
 	c.controller = controller
 	c.action = action
 	c.path = path
@@ -344,9 +315,9 @@ func (c *Context) Init(r *http.Request, w http.ResponseWriter, controller, actio
 	c.response.init(w)
 	c.query = nil
 	c.handler = nil
-	maps.Copy(c.store, store)
-}
 
-func (c *Context) Reset() {
 	clear(c.store)
+	if len(store) > 0 {
+		maps.Copy(c.store, store)
+	}
 }
