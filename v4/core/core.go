@@ -23,7 +23,7 @@ func NewCore(resources *Resources) *Core {
 		Services:  make(map[string]ServiceInitializer),
 	}
 	core.contextPool = &sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			return NewContext(core, nil, nil)
 		},
 	}
@@ -38,30 +38,22 @@ func NewCore(resources *Resources) *Core {
 	return core
 }
 
-func (c *Core) Handler(w http.ResponseWriter, r *http.Request, controller, action, path string, store map[string]interface{}) {
+func (c *Core) Handler(w http.ResponseWriter, r *http.Request, controller, action, path string, store map[string]any) {
 	ctx := c.contextPool.Get().(*Context)
 	ctx.ResetAndInit(r, w, controller, action, path, store)
-	defer func() {
-		c.contextPool.Put(ctx)
-	}()
+	defer c.contextPool.Put(ctx)
 
 	handler := c.Handlers[controller][action]
 	chain := handler.Action
 	for i := len(handler.middlewares) - 1; i >= 0; i-- {
-		mwIndex := handler.middlewares[i]
-		if mwIndex >= len(c.Middlewares) {
-			c.Resources.Log.Error("Invalid middleware index", "index", mwIndex)
-			continue
-		}
-		mw := c.Middlewares[mwIndex]
-		currentChain := chain
+		mw := c.Middlewares[handler.middlewares[i]]
+		next := chain
 		chain = func(ctx *Context) error {
-			return mw.Handle(ctx, currentChain)
+			return mw.Handle(ctx, next)
 		}
 	}
 
-	err := chain(ctx)
-	if err != nil {
+	if err := chain(ctx); err != nil {
 		ctx.Error(err)
 	}
 }

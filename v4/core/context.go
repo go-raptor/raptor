@@ -7,7 +7,6 @@ import (
 	"io"
 	"maps"
 	"mime/multipart"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -90,22 +89,7 @@ func (c *Context) IsWebSocket() bool {
 }
 
 func (c *Context) RealIP() string {
-	if c.core != nil && c.core.IPExtractor != nil {
-		return c.core.IPExtractor(c.request)
-	}
-
-	for _, header := range []string{HeaderXForwardedFor, HeaderXRealIP} {
-		if ip := c.request.Header.Get(header); ip != "" {
-			ip = strings.TrimSpace(strings.SplitN(ip, ",", 2)[0])
-			ip = strings.Trim(ip, "[]")
-			if ip != "" {
-				return ip
-			}
-		}
-	}
-
-	host, _, _ := net.SplitHostPort(c.request.RemoteAddr)
-	return host
+	return c.core.IPExtractor(c.request)
 }
 
 func (c *Context) Path() string {
