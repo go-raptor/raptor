@@ -10,15 +10,14 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/go-raptor/raptor/v4/errs"
 )
 
-var jsonBufferPool = sync.Pool{
-	New: func() interface{} {
+var jsonBufferPool = &sync.Pool{
+	New: func() any {
 		return bytes.NewBuffer(make([]byte, 0, 1024))
 	},
 }
@@ -30,8 +29,7 @@ type Context struct {
 	path     string
 	query    url.Values
 
-	store map[string]interface{}
-	lock  sync.RWMutex
+	store map[string]any
 
 	controller string
 	action     string
@@ -46,9 +44,8 @@ func NewContext(c *Core, r *http.Request, w http.ResponseWriter) *Context {
 	return &Context{
 		request:  r,
 		response: NewResponse(w),
-		store:    make(map[string]interface{}),
+		store:    make(map[string]any),
 		core:     c,
-		handler:  nil,
 	}
 }
 
@@ -131,17 +128,11 @@ func (c *Context) Query() url.Values {
 }
 
 func (c *Context) QueryParam(name string) string {
-	if c.query == nil {
-		c.query = c.request.URL.Query()
-	}
-	return c.query.Get(name)
+	return c.Query().Get(name)
 }
 
 func (c *Context) QueryParams() url.Values {
-	if c.query == nil {
-		c.query = c.request.URL.Query()
-	}
-	return c.query
+	return c.Query()
 }
 
 func (c *Context) QueryString() string {
@@ -191,17 +182,11 @@ func (c *Context) Cookies() []*http.Cookie {
 	return c.request.Cookies()
 }
 
-func (c *Context) Get(key string) interface{} {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
-
+func (c *Context) Get(key string) any {
 	return c.store[key]
 }
 
-func (c *Context) Set(key string, val interface{}) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
+func (c *Context) Set(key string, val any) {
 	c.store[key] = val
 }
 
@@ -209,14 +194,9 @@ func (c *Context) String(code int, s string) (err error) {
 	return c.Blob(code, MIMETextPlainCharsetUTF8, []byte(s))
 }
 
-func (c *Context) JSON(code int, i interface{}) error {
-	c.writeContentType(MIMEApplicationJSON)
-	c.response.Status = code
-
+func (c *Context) JSON(code int, i any) error {
 	if b, ok := i.([]byte); ok {
-		c.response.Header().Set(HeaderContentLength, strconv.Itoa(len(b)))
-		_, err := c.response.Write(b)
-		return err
+		return c.JSONBlob(code, b)
 	}
 
 	buf := jsonBufferPool.Get().(*bytes.Buffer)
@@ -227,9 +207,7 @@ func (c *Context) JSON(code int, i interface{}) error {
 		return err
 	}
 
-	c.response.Header().Set(HeaderContentLength, strconv.Itoa(buf.Len()))
-	_, err := c.response.Write(buf.Bytes())
-	return err
+	return c.Blob(code, MIMEApplicationJSON, buf.Bytes())
 }
 
 func (c *Context) JSONBlob(code int, b []byte) error {
@@ -287,7 +265,7 @@ func (c *Context) Redirect(code int, url string) error {
 	return nil
 }
 
-func (c *Context) Data(data interface{}, status ...int) error {
+func (c *Context) Data(data any, status ...int) error {
 	code := http.StatusOK
 	if len(status) > 0 {
 		code = status[0]
@@ -307,7 +285,7 @@ func (c *Context) Handler() HandlerFunc {
 	return c.handler
 }
 
-func (c *Context) ResetAndInit(r *http.Request, w http.ResponseWriter, controller, action, path string, store map[string]interface{}) {
+func (c *Context) ResetAndInit(r *http.Request, w http.ResponseWriter, controller, action, path string, store map[string]any) {
 	c.controller = controller
 	c.action = action
 	c.path = path
