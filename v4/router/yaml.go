@@ -10,51 +10,40 @@ import (
 func LoadFromYAML(path string) Routes {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return Routes{}
+		return nil
 	}
-
 	return ParseYAML(data)
 }
 
 func ParseYAML(content []byte) Routes {
-	var yamlConfig struct {
-		Routes map[string]interface{} `yaml:"routes"`
+	var config struct {
+		Routes map[string]any `yaml:"routes"`
 	}
-
-	if err := yaml.Unmarshal(content, &yamlConfig); err != nil {
-		return Routes{}
-	}
-
-	if yamlConfig.Routes == nil {
-		return Routes{}
+	if err := yaml.Unmarshal(content, &config); err != nil || config.Routes == nil {
+		return nil
 	}
 
 	var routes Routes
-	processYAMLRoutes(yamlConfig.Routes, "", &routes)
+	parseRoutes(config.Routes, "", &routes)
 	return routes
 }
 
-func processYAMLRoutes(routeData map[string]interface{}, parentPath string, routes *Routes) {
-	for key, data := range routeData {
-		upperKey := strings.ToUpper(key)
-		if isHttpMethod(upperKey) {
-			if descriptor, ok := data.(string); ok {
-				*routes = append(*routes, MethodRoute(upperKey, parentPath, descriptor)...)
+func parseRoutes(data map[string]any, parentPath string, routes *Routes) {
+	for key, value := range data {
+		if upper := strings.ToUpper(key); isHTTPMethod(upper) {
+			if descriptor, ok := value.(string); ok {
+				*routes = append(*routes, MethodRoute(upper, parentPath, descriptor)...)
 			}
 			continue
 		}
 
-		currentPath := joinPaths(parentPath, key)
+		path := normalizePath(parentPath + "/" + key)
 
-		switch nested := data.(type) {
-		case map[string]interface{}:
-			processYAMLRoutes(nested, currentPath, routes)
+		switch v := value.(type) {
+		case map[string]any:
+			parseRoutes(v, path, routes)
 		case string:
-			*routes = append(*routes, MethodRoute("ANY", currentPath, nested)...)
+			*routes = append(*routes, MethodRoute("ANY", path, v)...)
 		}
 	}
-}
-
-func joinPaths(parent, child string) string {
-	return normalizePath(parent + "/" + child)
 }
