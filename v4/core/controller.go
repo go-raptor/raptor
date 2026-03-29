@@ -3,7 +3,6 @@ package core
 import (
 	"fmt"
 	"reflect"
-
 	"strings"
 
 	"github.com/go-raptor/raptor/v4/errs"
@@ -11,6 +10,12 @@ import (
 
 const controllerSuffix = "Controller"
 const descriptorSeparator = "."
+
+var (
+	contextPtrType = reflect.TypeFor[*Context]()
+	errorType      = reflect.TypeFor[error]()
+	controllerType = reflect.TypeFor[Controller]()
+)
 
 type Controllers []ControllerInitializer
 
@@ -53,14 +58,6 @@ func ActionDescriptor(controller, action string) string {
 	return NormalizeController(controller) + descriptorSeparator + action
 }
 
-func NormalizeDescriptor(descriptor string) string {
-	controller, action := ParseActionDescriptor(descriptor)
-	if action == "" {
-		return controller
-	}
-	return controller + descriptorSeparator + action
-}
-
 func (c *Core) RegisterControllers(components *Components) error {
 	c.registerController(&ErrorsController{}, "ErrorsController")
 
@@ -81,50 +78,44 @@ func (c *Core) registerController(controller ControllerInitializer, controllerNa
 	}
 
 	controller.Init(c.Resources)
-	if err := c.registerControllerActions(reflect.ValueOf(controller), controllerName); err != nil {
-		return err
-	}
+	c.registerControllerActions(reflect.ValueOf(controller), controllerName)
 
-	if err := c.injectServices(controller, controllerName, "controller"); err != nil {
-		return err
-	}
-
-	return nil
+	return c.injectServices(controller, controllerName, "controller")
 }
 
-func (c *Core) validateController(controller interface{}, controllerName string) error {
+func (c *Core) validateController(controller any, controllerName string) error {
 	val := reflect.ValueOf(controller)
-	if val.Kind() != reflect.Ptr || val.IsNil() {
+	if val.Kind() != reflect.Pointer || val.IsNil() {
 		err := fmt.Errorf("controller must be a non-nil pointer to a struct")
 		c.Resources.Log.Error("Error while registering controller", "controller", controllerName, "error", err)
 		return err
 	}
-	if val.Elem().FieldByName("Controller").Type() != reflect.TypeOf(Controller{}) {
+
+	field := val.Elem().FieldByName("Controller")
+	if !field.IsValid() || field.Type() != controllerType {
 		err := fmt.Errorf("controller must embed raptor.Controller")
 		c.Resources.Log.Error("Error while registering controller", "controller", controllerName, "error", err)
 		return err
 	}
+
 	return nil
 }
 
-func (c *Core) registerControllerActions(val reflect.Value, controllerName string) error {
+func (c *Core) registerControllerActions(val reflect.Value, controllerName string) {
 	for i := 0; i < val.NumMethod(); i++ {
 		method := val.Method(i)
-		methodType := method.Type()
-
-		if c.isValidActionMethod(methodType) {
+		if isActionMethod(method.Type()) {
 			action := val.Type().Method(i).Name
 			c.RegisterHandler(controllerName, action, method.Interface().(func(*Context) error))
 		}
 	}
-	return nil
 }
 
-func (c *Core) isValidActionMethod(methodType reflect.Type) bool {
-	return methodType.NumIn() == 1 &&
-		methodType.In(0) == reflect.TypeOf((*Context)(nil)) &&
-		methodType.NumOut() == 1 &&
-		methodType.Out(0) == reflect.TypeOf((*error)(nil)).Elem()
+func isActionMethod(t reflect.Type) bool {
+	return t.NumIn() == 1 &&
+		t.In(0) == contextPtrType &&
+		t.NumOut() == 1 &&
+		t.Out(0) == errorType
 }
 
 func (c *Core) RegisterHandler(controller, action string, handler HandlerFunc) {

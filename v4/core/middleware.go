@@ -5,6 +5,8 @@ import (
 	"reflect"
 )
 
+var middlewareType = reflect.TypeFor[Middleware]()
+
 type ScopedMiddleware struct {
 	Middleware MiddlewareInitializer
 	Only       []string
@@ -57,87 +59,75 @@ func UseOnly(middleware MiddlewareInitializer, only ...string) ScopedMiddleware 
 }
 
 func (c *Core) RegisterMiddlewares(components *Components) error {
-	var errs []error
 	c.Middlewares = make([]MiddlewareInitializer, 0, len(components.Middlewares))
 
-	for _, scopedMiddleware := range components.Middlewares {
-		middlewareName := reflect.TypeOf(scopedMiddleware.Middleware).Elem().Name()
+	for _, scoped := range components.Middlewares {
+		middlewareName := reflect.TypeOf(scoped.Middleware).Elem().Name()
 
-		if err := c.validateMiddleware(scopedMiddleware.Middleware, middlewareName); err != nil {
-			c.Resources.Log.Error("Error while registering middleware", "middleware", middlewareName, "error", err)
-			errs = append(errs, err)
-			continue
-		}
-
-		if err := c.validateScopedMiddleware(scopedMiddleware, middlewareName); err != nil {
-			c.Resources.Log.Error("Error while registering middleware", "middleware", middlewareName, "error", err)
-			errs = append(errs, err)
-			continue
-		}
-
-		if err := c.registerMiddleware(scopedMiddleware.Middleware); err != nil {
-			c.Resources.Log.Error("Error while registering middleware", "middleware", middlewareName, "error", err)
-			errs = append(errs, err)
-			continue
-		}
-
-		middlewareIndex := len(c.Middlewares) - 1
-		if err := c.injectServices(scopedMiddleware.Middleware, middlewareName, "middleware"); err != nil {
-			c.Resources.Log.Error("Error while injecting services into middleware", "middleware", middlewareName, "error", err)
-			errs = append(errs, err)
-			continue
-		}
-
-		if err := c.injectMiddleware(middlewareIndex, scopedMiddleware); err != nil {
-			c.Resources.Log.Error("Error while injecting middleware", "middleware", middlewareName, "error", err)
-			errs = append(errs, err)
-			continue
+		if err := c.registerMiddleware(scoped, middlewareName); err != nil {
+			return err
 		}
 	}
 
-	if len(errs) > 0 {
-		return fmt.Errorf("multiple errors registering middlewares: %v", errs)
-	}
 	return nil
 }
 
-func (c *Core) validateMiddleware(middleware interface{}, middlewareName string) error {
+func (c *Core) registerMiddleware(scoped ScopedMiddleware, middlewareName string) error {
+	if err := c.validateMiddleware(scoped.Middleware, middlewareName); err != nil {
+		return err
+	}
+
+	if err := c.validateScope(scoped, middlewareName); err != nil {
+		return err
+	}
+
+	scoped.Middleware.Init(c.Resources)
+	c.Middlewares = append(c.Middlewares, scoped.Middleware)
+
+	if err := c.injectServices(scoped.Middleware, middlewareName, "middleware"); err != nil {
+		return err
+	}
+
+	c.applyMiddleware(len(c.Middlewares)-1, scoped)
+	return nil
+}
+
+func (c *Core) validateMiddleware(middleware any, middlewareName string) error {
 	val := reflect.ValueOf(middleware)
-	if val.Kind() != reflect.Ptr || val.IsNil() {
+	if val.Kind() != reflect.Pointer || val.IsNil() {
 		return fmt.Errorf("%s: middleware must be a non-nil pointer to a struct", middlewareName)
 	}
-	if !val.Type().Implements(reflect.TypeOf((*MiddlewareInitializer)(nil)).Elem()) {
-		return fmt.Errorf("%s: middleware must implement MiddlewareInitializer", middlewareName)
+
+	field := val.Elem().FieldByName("Middleware")
+	if !field.IsValid() || field.Type() != middlewareType {
+		return fmt.Errorf("%s: middleware must embed raptor.Middleware", middlewareName)
 	}
-	if val.Elem().FieldByName("Middleware").Type() != reflect.TypeOf(Middleware{}) {
-		return fmt.Errorf("%s: middleware must embed core.Middleware", middlewareName)
-	}
+
 	return nil
 }
 
-func (c *Core) validateScopedMiddleware(scoped ScopedMiddleware, middlewareName string) error {
+func (c *Core) validateScope(scoped ScopedMiddleware, middlewareName string) error {
 	hasGlobal := scoped.Global
 	hasOnly := len(scoped.Only) > 0
 	hasExcept := len(scoped.Except) > 0
 
-	count := 0
-	if hasGlobal {
-		count++
-	}
-	if hasOnly {
-		count++
-	}
-	if hasExcept {
-		count++
-	}
-	if count > 1 {
-		return fmt.Errorf("%s: middleware scoping must specify exactly one of Global, Only, or Except", middlewareName)
-	}
-	if count == 0 {
-		return fmt.Errorf("%s: middleware must specify one of Global, Only, or Except", middlewareName)
+	if hasGlobal == hasOnly || hasGlobal == hasExcept || hasOnly == hasExcept {
+		if hasGlobal && hasOnly {
+			return fmt.Errorf("%s: middleware scoping must specify exactly one of Global, Only, or Except", middlewareName)
+		}
+		if !hasGlobal && !hasOnly && !hasExcept {
+			return fmt.Errorf("%s: middleware must specify one of Global, Only, or Except", middlewareName)
+		}
 	}
 
-	checkDescriptor := func(descriptor, scopeType string) error {
+	descriptors := scoped.Only
+	scopeType := "Only"
+	if hasExcept {
+		descriptors = scoped.Except
+		scopeType = "Except"
+	}
+
+	for _, descriptor := range descriptors {
 		controller, action := ParseActionDescriptor(descriptor)
 
 		if _, ok := c.Handlers[controller]; !ok {
@@ -145,81 +135,44 @@ func (c *Core) validateScopedMiddleware(scoped ScopedMiddleware, middlewareName 
 		}
 
 		if action != "" && !c.HasControllerAction(controller, action) {
-			return fmt.Errorf("%s: action '%s#%s' in %s scope does not exist", middlewareName, controller, action, scopeType)
+			return fmt.Errorf("%s: action '%s.%s' in %s scope does not exist", middlewareName, controller, action, scopeType)
 		}
-		return nil
 	}
 
-	if hasOnly {
-		for _, descriptor := range scoped.Only {
-			if err := checkDescriptor(descriptor, "Only"); err != nil {
-				return err
-			}
-		}
-	}
-	if hasExcept {
-		for _, descriptor := range scoped.Except {
-			if err := checkDescriptor(descriptor, "Except"); err != nil {
-				return err
-			}
-		}
-	}
 	return nil
 }
 
-func (c *Core) registerMiddleware(middleware MiddlewareInitializer) error {
-	middleware.Init(c.Resources)
-	c.Middlewares = append(c.Middlewares, middleware)
-	return nil
-}
-
-func (c *Core) injectMiddleware(middlewareIndex int, scoped ScopedMiddleware) error {
-	shouldInclude := func(handlerController, handlerAction string) bool {
-		if scoped.Global {
-			return true
-		}
-
-		if len(scoped.Only) > 0 {
-			for _, onlyItem := range scoped.Only {
-				ruleController, ruleAction := ParseActionDescriptor(onlyItem)
-				if ruleAction == "" {
-					if ruleController == handlerController {
-						return true
-					}
-				} else {
-					if ruleController == handlerController && ruleAction == handlerAction {
-						return true
-					}
-				}
-			}
-			return false
-		}
-
-		if len(scoped.Except) > 0 {
-			for _, exceptItem := range scoped.Except {
-				ruleController, ruleAction := ParseActionDescriptor(exceptItem)
-				if ruleAction == "" {
-					if ruleController == handlerController {
-						return false
-					}
-				} else {
-					if ruleController == handlerController && ruleAction == handlerAction {
-						return false
-					}
-				}
-			}
-			return true
-		}
-
-		return false
-	}
-
+func (c *Core) applyMiddleware(middlewareIndex int, scoped ScopedMiddleware) {
 	for controller, actions := range c.Handlers {
 		for action, handler := range actions {
-			if shouldInclude(controller, action) {
+			if matchesScope(scoped, controller, action) {
 				handler.injectMiddleware(middlewareIndex)
 			}
 		}
 	}
-	return nil
+}
+
+func matchesScope(scoped ScopedMiddleware, handlerController, handlerAction string) bool {
+	if scoped.Global {
+		return true
+	}
+
+	if len(scoped.Only) > 0 {
+		return matchesDescriptors(scoped.Only, handlerController, handlerAction)
+	}
+
+	return !matchesDescriptors(scoped.Except, handlerController, handlerAction)
+}
+
+func matchesDescriptors(descriptors []string, handlerController, handlerAction string) bool {
+	for _, descriptor := range descriptors {
+		ruleController, ruleAction := ParseActionDescriptor(descriptor)
+		if ruleController != handlerController {
+			continue
+		}
+		if ruleAction == "" || ruleAction == handlerAction {
+			return true
+		}
+	}
+	return false
 }

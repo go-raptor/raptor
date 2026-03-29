@@ -5,6 +5,11 @@ import (
 	"reflect"
 )
 
+var (
+	serviceType            = reflect.TypeFor[Service]()
+	serviceInitializerType = reflect.TypeFor[ServiceInitializer]()
+)
+
 type Services []ServiceInitializer
 
 type ServiceInitializer interface {
@@ -70,27 +75,24 @@ func (c *Core) registerService(service ServiceInitializer, serviceName string) e
 	}
 
 	c.Services[serviceName] = service
-
 	return nil
 }
 
-func (c *Core) validateService(service interface{}, serviceName string) error {
+func (c *Core) validateService(service any, serviceName string) error {
 	val := reflect.ValueOf(service)
-	if val.Kind() != reflect.Ptr || val.IsNil() {
+	if val.Kind() != reflect.Pointer || val.IsNil() {
 		err := fmt.Errorf("service must be a non-nil pointer to a struct")
 		c.Resources.Log.Error("Error while registering service", "service", serviceName, "error", err)
 		return err
 	}
-	if !val.Type().Implements(reflect.TypeOf((*ServiceInitializer)(nil)).Elem()) {
-		err := fmt.Errorf("service must implement components.ServiceInitializer")
+
+	field := val.Elem().FieldByName("Service")
+	if !field.IsValid() || field.Type() != serviceType {
+		err := fmt.Errorf("service must embed raptor.Service")
 		c.Resources.Log.Error("Error while registering service", "service", serviceName, "error", err)
 		return err
 	}
-	if val.Elem().FieldByName("Service").Type() != reflect.TypeOf(Service{}) {
-		err := fmt.Errorf("service must embed components.Service")
-		c.Resources.Log.Error("Error while registering service", "service", serviceName, "error", err)
-		return err
-	}
+
 	return nil
 }
 
@@ -104,40 +106,29 @@ func (c *Core) ShutdownServices() error {
 	return nil
 }
 
-func (c *Core) injectServices(component interface{}, componentName, componentType string) error {
-	val := reflect.ValueOf(component)
-	if val.Kind() != reflect.Ptr || val.IsNil() {
-		err := fmt.Errorf("%s must be a non-nil pointer to a struct", componentType)
-		c.Resources.Log.Error(fmt.Sprintf("Error while injecting services into %s", componentType), componentType, componentName, "error", err)
-		return err
-	}
-	val = val.Elem()
+func (c *Core) injectServices(component any, componentName, componentType string) error {
+	val := reflect.ValueOf(component).Elem()
 	typ := val.Type()
 
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)
 		fieldType := typ.Field(i)
 
-		if fieldType.Type.Kind() != reflect.Ptr || fieldType.Type.Elem().Kind() != reflect.Struct {
+		if fieldType.Type.Kind() != reflect.Pointer || fieldType.Type.Elem().Kind() != reflect.Struct {
 			continue
 		}
 
-		if fieldType.Name == "Controller" || fieldType.Name == "Service" {
+		if fieldType.Name == "Controller" || fieldType.Name == "Service" || fieldType.Name == "Middleware" {
 			continue
 		}
 
 		serviceName := fieldType.Type.Elem().Name()
 		if service, exists := c.Services[serviceName]; exists {
-			if !reflect.TypeOf(service).Implements(reflect.TypeOf((*ServiceInitializer)(nil)).Elem()) {
-				err := fmt.Errorf("%s.%s expects a service, but %s does not implement ServiceInitializer", componentName, fieldType.Name, serviceName)
-				c.Resources.Log.Error(fmt.Sprintf("Error while injecting services into %s", componentType), componentType, componentName, "error", err)
-				return err
-			}
 			field.Set(reflect.ValueOf(service))
 			continue
 		}
 
-		if fieldType.Type.Implements(reflect.TypeOf((*ServiceInitializer)(nil)).Elem()) {
+		if fieldType.Type.Implements(serviceInitializerType) {
 			err := fmt.Errorf("%s requires service %s, but it was not found", componentName, serviceName)
 			c.Resources.Log.Error(fmt.Sprintf("Error while injecting services into %s", componentType), componentType, componentName, "error", err)
 			return err

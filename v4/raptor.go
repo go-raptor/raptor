@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -21,27 +20,27 @@ type Raptor struct {
 	Server *server.Server
 	Router *router.Router
 }
+
 type RaptorOption func(*Raptor)
 
 func New(opts ...RaptorOption) *Raptor {
 	resources := core.NewResources()
-	config, err := config.NewConfig(resources.Log)
+	cfg, err := config.NewConfig(resources.Log)
 	if err != nil {
 		os.Exit(1)
 	}
-	resources.SetConfig(config)
+	resources.SetConfig(cfg)
 
-	core := core.NewCore(resources)
-	router := router.NewRouter()
 	raptor := &Raptor{
-		Core:   core,
-		Server: server.NewServer(&config.ServerConfig, router.Mux),
-		Router: router,
+		Core:   core.NewCore(resources),
+		Router: router.NewRouter(),
 	}
 
 	for _, opt := range opts {
 		opt(raptor)
 	}
+
+	raptor.Server = server.NewServer(&raptor.Core.Resources.Config.ServerConfig, raptor.Router.Mux)
 
 	return raptor
 }
@@ -61,16 +60,8 @@ func (r *Raptor) Run() {
 			os.Exit(1)
 		}
 	}()
-	r.info()
+	r.Core.Resources.Log.Info(fmt.Sprintf("🟢 Raptor %s is running on %s! 🦖💨", Version, r.Server.Address()))
 	r.waitForShutdown()
-}
-
-func (r *Raptor) info() {
-	content := []string{
-		fmt.Sprintf("🟢 Raptor %s is running on %s! 🦖💨", Version, r.Server.Address()),
-	}
-
-	r.Core.Resources.Log.Info(strings.Join(content, "\n"))
 }
 
 func (r *Raptor) waitForShutdown() {
@@ -97,33 +88,28 @@ func (r *Raptor) waitForShutdown() {
 	r.Core.Resources.Log.Warn("Raptor exited, bye bye!")
 }
 
-func (r *Raptor) Configure(components *core.Components) error {
-	if components.DatabaseConnector != nil {
-		r.Core.Resources.Database = components.DatabaseConnector
-		if err := r.Core.Resources.Database.Init(); err != nil {
-			r.Core.Resources.Log.Error("Database connector initalization failed", "error", err)
-			os.Exit(1)
-		}
-	}
+func (r *Raptor) Configure(components *core.Components) {
+	r.initDatabase(components)
+	r.fatal(r.Core.RegisterServices(components))
+	r.fatal(r.Core.RegisterControllers(components))
+	r.fatal(r.Core.RegisterMiddlewares(components))
+}
 
-	if err := r.Core.RegisterServices(components); err != nil {
-		os.Exit(1)
+func (r *Raptor) initDatabase(components *core.Components) {
+	if components.DatabaseConnector == nil {
+		return
 	}
-
-	if err := r.Core.RegisterControllers(components); err != nil {
-		os.Exit(1)
-	}
-
-	if err := r.Core.RegisterMiddlewares(components); err != nil {
-		os.Exit(1)
-	}
-
-	return nil
+	r.Core.Resources.Database = components.DatabaseConnector
+	r.fatal(r.Core.Resources.Database.Init())
 }
 
 func (r *Raptor) RegisterRoutes(routes router.Routes) {
-	if err := r.Router.RegisterRoutes(routes, r.Core); err != nil {
-		r.Core.Resources.Log.Error("Error while registering routes", "error", err)
+	r.fatal(r.Router.RegisterRoutes(routes, r.Core))
+}
+
+func (r *Raptor) fatal(err error) {
+	if err != nil {
+		r.Core.Resources.Log.Error("Fatal error", "error", err)
 		os.Exit(1)
 	}
 }
