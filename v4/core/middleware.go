@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"net/http"
 	"reflect"
 )
 
@@ -175,4 +176,31 @@ func matchesDescriptors(descriptors []string, handlerController, handlerAction s
 		}
 	}
 	return false
+}
+
+type stdMiddlewareAdapter struct {
+	Middleware
+	wrap func(http.Handler) http.Handler
+}
+
+func (a *stdMiddlewareAdapter) Handle(ctx *Context, next func(*Context) error) error {
+	var nextErr error
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx.SetRequest(r)
+		nextErr = next(ctx)
+	})
+	a.wrap(nextHandler).ServeHTTP(ctx.Response(), ctx.Request())
+	return nextErr
+}
+
+func UseStd(mw func(http.Handler) http.Handler) ScopedMiddleware {
+	return Use(&stdMiddlewareAdapter{wrap: mw})
+}
+
+func UseStdOnly(mw func(http.Handler) http.Handler, only ...string) ScopedMiddleware {
+	return UseOnly(&stdMiddlewareAdapter{wrap: mw}, only...)
+}
+
+func UseStdExcept(mw func(http.Handler) http.Handler, except ...string) ScopedMiddleware {
+	return UseExcept(&stdMiddlewareAdapter{wrap: mw}, except...)
 }

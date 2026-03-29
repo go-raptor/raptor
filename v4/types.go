@@ -1,6 +1,8 @@
 package raptor
 
 import (
+	"net/http"
+
 	"github.com/go-raptor/raptor/v4/config"
 	"github.com/go-raptor/raptor/v4/core"
 )
@@ -16,3 +18,16 @@ type Middleware = core.Middleware
 type MiddlewareInitializer = core.MiddlewareInitializer
 type Middlewares = core.Middlewares
 type Resources = core.Resources
+type HandlerFunc = core.HandlerFunc
+
+var (
+	WrapHandler     = core.WrapHandler
+	WrapHandlerFunc = core.WrapHandlerFunc
+	UseStd          = core.UseStd
+	UseStdOnly      = core.UseStdOnly
+	UseStdExcept    = core.UseStdExcept
+)
+
+func WrapMiddleware(mw func(http.Handler) http.Handler) core.ScopedMiddleware {
+	return core.UseStd(mw)
+}
