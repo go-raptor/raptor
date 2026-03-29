@@ -35,7 +35,7 @@ func New(opts ...RaptorOption) *Raptor {
 	router := router.NewRouter()
 	raptor := &Raptor{
 		Core:   core,
-		Server: server.NewServer(&config.ServerConfig, router.Mux, core),
+		Server: server.NewServer(&config.ServerConfig, router.Mux),
 		Router: router,
 	}
 
