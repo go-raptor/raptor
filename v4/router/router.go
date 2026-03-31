@@ -60,6 +60,12 @@ func (r *Router) registerErrorHandlers(c *core.Core) error {
 		pathMethods[route.Path][route.Method] = struct{}{}
 	}
 
+	for _, methods := range pathMethods {
+		if _, hasGet := methods["GET"]; hasGet {
+			methods["HEAD"] = struct{}{}
+		}
+	}
+
 	for path, allowed := range pathMethods {
 		allowedList := slices.Sorted(func(yield func(string) bool) {
 			for method := range allowed {
