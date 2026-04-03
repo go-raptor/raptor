@@ -17,6 +17,18 @@ type ServiceInitializer interface {
 	Shutdown() error
 }
 
+// ServiceSetup is an optional interface that services can implement
+// to perform initialization after resources have been injected.
+type ServiceSetup interface {
+	Setup() error
+}
+
+// ServiceCleanup is an optional interface that services can implement
+// to perform cleanup during graceful shutdown.
+type ServiceCleanup interface {
+	Cleanup() error
+}
+
 type Service struct {
 	*Resources
 	onInit     func() error
@@ -38,10 +50,12 @@ func (s *Service) Shutdown() error {
 	return nil
 }
 
+// Deprecated: Implement the Setup() method instead.
 func (s *Service) OnInit(callback func() error) {
 	s.onInit = callback
 }
 
+// Deprecated: Implement the Cleanup() method instead.
 func (s *Service) OnShutdown(callback func() error) {
 	s.onShutdown = callback
 }
@@ -74,6 +88,13 @@ func (c *Core) registerService(service ServiceInitializer, serviceName string) e
 		return err
 	}
 
+	if setup, ok := service.(ServiceSetup); ok {
+		if err := setup.Setup(); err != nil {
+			c.Resources.Log.Error("Service setup failed", "service", serviceName, "error", err)
+			return err
+		}
+	}
+
 	c.Services[serviceName] = service
 	return nil
 }
@@ -98,6 +119,12 @@ func (c *Core) validateService(service any, serviceName string) error {
 
 func (c *Core) ShutdownServices() error {
 	for serviceName, service := range c.Services {
+		if cleanup, ok := service.(ServiceCleanup); ok {
+			if err := cleanup.Cleanup(); err != nil {
+				c.Resources.Log.Error("Service cleanup failed", "service", serviceName, "error", err)
+				return err
+			}
+		}
 		if err := service.Shutdown(); err != nil {
 			c.Resources.Log.Error("Service shutdown failed", "service", serviceName, "error", err)
 			return err
