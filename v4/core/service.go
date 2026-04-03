@@ -31,33 +31,15 @@ type ServiceCleanup interface {
 
 type Service struct {
 	*Resources
-	onInit     func() error
-	onShutdown func() error
 }
 
 func (s *Service) Init(resources *Resources) error {
 	s.Resources = resources
-	if s.onInit != nil {
-		return s.onInit()
-	}
 	return nil
 }
 
 func (s *Service) Shutdown() error {
-	if s.onShutdown != nil {
-		return s.onShutdown()
-	}
 	return nil
-}
-
-// Deprecated: Implement the Setup() method instead.
-func (s *Service) OnInit(callback func() error) {
-	s.onInit = callback
-}
-
-// Deprecated: Implement the Cleanup() method instead.
-func (s *Service) OnShutdown(callback func() error) {
-	s.onShutdown = callback
 }
 
 func (c *Core) RegisterServices(components *Components) error {

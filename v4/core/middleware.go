@@ -22,20 +22,18 @@ type MiddlewareInitializer interface {
 	Handle(c *Context, next func(*Context) error) error
 }
 
+// MiddlewareSetup is an optional interface that middlewares can implement
+// to perform initialization after resources have been injected.
+type MiddlewareSetup interface {
+	Setup() error
+}
+
 type Middleware struct {
 	*Resources
-	onInit func()
 }
 
 func (m *Middleware) Init(resources *Resources) {
 	m.Resources = resources
-	if m.onInit != nil {
-		m.onInit()
-	}
-}
-
-func (m *Middleware) OnInit(callback func()) {
-	m.onInit = callback
 }
 
 func Use(middleware MiddlewareInitializer) ScopedMiddleware {
@@ -83,6 +81,14 @@ func (c *Core) registerMiddleware(scoped ScopedMiddleware, middlewareName string
 	}
 
 	scoped.Middleware.Init(c.Resources)
+
+	if setup, ok := scoped.Middleware.(MiddlewareSetup); ok {
+		if err := setup.Setup(); err != nil {
+			c.Resources.Log.Error("Middleware setup failed", "middleware", middlewareName, "error", err)
+			return err
+		}
+	}
+
 	c.Middlewares = append(c.Middlewares, scoped.Middleware)
 
 	if err := c.injectServices(scoped.Middleware, middlewareName, "middleware"); err != nil {

@@ -23,20 +23,18 @@ type ControllerInitializer interface {
 	Init(*Resources)
 }
 
+// ControllerSetup is an optional interface that controllers can implement
+// to perform initialization after resources have been injected.
+type ControllerSetup interface {
+	Setup() error
+}
+
 type Controller struct {
 	*Resources
-	onInit func()
 }
 
 func (c *Controller) Init(resources *Resources) {
 	c.Resources = resources
-	if c.onInit != nil {
-		c.onInit()
-	}
-}
-
-func (c *Controller) OnInit(callback func()) {
-	c.onInit = callback
 }
 
 func NormalizeController(controller string) string {
@@ -78,6 +76,14 @@ func (c *Core) registerController(controller ControllerInitializer, controllerNa
 	}
 
 	controller.Init(c.Resources)
+
+	if setup, ok := controller.(ControllerSetup); ok {
+		if err := setup.Setup(); err != nil {
+			c.Resources.Log.Error("Controller setup failed", "controller", controllerName, "error", err)
+			return err
+		}
+	}
+
 	c.registerControllerActions(reflect.ValueOf(controller), controllerName)
 
 	return c.injectServices(controller, controllerName, "controller")
