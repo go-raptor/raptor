@@ -23,7 +23,7 @@ type Raptor struct {
 
 type RaptorOption func(*Raptor)
 
-func New(opts ...RaptorOption) *Raptor {
+func New(components *core.Components, routes router.Routes, opts ...RaptorOption) *Raptor {
 	resources := core.NewResources()
 	cfg, err := config.NewConfig(resources.Log)
 	if err != nil {
@@ -31,18 +31,20 @@ func New(opts ...RaptorOption) *Raptor {
 	}
 	resources.SetConfig(cfg)
 
-	raptor := &Raptor{
+	r := &Raptor{
 		Core:   core.NewCore(resources),
 		Router: router.NewRouter(),
 	}
 
 	for _, opt := range opts {
-		opt(raptor)
+		opt(r)
 	}
 
-	raptor.Server = server.NewServer(&raptor.Core.Resources.Config.ServerConfig, raptor.Router.Mux)
+	r.Server = server.NewServer(&r.Core.Resources.Config.ServerConfig, r.Router.Mux)
+	r.configure(components)
+	r.registerRoutes(routes)
 
-	return raptor
+	return r
 }
 
 func WithConfig(c *config.Config) RaptorOption {
@@ -88,7 +90,7 @@ func (r *Raptor) waitForShutdown() {
 	r.Core.Resources.Log.Warn("Raptor exited, bye bye!")
 }
 
-func (r *Raptor) Configure(components *core.Components) {
+func (r *Raptor) configure(components *core.Components) {
 	r.initDatabase(components)
 	r.fatal(r.Core.RegisterServices(components))
 	r.fatal(r.Core.RegisterControllers(components))
@@ -103,7 +105,7 @@ func (r *Raptor) initDatabase(components *core.Components) {
 	r.fatal(r.Core.Resources.Database.Init())
 }
 
-func (r *Raptor) RegisterRoutes(routes router.Routes) {
+func (r *Raptor) registerRoutes(routes router.Routes) {
 	r.fatal(r.Router.RegisterRoutes(routes, r.Core))
 }
 
