@@ -101,7 +101,11 @@ func (r *Raptor) initDatabase(components *core.Components) {
 	if components.DatabaseConnector == nil {
 		return
 	}
+	if !r.Core.Resources.Config.DatabaseConfig.IsConfigured() {
+		r.fatal(fmt.Errorf("database connector registered but no database configuration found — configure via .raptor.yaml or DATABASE_* environment variables"))
+	}
 	r.Core.Resources.Database = components.DatabaseConnector
+	r.Core.Resources.Database.SetConfig(r.Core.Resources.Config.DatabaseConfig)
 	r.fatal(r.Core.Resources.Database.Init())
 }
 

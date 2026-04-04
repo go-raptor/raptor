@@ -39,6 +39,10 @@ type DatabaseConfig struct {
 	Name     string `yaml:"name"`
 }
 
+func (d DatabaseConfig) IsConfigured() bool {
+	return d.Host != "" && d.Username != "" && d.Name != ""
+}
+
 const (
 	DefaultGeneralConfigLogLevel = "info"
 
@@ -46,12 +50,6 @@ const (
 	DefaultServerConfigPort            = 3000
 	DefaultServerConfigShutdownTimeout = 3
 	DefaultServerConfigIPExtractor     = "direct"
-
-	DefaultDatabaseConfigHost = "localhost"
-	DefaultDatabaseConfigPort = 5432
-	DefaultDatabaseConfigUser = "dbuser"
-	DefaultDatabaseConfigPass = "dbpass"
-	DefaultDatabaseConfigName = "dbname"
 )
 
 func NewConfig(log *slog.Logger) (*Config, error) {
@@ -106,14 +104,8 @@ func newConfigDefaults() *Config {
 			ShutdownTimeout: DefaultServerConfigShutdownTimeout,
 			IPExtractor:     DefaultServerConfigIPExtractor,
 		},
-		DatabaseConfig: DatabaseConfig{
-			Host:     DefaultDatabaseConfigHost,
-			Port:     DefaultDatabaseConfigPort,
-			Username: DefaultDatabaseConfigUser,
-			Password: DefaultDatabaseConfigPass,
-			Name:     DefaultDatabaseConfigName,
-		},
-		AppConfig: make(map[string]string),
+		DatabaseConfig: DatabaseConfig{},
+		AppConfig:      make(map[string]string),
 	}
 }
 
