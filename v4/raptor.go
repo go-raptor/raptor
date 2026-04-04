@@ -3,6 +3,7 @@ package raptor
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -52,6 +53,12 @@ func WithConfig(c *config.Config) RaptorOption {
 		if c != nil {
 			config.MergeConfig(r.Core.Resources.Config, c)
 		}
+	}
+}
+
+func WithLogHandler(handler func(*slog.LevelVar) slog.Handler) RaptorOption {
+	return func(r *Raptor) {
+		r.Core.Resources.SetLogHandler(handler(r.Core.Resources.LogLevel))
 	}
 }
 
