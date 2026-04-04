@@ -20,27 +20,31 @@ type Raptor struct {
 	Core   *core.Core
 	Server *server.Server
 	Router *router.Router
+
+	resources *core.Resources
 }
 
 type RaptorOption func(*Raptor)
 
 func New(components *core.Components, routes router.Routes, opts ...RaptorOption) *Raptor {
 	resources := core.NewResources()
+
+	r := &Raptor{
+		Router: router.NewRouter(),
+	}
+	r.resources = resources
+
+	for _, opt := range opts {
+		opt(r)
+	}
+
 	cfg, err := config.NewConfig(resources.Log)
 	if err != nil {
 		os.Exit(1)
 	}
 	resources.SetConfig(cfg)
 
-	r := &Raptor{
-		Core:   core.NewCore(resources),
-		Router: router.NewRouter(),
-	}
-
-	for _, opt := range opts {
-		opt(r)
-	}
-
+	r.Core = core.NewCore(resources)
 	r.Server = server.NewServer(&r.Core.Resources.Config.ServerConfig, r.Router.Mux)
 	r.configure(components)
 	r.registerRoutes(routes)
@@ -58,7 +62,7 @@ func WithConfig(c *config.Config) RaptorOption {
 
 func WithLogHandler(handler func(*slog.LevelVar) slog.Handler) RaptorOption {
 	return func(r *Raptor) {
-		r.Core.Resources.SetLogHandler(handler(r.Core.Resources.LogLevel))
+		r.resources.SetLogHandler(handler(r.resources.LogLevel))
 	}
 }
 
