@@ -21,7 +21,9 @@ type Raptor struct {
 	Server *server.Server
 	Router *router.Router
 
-	resources *core.Resources
+	resources      *core.Resources
+	testMode       bool
+	configOverride *config.Config
 }
 
 type RaptorOption func(*Raptor)
@@ -30,17 +32,27 @@ func New(components *core.Components, routes router.Routes, opts ...RaptorOption
 	resources := core.NewResources()
 
 	r := &Raptor{
-		Router: router.NewRouter(),
+		Router:    router.NewRouter(),
+		resources: resources,
 	}
-	r.resources = resources
 
 	for _, opt := range opts {
 		opt(r)
 	}
 
-	cfg, err := config.NewConfig(resources.Log)
+	var cfg *config.Config
+	var err error
+	if r.testMode {
+		cfg, err = config.NewTestConfig(resources.Log)
+	} else {
+		cfg, err = config.NewConfig(resources.Log)
+	}
 	if err != nil {
-		os.Exit(1)
+		resources.Log.Error("Failed to load configuration", "error", err)
+		panic(err)
+	}
+	if r.configOverride != nil {
+		config.MergeConfig(cfg, r.configOverride)
 	}
 	resources.SetConfig(cfg)
 
@@ -54,8 +66,10 @@ func New(components *core.Components, routes router.Routes, opts ...RaptorOption
 
 func WithConfig(c *config.Config) RaptorOption {
 	return func(r *Raptor) {
-		if c != nil {
-			config.MergeConfig(r.Core.Resources.Config, c)
+		if r.configOverride == nil {
+			r.configOverride = c
+		} else {
+			config.MergeConfig(r.configOverride, c)
 		}
 	}
 }
@@ -124,9 +138,18 @@ func (r *Raptor) registerRoutes(routes router.Routes) {
 	r.fatal(r.Router.RegisterRoutes(routes, r.Core))
 }
 
+func GetService[T any](r *Raptor) *T {
+	for _, s := range r.Core.Services {
+		if svc, ok := any(s).(*T); ok {
+			return svc
+		}
+	}
+	return nil
+}
+
 func (r *Raptor) fatal(err error) {
 	if err != nil {
 		r.Core.Resources.Log.Error("Fatal error", "error", err)
-		os.Exit(1)
+		panic(err)
 	}
 }

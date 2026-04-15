@@ -53,10 +53,7 @@ const (
 )
 
 func NewConfig(log *slog.Logger) (*Config, error) {
-	c := newConfigDefaults()
-	c.log = log
-
-	configFiles := []string{
+	return loadConfig(log, []string{
 		".raptor.yaml",
 		".raptor.yml",
 		".raptor.conf",
@@ -66,7 +63,39 @@ func NewConfig(log *slog.Logger) (*Config, error) {
 		".raptor.dev.yaml",
 		".raptor.dev.yml",
 		".raptor.dev.conf",
+	})
+}
+
+func NewTestConfig(log *slog.Logger) (*Config, error) {
+	return loadConfig(log, []string{
+		".raptor.yaml",
+		".raptor.yml",
+		".raptor.conf",
+		".raptor.test.yaml",
+		".raptor.test.yml",
+		".raptor.test.conf",
+	})
+}
+
+func NewConfigDefaults() *Config {
+	return &Config{
+		GeneralConfig: GeneralConfig{
+			LogLevel: DefaultGeneralConfigLogLevel,
+		},
+		ServerConfig: ServerConfig{
+			Address:         DefaultServerConfigAddress,
+			Port:            DefaultServerConfigPort,
+			ShutdownTimeout: DefaultServerConfigShutdownTimeout,
+			IPExtractor:     DefaultServerConfigIPExtractor,
+		},
+		DatabaseConfig: DatabaseConfig{},
+		AppConfig:      make(map[string]string),
 	}
+}
+
+func loadConfig(log *slog.Logger, configFiles []string) (*Config, error) {
+	c := NewConfigDefaults()
+	c.log = log
 
 	loaded := false
 	for _, file := range configFiles {
@@ -87,26 +116,10 @@ func NewConfig(log *slog.Logger) (*Config, error) {
 		log.Warn("No configuration files found, using defaults")
 	}
 
-	c.ApplyEnvirontmentVariables()
-	c.ApplyAppEnvironmentVariables("APP_")
+	c.applyEnvirontmentVariables()
+	c.applyAppEnvironmentVariables("APP_")
 
 	return c, nil
-}
-
-func newConfigDefaults() *Config {
-	return &Config{
-		GeneralConfig: GeneralConfig{
-			LogLevel: DefaultGeneralConfigLogLevel,
-		},
-		ServerConfig: ServerConfig{
-			Address:         DefaultServerConfigAddress,
-			Port:            DefaultServerConfigPort,
-			ShutdownTimeout: DefaultServerConfigShutdownTimeout,
-			IPExtractor:     DefaultServerConfigIPExtractor,
-		},
-		DatabaseConfig: DatabaseConfig{},
-		AppConfig:      make(map[string]string),
-	}
 }
 
 func MergeConfig(dst, src *Config) {
@@ -167,22 +180,22 @@ func (c *Config) loadConfigFromFile(path string) error {
 	return nil
 }
 
-func (c *Config) ApplyEnvirontmentVariables() {
-	c.ApplyEnvirontmentVariable("GENERAL_LOG_LEVEL", &c.GeneralConfig.LogLevel)
+func (c *Config) applyEnvirontmentVariables() {
+	c.applyEnvirontmentVariable("GENERAL_LOG_LEVEL", &c.GeneralConfig.LogLevel)
 
-	c.ApplyEnvirontmentVariable("SERVER_ADDRESS", &c.ServerConfig.Address)
-	c.ApplyEnvirontmentVariable("SERVER_PORT", &c.ServerConfig.Port)
-	c.ApplyEnvirontmentVariable("SERVER_SHUTDOWN_TIMEOUT", &c.ServerConfig.ShutdownTimeout)
-	c.ApplyEnvirontmentVariable("SERVER_IP_EXTRACTOR", &c.ServerConfig.IPExtractor)
+	c.applyEnvirontmentVariable("SERVER_ADDRESS", &c.ServerConfig.Address)
+	c.applyEnvirontmentVariable("SERVER_PORT", &c.ServerConfig.Port)
+	c.applyEnvirontmentVariable("SERVER_SHUTDOWN_TIMEOUT", &c.ServerConfig.ShutdownTimeout)
+	c.applyEnvirontmentVariable("SERVER_IP_EXTRACTOR", &c.ServerConfig.IPExtractor)
 
-	c.ApplyEnvirontmentVariable("DATABASE_HOST", &c.DatabaseConfig.Host)
-	c.ApplyEnvirontmentVariable("DATABASE_PORT", &c.DatabaseConfig.Port)
-	c.ApplyEnvirontmentVariable("DATABASE_USERNAME", &c.DatabaseConfig.Username)
-	c.ApplyEnvirontmentVariable("DATABASE_PASSWORD", &c.DatabaseConfig.Password)
-	c.ApplyEnvirontmentVariable("DATABASE_NAME", &c.DatabaseConfig.Name)
+	c.applyEnvirontmentVariable("DATABASE_HOST", &c.DatabaseConfig.Host)
+	c.applyEnvirontmentVariable("DATABASE_PORT", &c.DatabaseConfig.Port)
+	c.applyEnvirontmentVariable("DATABASE_USERNAME", &c.DatabaseConfig.Username)
+	c.applyEnvirontmentVariable("DATABASE_PASSWORD", &c.DatabaseConfig.Password)
+	c.applyEnvirontmentVariable("DATABASE_NAME", &c.DatabaseConfig.Name)
 }
 
-func (c *Config) ApplyEnvirontmentVariable(key string, value interface{}) {
+func (c *Config) applyEnvirontmentVariable(key string, value interface{}) {
 	if env, ok := os.LookupEnv(key); ok {
 		c.log.Info("Applying environment variable", "key", key, "value", maskSensitiveData(key, env))
 		switch v := value.(type) {
@@ -205,7 +218,7 @@ func (c *Config) ApplyEnvirontmentVariable(key string, value interface{}) {
 	}
 }
 
-func (c *Config) ApplyAppEnvironmentVariables(prefix string) {
+func (c *Config) applyAppEnvironmentVariables(prefix string) {
 	for _, kv := range os.Environ() {
 		if !strings.HasPrefix(kv, prefix) {
 			continue
