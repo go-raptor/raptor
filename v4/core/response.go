@@ -7,14 +7,22 @@ import (
 )
 
 type Response struct {
-	Writer    http.ResponseWriter
-	Status    int
-	Size      int64
-	Committed bool
+	Writer     http.ResponseWriter
+	Status     int
+	Size       int64
+	Committed  bool
+	controller *http.ResponseController
 }
 
 func NewResponse(w http.ResponseWriter) *Response {
 	return &Response{Writer: w}
+}
+
+func (r *Response) rc() *http.ResponseController {
+	if r.controller == nil {
+		r.controller = http.NewResponseController(r.Writer)
+	}
+	return r.controller
 }
 
 func (r *Response) Header() http.Header {
@@ -43,11 +51,11 @@ func (r *Response) Write(b []byte) (n int, err error) {
 }
 
 func (r *Response) Flush() {
-	http.NewResponseController(r.Writer).Flush()
+	r.rc().Flush()
 }
 
 func (r *Response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return http.NewResponseController(r.Writer).Hijack()
+	return r.rc().Hijack()
 }
 
 func (r *Response) Unwrap() http.ResponseWriter {
@@ -59,4 +67,5 @@ func (r *Response) init(w http.ResponseWriter) {
 	r.Size = 0
 	r.Status = http.StatusOK
 	r.Committed = false
+	r.controller = nil
 }

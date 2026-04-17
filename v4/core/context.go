@@ -1,7 +1,6 @@
 package core
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,16 +10,9 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 
 	"github.com/go-raptor/raptor/v4/errs"
 )
-
-var jsonBufferPool = &sync.Pool{
-	New: func() any {
-		return bytes.NewBuffer(make([]byte, 0, 1024))
-	},
-}
 
 type Context struct {
 	core     *Core
@@ -187,16 +179,11 @@ func (c *Context) JSON(code int, i any) error {
 	if b, ok := i.([]byte); ok {
 		return c.JSONBlob(code, b)
 	}
-
-	buf := jsonBufferPool.Get().(*bytes.Buffer)
-	buf.Reset()
-	defer jsonBufferPool.Put(buf)
-
-	if err := json.NewEncoder(buf).Encode(i); err != nil {
+	b, err := json.Marshal(i)
+	if err != nil {
 		return err
 	}
-
-	return c.Blob(code, MIMEApplicationJSON, buf.Bytes())
+	return c.Blob(code, MIMEApplicationJSON, b)
 }
 
 func (c *Context) JSONBlob(code int, b []byte) error {

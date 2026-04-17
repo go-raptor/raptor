@@ -9,10 +9,26 @@ type Error struct {
 	Code    int            `json:"code"`
 	Message string         `json:"message,omitempty"`
 	Attrs   map[string]any `json:"attrs,omitempty"`
+	cause   error
 }
 
 func (e *Error) Error() string {
 	return fmt.Sprintf("(%d) %s - %v", e.Code, e.Message, e.Attrs)
+}
+
+func (e *Error) Unwrap() error { return e.cause }
+
+func (e *Error) Is(target error) bool {
+	t, ok := target.(*Error)
+	if !ok {
+		return false
+	}
+	return e.Code == t.Code
+}
+
+func (e *Error) WithCause(cause error) *Error {
+	e.cause = cause
+	return e
 }
 
 func NewError(code int, message string, attr ...any) *Error {

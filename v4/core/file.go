@@ -19,13 +19,13 @@ func (c *Context) File(file string) error {
 		if os.IsNotExist(err) {
 			return c.NotFound()
 		}
-		return errs.NewErrorInternal("Failed to open file", err)
+		return errs.NewErrorInternal("Failed to open file").WithCause(err)
 	}
 	defer f.Close()
 
 	fi, err := f.Stat()
 	if err != nil {
-		return errs.NewErrorInternal("Failed to stat file", err)
+		return errs.NewErrorInternal("Failed to stat file").WithCause(err)
 	}
 	if fi.IsDir() {
 		return c.NotFound()
