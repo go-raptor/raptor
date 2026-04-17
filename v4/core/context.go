@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"maps"
@@ -101,7 +102,11 @@ func (c *Context) Param(name string) string {
 }
 
 func (c *Context) Bind(v any) error {
-	return json.NewDecoder(c.request.Body).Decode(v)
+	body := c.request.Body
+	if max := c.core.Resources.Config.ServerConfig.MaxBodyBytes; max > 0 {
+		body = http.MaxBytesReader(c.response.Writer, body, max)
+	}
+	return json.NewDecoder(body).Decode(v)
 }
 
 func (c *Context) Query() url.Values {
@@ -241,7 +246,7 @@ func (c *Context) Status(code int) error {
 }
 
 func (c *Context) Redirect(code int, url string) error {
-	if code < 300 || code > 308 {
+	if code < http.StatusMultipleChoices || code > http.StatusPermanentRedirect {
 		return errs.ErrInvalidRedirectCode
 	}
 	c.response.Header().Set(HeaderLocation, url)
@@ -258,11 +263,13 @@ func (c *Context) Data(data any, status ...int) error {
 }
 
 func (c *Context) Error(err error) {
-	if e, ok := err.(*errs.Error); ok {
-		c.Data(e, e.Code)
-		return
+	var e *errs.Error
+	if !errors.As(err, &e) {
+		e = errs.NewErrorInternal(err.Error())
 	}
-	c.Data(errs.NewErrorInternal(err.Error()), http.StatusInternalServerError)
+	if writeErr := c.Data(e, e.Code); writeErr != nil {
+		c.core.Resources.Log.Error("Failed to write error response", "error", writeErr, "original", err)
+	}
 }
 
 func (c *Context) Handler() HandlerFunc {

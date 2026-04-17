@@ -15,8 +15,9 @@ type Core struct {
 	Services    map[string]ServiceInitializer
 	Middlewares []MiddlewareInitializer
 
-	contextPool *sync.Pool
-	IPExtractor IPExtractor
+	serviceOrder []string
+	contextPool  *sync.Pool
+	IPExtractor  IPExtractor
 }
 
 func NewCore(resources *Resources) *Core {

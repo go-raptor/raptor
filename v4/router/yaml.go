@@ -1,30 +1,52 @@
 package router
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
-func LoadFromYAML(path string) Routes {
+// LoadRoutesFromYAML reads and parses a routes YAML file.
+func LoadRoutesFromYAML(path string) (Routes, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("read routes file %s: %w", path, err)
 	}
-	return ParseYAML(data)
+	return ParseRoutesYAML(data)
 }
 
-func ParseYAML(content []byte) Routes {
+// ParseRoutesYAML parses a routes YAML document.
+func ParseRoutesYAML(content []byte) (Routes, error) {
 	var config struct {
 		Routes map[string]any `yaml:"routes"`
 	}
-	if err := yaml.Unmarshal(content, &config); err != nil || config.Routes == nil {
-		return nil
+	if err := yaml.Unmarshal(content, &config); err != nil {
+		return nil, fmt.Errorf("parse routes YAML: %w", err)
+	}
+	if config.Routes == nil {
+		return nil, fmt.Errorf("routes YAML: missing 'routes' key")
 	}
 
 	var routes Routes
 	parseRoutes(config.Routes, "", &routes)
+	return routes, nil
+}
+
+// LoadFromYAML reads routes from a YAML file, returning nil on any error.
+//
+// Deprecated: use LoadRoutesFromYAML for proper error handling.
+func LoadFromYAML(path string) Routes {
+	routes, _ := LoadRoutesFromYAML(path)
+	return routes
+}
+
+// ParseYAML parses a routes YAML document, returning nil on any error.
+//
+// Deprecated: use ParseRoutesYAML for proper error handling.
+func ParseYAML(content []byte) Routes {
+	routes, _ := ParseRoutesYAML(content)
 	return routes
 }
 

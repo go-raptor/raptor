@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 )
@@ -51,8 +52,8 @@ func (c *Core) RegisterServices(components *Components) error {
 		}
 	}
 
-	for serviceName, service := range c.Services {
-		if err := c.injectServices(service, serviceName, "service"); err != nil {
+	for _, name := range c.serviceOrder {
+		if err := c.injectServices(c.Services[name], name, "service"); err != nil {
 			return err
 		}
 	}
@@ -78,6 +79,7 @@ func (c *Core) registerService(service ServiceInitializer, serviceName string) e
 	}
 
 	c.Services[serviceName] = service
+	c.serviceOrder = append(c.serviceOrder, serviceName)
 	return nil
 }
 
@@ -100,19 +102,22 @@ func (c *Core) validateService(service any, serviceName string) error {
 }
 
 func (c *Core) ShutdownServices() error {
-	for serviceName, service := range c.Services {
+	var errs []error
+	for i := len(c.serviceOrder) - 1; i >= 0; i-- {
+		name := c.serviceOrder[i]
+		service := c.Services[name]
 		if cleanup, ok := service.(ServiceCleanup); ok {
 			if err := cleanup.Cleanup(); err != nil {
-				c.Resources.Log.Error("Service cleanup failed", "service", serviceName, "error", err)
-				return err
+				c.Resources.Log.Error("Service cleanup failed", "service", name, "error", err)
+				errs = append(errs, fmt.Errorf("%s cleanup: %w", name, err))
 			}
 		}
 		if err := service.Shutdown(); err != nil {
-			c.Resources.Log.Error("Service shutdown failed", "service", serviceName, "error", err)
-			return err
+			c.Resources.Log.Error("Service shutdown failed", "service", name, "error", err)
+			errs = append(errs, fmt.Errorf("%s shutdown: %w", name, err))
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 func (c *Core) injectServices(component any, componentName, componentType string) error {

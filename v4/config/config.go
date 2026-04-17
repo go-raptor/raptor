@@ -33,6 +33,7 @@ type ServerConfig struct {
 	WriteTimeout      int    `yaml:"write_timeout"`
 	IdleTimeout       int    `yaml:"idle_timeout"`
 	MaxHeaderBytes    int    `yaml:"max_header_bytes"`
+	MaxBodyBytes      int64  `yaml:"max_body_bytes"`
 	IPExtractor       string `yaml:"ip_extractor"`
 }
 
@@ -59,6 +60,7 @@ const (
 	DefaultServerConfigWriteTimeout      = 0
 	DefaultServerConfigIdleTimeout       = 120
 	DefaultServerConfigMaxHeaderBytes    = 1 << 20
+	DefaultServerConfigMaxBodyBytes      = int64(0)
 	DefaultServerConfigIPExtractor       = "direct"
 )
 
@@ -101,6 +103,7 @@ func NewConfigDefaults() *Config {
 			WriteTimeout:      DefaultServerConfigWriteTimeout,
 			IdleTimeout:       DefaultServerConfigIdleTimeout,
 			MaxHeaderBytes:    DefaultServerConfigMaxHeaderBytes,
+			MaxBodyBytes:      DefaultServerConfigMaxBodyBytes,
 			IPExtractor:       DefaultServerConfigIPExtractor,
 		},
 		DatabaseConfig: DatabaseConfig{},
@@ -206,6 +209,7 @@ func (c *Config) applyEnvirontmentVariables() {
 	c.applyEnvirontmentVariable("SERVER_WRITE_TIMEOUT", &c.ServerConfig.WriteTimeout)
 	c.applyEnvirontmentVariable("SERVER_IDLE_TIMEOUT", &c.ServerConfig.IdleTimeout)
 	c.applyEnvirontmentVariable("SERVER_MAX_HEADER_BYTES", &c.ServerConfig.MaxHeaderBytes)
+	c.applyEnvirontmentVariable("SERVER_MAX_BODY_BYTES", &c.ServerConfig.MaxBodyBytes)
 	c.applyEnvirontmentVariable("SERVER_IP_EXTRACTOR", &c.ServerConfig.IPExtractor)
 
 	c.applyEnvirontmentVariable("DATABASE_HOST", &c.DatabaseConfig.Host)
@@ -229,6 +233,10 @@ func (c *Config) applyEnvirontmentVariable(key string, value interface{}) {
 			}
 		case *int:
 			if number, err := strconv.Atoi(env); err == nil {
+				*v = number
+			}
+		case *int64:
+			if number, err := strconv.ParseInt(env, 10, 64); err == nil {
 				*v = number
 			}
 		case *[]string:
