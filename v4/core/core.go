@@ -1,9 +1,12 @@
 package core
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
+
+	"github.com/go-raptor/raptor/v4/errs"
 )
 
 type Core struct {
@@ -38,22 +41,31 @@ func NewCore(resources *Resources) *Core {
 	return core
 }
 
-func (c *Core) Handler(w http.ResponseWriter, r *http.Request, controller, action, path string, store map[string]any) {
-	ctx := c.contextPool.Get().(*Context)
-	ctx.ResetAndInit(r, w, controller, action, path, store)
-	defer c.contextPool.Put(ctx)
-
-	handler := c.Handlers[controller][action]
-	chain := handler.Action
-	for i := len(handler.middlewares) - 1; i >= 0; i-- {
-		mw := c.Middlewares[handler.middlewares[i]]
-		next := chain
-		chain = func(ctx *Context) error {
-			return mw.Handle(ctx, next)
+// CompileHandlers builds each handler's middleware chain. Must be called
+// after all middlewares are registered and before serving.
+func (c *Core) CompileHandlers() {
+	for _, actions := range c.Handlers {
+		for _, h := range actions {
+			h.compile(c.Middlewares)
 		}
 	}
+}
 
-	if err := chain(ctx); err != nil {
+// Serve dispatches a request through h's precompiled middleware chain.
+func (c *Core) Serve(w http.ResponseWriter, r *http.Request, h *Handler, controller, action, path string, store map[string]any) {
+	ctx := c.contextPool.Get().(*Context)
+	ctx.ResetAndInit(r, w, controller, action, path, store)
+	defer func() {
+		if rec := recover(); rec != nil {
+			c.Resources.Log.Error("Panic recovered in handler", "controller", controller, "action", action, "panic", rec)
+			if !ctx.response.Committed {
+				ctx.Error(errs.NewErrorInternal(fmt.Sprintf("%v", rec)))
+			}
+		}
+		c.contextPool.Put(ctx)
+	}()
+
+	if err := h.chain(ctx); err != nil {
 		ctx.Error(err)
 	}
 }

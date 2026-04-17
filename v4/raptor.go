@@ -102,7 +102,11 @@ func (r *Raptor) waitForShutdown() {
 		r.Core.Resources.Log.Error("Error shutting down services", "error", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	timeout := time.Duration(r.Core.Resources.Config.ServerConfig.ShutdownTimeout) * time.Second
+	if timeout <= 0 {
+		timeout = time.Duration(config.DefaultServerConfigShutdownTimeout) * time.Second
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	if err := r.Server.Shutdown(ctx); err != nil {

@@ -68,6 +68,7 @@ func (c *Core) RegisterMiddlewares(components *Components) error {
 		}
 	}
 
+	c.CompileHandlers()
 	return nil
 }
 
@@ -114,17 +115,21 @@ func (c *Core) validateMiddleware(middleware any, middlewareName string) error {
 }
 
 func (c *Core) validateScope(scoped ScopedMiddleware, middlewareName string) error {
-	hasGlobal := scoped.Global
 	hasOnly := len(scoped.Only) > 0
 	hasExcept := len(scoped.Except) > 0
 
-	if hasGlobal == hasOnly || hasGlobal == hasExcept || hasOnly == hasExcept {
-		if hasGlobal && hasOnly {
-			return fmt.Errorf("%s: middleware scoping must specify exactly one of Global, Only, or Except", middlewareName)
-		}
-		if !hasGlobal && !hasOnly && !hasExcept {
-			return fmt.Errorf("%s: middleware must specify one of Global, Only, or Except", middlewareName)
-		}
+	set := 0
+	if scoped.Global {
+		set++
+	}
+	if hasOnly {
+		set++
+	}
+	if hasExcept {
+		set++
+	}
+	if set != 1 {
+		return fmt.Errorf("%s: middleware must specify exactly one of Global, Only, or Except", middlewareName)
 	}
 
 	descriptors := scoped.Only

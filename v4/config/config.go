@@ -25,10 +25,15 @@ type GeneralConfig struct {
 }
 
 type ServerConfig struct {
-	Address         string `yaml:"address"`
-	Port            int    `yaml:"port"`
-	ShutdownTimeout int    `yaml:"shutdown_timeout"`
-	IPExtractor     string `yaml:"ip_extractor"`
+	Address           string `yaml:"address"`
+	Port              int    `yaml:"port"`
+	ShutdownTimeout   int    `yaml:"shutdown_timeout"`
+	ReadTimeout       int    `yaml:"read_timeout"`
+	ReadHeaderTimeout int    `yaml:"read_header_timeout"`
+	WriteTimeout      int    `yaml:"write_timeout"`
+	IdleTimeout       int    `yaml:"idle_timeout"`
+	MaxHeaderBytes    int    `yaml:"max_header_bytes"`
+	IPExtractor       string `yaml:"ip_extractor"`
 }
 
 type DatabaseConfig struct {
@@ -46,10 +51,15 @@ func (d DatabaseConfig) IsConfigured() bool {
 const (
 	DefaultGeneralConfigLogLevel = "info"
 
-	DefaultServerConfigAddress         = "127.0.0.1"
-	DefaultServerConfigPort            = 3000
-	DefaultServerConfigShutdownTimeout = 3
-	DefaultServerConfigIPExtractor     = "direct"
+	DefaultServerConfigAddress           = "127.0.0.1"
+	DefaultServerConfigPort              = 3000
+	DefaultServerConfigShutdownTimeout   = 3
+	DefaultServerConfigReadTimeout       = 0
+	DefaultServerConfigReadHeaderTimeout = 10
+	DefaultServerConfigWriteTimeout      = 0
+	DefaultServerConfigIdleTimeout       = 120
+	DefaultServerConfigMaxHeaderBytes    = 1 << 20
+	DefaultServerConfigIPExtractor       = "direct"
 )
 
 func NewConfig(log *slog.Logger) (*Config, error) {
@@ -83,10 +93,15 @@ func NewConfigDefaults() *Config {
 			LogLevel: DefaultGeneralConfigLogLevel,
 		},
 		ServerConfig: ServerConfig{
-			Address:         DefaultServerConfigAddress,
-			Port:            DefaultServerConfigPort,
-			ShutdownTimeout: DefaultServerConfigShutdownTimeout,
-			IPExtractor:     DefaultServerConfigIPExtractor,
+			Address:           DefaultServerConfigAddress,
+			Port:              DefaultServerConfigPort,
+			ShutdownTimeout:   DefaultServerConfigShutdownTimeout,
+			ReadTimeout:       DefaultServerConfigReadTimeout,
+			ReadHeaderTimeout: DefaultServerConfigReadHeaderTimeout,
+			WriteTimeout:      DefaultServerConfigWriteTimeout,
+			IdleTimeout:       DefaultServerConfigIdleTimeout,
+			MaxHeaderBytes:    DefaultServerConfigMaxHeaderBytes,
+			IPExtractor:       DefaultServerConfigIPExtractor,
 		},
 		DatabaseConfig: DatabaseConfig{},
 		AppConfig:      make(map[string]string),
@@ -186,6 +201,11 @@ func (c *Config) applyEnvirontmentVariables() {
 	c.applyEnvirontmentVariable("SERVER_ADDRESS", &c.ServerConfig.Address)
 	c.applyEnvirontmentVariable("SERVER_PORT", &c.ServerConfig.Port)
 	c.applyEnvirontmentVariable("SERVER_SHUTDOWN_TIMEOUT", &c.ServerConfig.ShutdownTimeout)
+	c.applyEnvirontmentVariable("SERVER_READ_TIMEOUT", &c.ServerConfig.ReadTimeout)
+	c.applyEnvirontmentVariable("SERVER_READ_HEADER_TIMEOUT", &c.ServerConfig.ReadHeaderTimeout)
+	c.applyEnvirontmentVariable("SERVER_WRITE_TIMEOUT", &c.ServerConfig.WriteTimeout)
+	c.applyEnvirontmentVariable("SERVER_IDLE_TIMEOUT", &c.ServerConfig.IdleTimeout)
+	c.applyEnvirontmentVariable("SERVER_MAX_HEADER_BYTES", &c.ServerConfig.MaxHeaderBytes)
 	c.applyEnvirontmentVariable("SERVER_IP_EXTRACTOR", &c.ServerConfig.IPExtractor)
 
 	c.applyEnvirontmentVariable("DATABASE_HOST", &c.DatabaseConfig.Host)

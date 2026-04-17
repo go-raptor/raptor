@@ -8,6 +8,7 @@ import (
 type Handler struct {
 	Action      HandlerFunc
 	middlewares []int
+	chain       HandlerFunc
 }
 
 type HandlerFunc func(ctx *Context) error
@@ -16,6 +17,18 @@ func (h *Handler) injectMiddleware(middlewareIndex int) {
 	if !slices.Contains(h.middlewares, middlewareIndex) {
 		h.middlewares = append(h.middlewares, middlewareIndex)
 	}
+}
+
+func (h *Handler) compile(middlewares []MiddlewareInitializer) {
+	chain := h.Action
+	for i := len(h.middlewares) - 1; i >= 0; i-- {
+		mw := middlewares[h.middlewares[i]]
+		next := chain
+		chain = func(ctx *Context) error {
+			return mw.Handle(ctx, next)
+		}
+	}
+	h.chain = chain
 }
 
 func WrapHandler(h http.Handler) HandlerFunc {

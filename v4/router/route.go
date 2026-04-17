@@ -10,6 +10,7 @@ type Routes []Route
 
 type Route struct {
 	core       *core.Core
+	handler    *core.Handler
 	Store      map[string]any
 	Method     string
 	Path       string
@@ -35,5 +36,5 @@ func (r *Route) Pattern() string {
 }
 
 func (r *Route) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	r.core.Handler(w, req, r.Controller, r.Action, r.Path, r.Store)
+	r.core.Serve(w, req, r.handler, r.Controller, r.Action, r.Path, r.Store)
 }

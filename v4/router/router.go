@@ -34,10 +34,12 @@ func (r *Router) RegisterRoutes(routes Routes, c *core.Core) error {
 		if !isHTTPMethod(route.Method) {
 			return fmt.Errorf("invalid method %s on %s", route.Method, route.Path)
 		}
-		if _, exists := c.Handlers[route.Controller][route.Action]; !exists {
+		h, exists := c.Handlers[route.Controller][route.Action]
+		if !exists {
 			return fmt.Errorf("action %s not found for %s %s", core.ActionDescriptor(route.Controller, route.Action), route.Method, route.Path)
 		}
 		route.core = c
+		route.handler = h
 		r.Mux.Handle(route.Pattern(), route)
 	}
 	return r.registerErrorHandlers(c)
@@ -76,6 +78,7 @@ func (r *Router) registerErrorHandlers(c *core.Core) error {
 		})
 		allowedStr := strings.Join(allowedList, ", ")
 
+		notAllowed := c.Handlers["ErrorsController"]["MethodNotAllowed"]
 		for _, method := range standardMethods {
 			if _, exists := allowed[method]; exists {
 				continue
@@ -84,6 +87,7 @@ func (r *Router) registerErrorHandlers(c *core.Core) error {
 				"allowedMethods": allowedStr,
 			})
 			route.core = c
+			route.handler = notAllowed
 			r.Mux.Handle(route.Pattern(), &route)
 		}
 	}
@@ -91,6 +95,7 @@ func (r *Router) registerErrorHandlers(c *core.Core) error {
 	if !hasCatchAll {
 		route := NewRoute("ANY", "/", "ErrorsController", "NotFound", nil)
 		route.core = c
+		route.handler = c.Handlers["ErrorsController"]["NotFound"]
 		r.Mux.Handle(route.Pattern(), &route)
 	}
 
