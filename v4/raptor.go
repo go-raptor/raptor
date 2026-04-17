@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"reflect"
 	"syscall"
 	"time"
 
@@ -143,9 +144,10 @@ func (r *Raptor) registerRoutes(routes router.Routes) {
 }
 
 func GetService[T any](r *Raptor) *T {
-	for _, s := range r.Core.Services {
-		if svc, ok := any(s).(*T); ok {
-			return svc
+	name := reflect.TypeFor[T]().Name()
+	if svc, ok := r.Core.Services[name]; ok {
+		if typed, ok := any(svc).(*T); ok {
+			return typed
 		}
 	}
 	return nil
