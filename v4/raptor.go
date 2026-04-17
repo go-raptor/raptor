@@ -143,6 +143,13 @@ func (r *Raptor) registerRoutes(routes router.Routes) {
 	r.fatal(r.Router.RegisterRoutes(routes, r.Core))
 }
 
+func Must[T any](v T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return v
+}
+
 func GetService[T any](r *Raptor) *T {
 	name := reflect.TypeFor[T]().Name()
 	if svc, ok := r.Core.Services[name]; ok {
