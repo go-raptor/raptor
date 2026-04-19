@@ -44,19 +44,35 @@ func ExtractIPFromXFFHeader() IPExtractor {
 			return directIP
 		}
 
-		ips := append(strings.Split(xff, ","), directIP)
-		for i := len(ips) - 1; i >= 0; i-- {
-			candidate := strings.Trim(strings.TrimSpace(ips[i]), "[]")
-			ip := net.ParseIP(candidate)
+		// Walk right-to-left without allocating: directIP first, then XFF
+		// entries from rightmost to leftmost. Return the first non-trusted IP.
+		candidate := directIP
+		remaining := xff
+		for {
+			ip := net.ParseIP(strings.Trim(strings.TrimSpace(candidate), "[]"))
 			if ip == nil {
 				return directIP
 			}
 			if !isTrustedIP(ip) {
 				return ip.String()
 			}
+			if remaining == "" {
+				break
+			}
+			if i := strings.LastIndexByte(remaining, ','); i >= 0 {
+				candidate = remaining[i+1:]
+				remaining = remaining[:i]
+			} else {
+				candidate = remaining
+				remaining = ""
+			}
 		}
 
-		return strings.TrimSpace(ips[0])
+		// All IPs trusted; fall back to the leftmost XFF entry.
+		if i := strings.IndexByte(xff, ','); i >= 0 {
+			return strings.TrimSpace(xff[:i])
+		}
+		return strings.TrimSpace(xff)
 	}
 }
 

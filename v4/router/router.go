@@ -83,11 +83,10 @@ func (r *Router) registerErrorHandlers(c *core.Core) error {
 			if _, exists := allowed[method]; exists {
 				continue
 			}
-			route := NewRoute(method, path, "ErrorsController", "MethodNotAllowed", map[string]any{
-				"allowedMethods": allowedStr,
-			})
+			route := NewRoute(method, path, "ErrorsController", "MethodNotAllowed", nil)
 			route.core = c
 			route.handler = notAllowed
+			route.allowedMethods = allowedStr
 			r.Mux.Handle(route.Pattern(), &route)
 		}
 	}

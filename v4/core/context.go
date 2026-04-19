@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"maps"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -21,7 +20,8 @@ type Context struct {
 	path     string
 	query    url.Values
 
-	store map[string]any
+	store      map[string]any
+	routeStore map[string]any
 
 	controller string
 	action     string
@@ -36,7 +36,6 @@ func NewContext(c *Core, r *http.Request, w http.ResponseWriter) *Context {
 	return &Context{
 		request:  r,
 		response: NewResponse(w),
-		store:    make(map[string]any),
 		core:     c,
 	}
 }
@@ -164,10 +163,16 @@ func (c *Context) Cookies() []*http.Cookie {
 }
 
 func (c *Context) Get(key string) any {
-	return c.store[key]
+	if v, ok := c.store[key]; ok {
+		return v
+	}
+	return c.routeStore[key]
 }
 
 func (c *Context) Set(key string, val any) {
+	if c.store == nil {
+		c.store = make(map[string]any)
+	}
 	c.store[key] = val
 }
 
@@ -271,9 +276,8 @@ func (c *Context) ResetAndInit(r *http.Request, w http.ResponseWriter, controlle
 	c.response.init(w)
 	c.query = nil
 	c.handler = nil
-
-	clear(c.store)
-	if len(store) > 0 {
-		maps.Copy(c.store, store)
+	c.routeStore = store
+	if len(c.store) > 0 {
+		clear(c.store)
 	}
 }

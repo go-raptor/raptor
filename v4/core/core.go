@@ -56,17 +56,19 @@ func (c *Core) CompileHandlers() {
 func (c *Core) Serve(w http.ResponseWriter, r *http.Request, h *Handler, controller, action, path string, store map[string]any) {
 	ctx := c.contextPool.Get().(*Context)
 	ctx.ResetAndInit(r, w, controller, action, path, store)
-	defer func() {
-		if rec := recover(); rec != nil {
-			c.Resources.Log.Error("Panic recovered in handler", "controller", controller, "action", action, "panic", rec)
-			if !ctx.response.Committed {
-				ctx.Error(errs.NewErrorInternal(fmt.Sprintf("%v", rec)))
-			}
-		}
-		c.contextPool.Put(ctx)
-	}()
+	defer c.finishRequest(ctx)
 
 	if err := h.chain(ctx); err != nil {
 		ctx.Error(err)
 	}
+}
+
+func (c *Core) finishRequest(ctx *Context) {
+	if rec := recover(); rec != nil {
+		c.Resources.Log.Error("Panic recovered in handler", "controller", ctx.controller, "action", ctx.action, "panic", rec)
+		if !ctx.response.Committed {
+			ctx.Error(errs.NewErrorInternal(fmt.Sprintf("%v", rec)))
+		}
+	}
+	c.contextPool.Put(ctx)
 }

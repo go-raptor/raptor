@@ -147,6 +147,5 @@ func (e *ErrorsController) NotFound(ctx *Context) error {
 }
 
 func (e *ErrorsController) MethodNotAllowed(ctx *Context) error {
-	ctx.response.Header().Set("Allow", ctx.Get("allowedMethods").(string))
 	return errs.NewErrorMethodNotAllowed(fmt.Sprintf("Method %s not allowed for %s", ctx.Request().Method, ctx.Request().URL.Path))
 }
