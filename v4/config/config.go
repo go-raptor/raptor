@@ -38,11 +38,12 @@ type ServerConfig struct {
 }
 
 type DatabaseConfig struct {
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
-	Name     string `yaml:"name"`
+	Host        string `yaml:"host"`
+	Port        int    `yaml:"port"`
+	Username    string `yaml:"username"`
+	Password    string `yaml:"password"`
+	Name        string `yaml:"name"`
+	AutoMigrate bool   `yaml:"auto_migrate"`
 }
 
 func (d DatabaseConfig) IsConfigured() bool {
@@ -217,6 +218,7 @@ func (c *Config) applyEnvirontmentVariables() {
 	c.applyEnvirontmentVariable("DATABASE_USERNAME", &c.DatabaseConfig.Username)
 	c.applyEnvirontmentVariable("DATABASE_PASSWORD", &c.DatabaseConfig.Password)
 	c.applyEnvirontmentVariable("DATABASE_NAME", &c.DatabaseConfig.Name)
+	c.applyEnvirontmentVariable("DATABASE_AUTO_MIGRATE", &c.DatabaseConfig.AutoMigrate)
 }
 
 func (c *Config) applyEnvirontmentVariable(key string, value interface{}) {

@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-raptor/connectors"
 	"github.com/go-raptor/raptor/v4/config"
 	"github.com/go-raptor/raptor/v4/core"
 	"github.com/go-raptor/raptor/v4/router"
@@ -122,9 +123,38 @@ func (r *Raptor) waitForShutdown() {
 
 func (r *Raptor) configure(components *core.Components) {
 	r.initDatabase(components)
+	r.handleMigrations(components)
 	r.fatal(r.Core.RegisterServices(components))
 	r.fatal(r.Core.RegisterControllers(components))
 	r.fatal(r.Core.RegisterMiddlewares(components))
+}
+
+func (r *Raptor) handleMigrations(components *core.Components) {
+	if r.testMode || components.DatabaseConnector == nil {
+		return
+	}
+	migrator := r.Core.Resources.Database.Migrator()
+
+	if os.Getenv(connectors.EnvMigrateCmd) != "" {
+		handled, err := connectors.RunMigrateFromEnv(context.Background(), migrator)
+		if err != nil {
+			r.Core.Resources.Log.Error("Migration failed", "error", err)
+			os.Exit(1)
+		}
+		if handled {
+			os.Exit(0)
+		}
+		return
+	}
+
+	if r.Core.Resources.Config.DatabaseConfig.AutoMigrate {
+		r.Core.Resources.Log.Info("Running pending migrations (DATABASE_AUTO_MIGRATE=true)")
+		results, err := migrator.Up(context.Background())
+		if err != nil {
+			r.fatal(fmt.Errorf("auto-migration failed: %w", err))
+		}
+		r.Core.Resources.Log.Info("Auto-migrate complete", "applied", len(results))
+	}
 }
 
 func (r *Raptor) initDatabase(components *core.Components) {
