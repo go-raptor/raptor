@@ -255,6 +255,10 @@ func (c *Context) Data(data any, status ...int) error {
 }
 
 func (c *Context) Error(err error) {
+	if c.response.Committed {
+		return
+	}
+
 	var e *errs.Error
 	if !errors.As(err, &e) {
 		e = errs.NewErrorInternal(err.Error())

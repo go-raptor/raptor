@@ -20,15 +20,25 @@ func (h *Handler) injectMiddleware(middlewareIndex int) {
 }
 
 func (h *Handler) compile(middlewares []MiddlewareInitializer) {
-	chain := h.Action
+	chain := wrapErr(h.Action)
 	for i := len(h.middlewares) - 1; i >= 0; i-- {
 		mw := middlewares[h.middlewares[i]]
 		next := chain
-		chain = func(ctx *Context) error {
+		chain = wrapErr(func(ctx *Context) error {
 			return mw.Handle(ctx, next)
-		}
+		})
 	}
 	h.chain = chain
+}
+
+func wrapErr(fn HandlerFunc) HandlerFunc {
+	return func(ctx *Context) error {
+		err := fn(ctx)
+		if err != nil && !ctx.Response().Committed {
+			ctx.Error(err)
+		}
+		return err
+	}
 }
 
 func WrapHandler(h http.Handler) HandlerFunc {
