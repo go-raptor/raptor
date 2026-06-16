@@ -5,7 +5,7 @@
 <h1 align="center">Raptor</h1>
 
 <p align="center">
-  <strong>Go MCS (Model–Controller–Service) web framework built on net/http with automatic dependency injection, heavily inspired by Ruby on Rails and Buffalo.</strong>
+  <strong>Go MCS (Model–Controller–Service) web framework built on net/http with automatic dependency injection — designed for simplicity, productivity, and performance.</strong>
 </p>
 
 <p align="center">
@@ -18,7 +18,7 @@
 
 ---
 
-Raptor is a batteries-included framework for building web APIs in Go. It brings the structure and developer experience of **Ruby on Rails** and **Buffalo** to Go's standard `net/http` — automatic dependency injection, a project generator, a hot-reloading dev server, first-class database connectors, and composable middleware — **without** hiding the standard library or trading away performance.
+Raptor is a small, fast web framework for building APIs in Go. It gives your project a clear structure and wires everything together with automatic dependency injection — all on top of the standard `net/http`, and built around three things Go developers actually care about: **simplicity, productivity, and performance**.
 
 You write models, controllers, and services. Raptor wires them together and gets out of the way. 🦖
 
@@ -58,24 +58,28 @@ That single line loads your configuration, runs dependency injection, starts the
 
 Most Go web frameworks hand you a router and a middleware chain, then leave the architecture of your application entirely up to you. That is liberating on day one and a maze by month six.
 
-Raptor takes the opposite bet — the one Rails made fifteen years ago: **a little convention saves a lot of code.** It gives your project a predictable shape (the **MCS** triad — Models, Controllers, and Services), an automatic dependency-injection system so components find each other without wiring boilerplate, and a small toolbox (CLI, connectors, middleware) that covers the parts of an API you would otherwise rebuild every time.
+Raptor keeps the parts that make a project pleasant to work on — a predictable shape (the **MCS** triad: Models, Controllers, and Services) and automatic dependency injection, so components find each other without wiring boilerplate — and pairs them with a small, sharp toolset (CLI, connectors, middleware). The guiding idea is the one that made Ruby on Rails so productive: a framework should help you move fast. Raptor pursues that the Go way — favoring **simplicity, productivity, and performance** over magic.
 
-It does all of this directly on top of `net/http`. There is no custom router with its own quirks, no proprietary `Context` that fights the standard library, and no reflection on the hot path. The result aims to hit three goals at once:
+It does all of this directly on top of `net/http`. Routing is the standard library's own `http.ServeMux` (Go 1.22+), not a bespoke engine. Like most ergonomic frameworks, Raptor hands each request a convenient `Context` — but it is a thin layer over the standard `*http.Request` and `http.ResponseWriter`, both always one call away via `ctx.Request()` and `ctx.Response()`, so ordinary `net/http` handlers and middleware drop straight in. And because dependency injection is resolved once at startup, there is no reflection on the request path.
 
-- **Ease of use** — sensible defaults, a generator, and a structure you do not have to invent.
-- **Performance** — a thin layer over `net/http`, with dependency injection resolved once at startup rather than per request.
-- **Extensibility** — connectors, middleware, IP extractors, and loggers are all pluggable, and any standard `net/http` middleware works as-is.
+Every design decision serves these goals:
+
+- **Simplicity** — sensible defaults, a generator, and a structure you do not have to invent.
+- **Productivity** — automatic DI and code generation mean less plumbing and more shipping.
+- **Performance** — a thin layer over `net/http` with DI resolved at startup, compiled into one small, fast static binary.
+- **Extensibility** — connectors, middleware, loggers, and IP extractors are all pluggable, and standard `net/http` components work as-is.
 
 ## Highlights
 
 - **🧬 Automatic dependency injection** — declare a typed field, get the instance. No containers, no `wire`, no constructors to thread through your app.
 - **🗂️ MCS architecture** — Models, Controllers, and Services, each with a clear job. Onboarding is reading a directory tree.
 - **⚙️ Built on net/http** — Go 1.22+ routing, standard handlers, and the entire `net/http` middleware ecosystem are available to you.
-- **🦖 Batteries included** — a CLI (`raptor new`, generators, hot-reload dev server, migrations), database connectors, and ready-made middleware.
+- **🧰 A sharp toolset, not a kitchen sink** — a CLI (`raptor new`, generators, hot-reload dev server, migrations), official database connectors, and a few essential middlewares. The common pieces, none of the bloat.
 - **📨 Declarative routing** — define routes in readable YAML, or build them programmatically — your choice.
 - **🧯 Typed errors** — return `errs.NewErrorNotFound("…")` and Raptor serializes a clean JSON error with the right status code.
 - **🪵 Structured logging** — `log/slog` out of the box, with a pluggable handler.
 - **🛡️ Graceful by default** — config loading, service lifecycle hooks, and signal-aware shutdown are handled for you.
+- **🪶 Tiny footprint** — a Raptor app is a single static binary with no runtime and no dependencies. Complete APIs commonly ship in a 5–10 MB container (or none at all) and run in tens of MB of RAM.
 
 ## Quickstart
 
@@ -312,12 +316,12 @@ func (s *ReportService) Setup() error {
 
 Services may implement optional lifecycle hooks, each called at the right moment:
 
-| Hook | When it runs |
-| --- | --- |
+| Hook                     | When it runs                                                           |
+| ------------------------ | ---------------------------------------------------------------------- |
 | `Init(*Resources) error` | Provided by the embedded `raptor.Service`; resources become available. |
-| `Setup() error` | After resources are injected — ideal for warm-up and connections. |
-| `Cleanup() error` | During graceful shutdown, in reverse registration order. |
-| `Shutdown() error` | During graceful shutdown, after `Cleanup`. |
+| `Setup() error`          | After resources are injected — ideal for warm-up and connections.      |
+| `Cleanup() error`        | During graceful shutdown, in reverse registration order.               |
+| `Shutdown() error`       | During graceful shutdown, after `Cleanup`.                             |
 
 ### Routing
 
@@ -443,20 +447,20 @@ Raptor is more than the core framework. The surrounding modules cover the parts 
 
 Install: `go install github.com/go-raptor/cli/cmd/raptor@latest` · Repo: [go-raptor/cli](https://github.com/go-raptor/cli)
 
-| Command | What it does |
-| --- | --- |
-| `raptor new <module-path>` | Scaffold a new project (structure, `go.mod`, `go mod tidy`). |
+| Command                                     | What it does                                                                        |
+| ------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `raptor new <module-path>`                  | Scaffold a new project (structure, `go.mod`, `go mod tidy`).                        |
 | `raptor generate <type> <name>` (alias `g`) | Generate a `controller`, `service`, `middleware`, or `model`, with a matching test. |
-| `raptor dev` (aliases `serve`, `s`) | Run a hot-reloading dev server that rebuilds on file changes. |
-| `raptor db migrate <...>` | Run database migrations (`up`, `down`, `status`, `create`, and more). |
-| `raptor test [args]` | Thin wrapper around `go test`. |
-| `raptor version` | Print the CLI version. |
+| `raptor dev` (aliases `serve`, `s`)         | Run a hot-reloading dev server that rebuilds on file changes.                       |
+| `raptor db migrate <...>`                   | Run database migrations (`up`, `down`, `status`, `create`, and more).               |
+| `raptor test [args]`                        | Thin wrapper around `go test`.                                                      |
+| `raptor version`                            | Print the CLI version.                                                              |
 
 Generated controllers and services register themselves automatically; generated middleware is added to your middleware list with one line, and models are plain structs ready to extend.
 
 ### Connectors
 
-A **connector** is a pluggable database integration. It manages the connection pool and exposes a migrator, and is registered through `Components.DatabaseConnector`:
+A **connector** is a pluggable database integration. It manages the connection pool and exposes a migrator — powered by the battle-tested [Goose](https://github.com/pressly/goose) — and is registered through `Components.DatabaseConnector`:
 
 ```go
 import "github.com/go-raptor/connectors/bun/postgres"
@@ -486,21 +490,21 @@ func (s *UsersService) Setup() error {
 }
 ```
 
-| Connector | Provides | Install |
-| --- | --- | --- |
-| [`connectors/pgx`](https://github.com/go-raptor/connectors) | `*pgxpool.Pool` (raw PostgreSQL via pgx) | `go get github.com/go-raptor/connectors/pgx` |
-| [`connectors/bun/postgres`](https://github.com/go-raptor/connectors) | `*bun.DB` (PostgreSQL via the Bun ORM) | `go get github.com/go-raptor/connectors/bun/postgres` |
+| Connector                                                             | Provides                                                      | Install                                                |
+| --------------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------ |
+| [`connectors/pgx`](https://github.com/go-raptor/connectors)           | `*pgxpool.Pool` (raw PostgreSQL via pgx)                      | `go get github.com/go-raptor/connectors/pgx`           |
+| [`connectors/bun/postgres`](https://github.com/go-raptor/connectors)  | `*bun.DB` (PostgreSQL via the Bun ORM)                        | `go get github.com/go-raptor/connectors/bun/postgres`  |
 | [`connectors/goosemigrator`](https://github.com/go-raptor/connectors) | Migrations via `pressly/goose` (used by the connectors above) | `go get github.com/go-raptor/connectors/goosemigrator` |
 
 ### Middlewares
 
 Ready-to-use middleware, each its own module — take only what you need. Repo: [go-raptor/middlewares](https://github.com/go-raptor/middlewares)
 
-| Middleware | What it does | Install |
-| --- | --- | --- |
-| [`middlewares/logger`](https://github.com/go-raptor/middlewares) | Structured request/response logging via `slog` (method, path, status, duration). | `go get github.com/go-raptor/middlewares/logger` |
-| [`middlewares/cors`](https://github.com/go-raptor/middlewares) | Configurable CORS, including origin patterns and preflight handling. | `go get github.com/go-raptor/middlewares/cors` |
-| [`middlewares/limiter`](https://github.com/go-raptor/middlewares) | Token-bucket rate limiting per client IP. | `go get github.com/go-raptor/middlewares/limiter` |
+| Middleware                                                        | What it does                                                                     | Install                                           |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------- |
+| [`middlewares/logger`](https://github.com/go-raptor/middlewares)  | Structured request/response logging via `slog` (method, path, status, duration). | `go get github.com/go-raptor/middlewares/logger`  |
+| [`middlewares/cors`](https://github.com/go-raptor/middlewares)    | Configurable CORS, including origin patterns and preflight handling.             | `go get github.com/go-raptor/middlewares/cors`    |
+| [`middlewares/limiter`](https://github.com/go-raptor/middlewares) | Token-bucket rate limiting per client IP.                                        | `go get github.com/go-raptor/middlewares/limiter` |
 
 ### Example app
 
@@ -528,7 +532,9 @@ Raptor is designed to stay out of the request's way. The performance story is ar
 - **O(1) service lookup** and **pre-compiled middleware chains.** Each route's middleware stack is assembled at startup, not rebuilt per request.
 - **Cached response plumbing.** The `http.ResponseController` is cached rather than reallocated.
 
-> Formal, reproducible benchmarks are on the roadmap. Until they land, the claims above describe the design — not measured numbers — and we'd rather be honest about that.
+**A tiny footprint, too.** Because a Raptor app is just Go, it compiles to a **single static binary** — no runtime, no interpreter, no shared libraries to install. There is nothing to deploy but the binary itself: drop it on a host and run it, or wrap it in a minimal container. In practice a complete API fits in a **5–10 MB image** (and a container isn't required at all), while memory stays low — a small service idles around **~10 MB of RAM**, and a production app serving both an API and a static frontend typically runs in **~30 MB**.
+
+> Formal, reproducible throughput benchmarks are on the roadmap. The footprint numbers above are typical figures from real apps built with Raptor; the architectural points describe the design rather than lab measurements — and we'd rather be honest about which is which.
 
 ## Extensibility
 
@@ -553,10 +559,10 @@ Issues, ideas, and pull requests are welcome. If you are planning a larger chang
 
 ## License
 
-Raptor is released under the [MIT License](LICENCE). © 2025 Krunoslav Husak.
+Raptor is released under the [MIT License](LICENCE). © 2026 Krunoslav Husak.
 
 ## Acknowledgements
 
-Raptor stands on the shoulders of the ideas it borrows: **Ruby on Rails** and **Buffalo** for convention-over-configuration and developer happiness, and the **Go team** for a standard library good enough to build a framework directly upon.
+Raptor takes its cue from **Ruby on Rails** — the idea that a framework can keep you productive without getting in your way — while staying true to Go's love of simplicity and speed. It is built directly on the Go standard library, and its connectors lean on excellent projects like [Goose](https://github.com/pressly/goose), [Bun](https://bun.uptrace.dev/), and [pgx](https://github.com/jackc/pgx).
 
-<p align="center"><em>Build fast. Ship fast. 🦖💨</em></p>
+<p align="center"><em>Build fast. Ship fast. Run fast. 🦖💨</em></p>
