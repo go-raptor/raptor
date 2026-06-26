@@ -47,7 +47,7 @@ type DatabaseConfig struct {
 }
 
 func (d DatabaseConfig) IsConfigured() bool {
-	return d.Host != "" && d.Username != "" && d.Name != ""
+	return d.Name != ""
 }
 
 const (
