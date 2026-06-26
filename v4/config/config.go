@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -47,10 +48,6 @@ type DatabaseConfig struct {
 	AutoMigrate bool   `yaml:"auto_migrate"`
 }
 
-func (d DatabaseConfig) IsConfigured() bool {
-	return d.Name != ""
-}
-
 const (
 	DefaultGeneralConfigLogLevel = "info"
 
@@ -66,29 +63,25 @@ const (
 	DefaultServerConfigIPExtractor       = "direct"
 )
 
+var (
+	defaultConfigFiles = []string{".raptor.yaml", ".raptor.yml", ".raptor.conf"}
+	devConfigFiles     = []string{".raptor.dev.yaml", ".raptor.dev.yml", ".raptor.dev.conf"}
+	prodConfigFiles    = []string{".raptor.prod.yaml", ".raptor.prod.yml", ".raptor.prod.conf"}
+	testConfigFiles    = []string{".raptor.test.yaml", ".raptor.test.yml", ".raptor.test.conf"}
+
+	projectRootMarkers = slices.Concat(defaultConfigFiles, devConfigFiles, prodConfigFiles, testConfigFiles)
+)
+
+func (d DatabaseConfig) IsConfigured() bool {
+	return d.Name != ""
+}
+
 func NewConfig(log *slog.Logger) (*Config, error) {
-	return loadConfig(log, []string{
-		".raptor.yaml",
-		".raptor.yml",
-		".raptor.conf",
-		".raptor.prod.yaml",
-		".raptor.prod.yml",
-		".raptor.prod.conf",
-		".raptor.dev.yaml",
-		".raptor.dev.yml",
-		".raptor.dev.conf",
-	})
+	return loadConfig(log, slices.Concat(defaultConfigFiles, prodConfigFiles, devConfigFiles))
 }
 
 func NewTestConfig(log *slog.Logger) (*Config, error) {
-	return loadConfig(log, []string{
-		".raptor.yaml",
-		".raptor.yml",
-		".raptor.conf",
-		".raptor.test.yaml",
-		".raptor.test.yml",
-		".raptor.test.conf",
-	})
+	return loadConfig(log, slices.Concat(defaultConfigFiles, testConfigFiles))
 }
 
 func NewConfigDefaults() *Config {
@@ -111,13 +104,6 @@ func NewConfigDefaults() *Config {
 		DatabaseConfig: DatabaseConfig{},
 		AppConfig:      make(map[string]string),
 	}
-}
-
-var projectRootMarkers = []string{
-	".raptor.yaml", ".raptor.yml", ".raptor.conf",
-	".raptor.dev.yaml", ".raptor.dev.yml", ".raptor.dev.conf",
-	".raptor.test.yaml", ".raptor.test.yml", ".raptor.test.conf",
-	".raptor.prod.yaml", ".raptor.prod.yml", ".raptor.prod.conf",
 }
 
 func findProjectRoot() (string, bool) {
