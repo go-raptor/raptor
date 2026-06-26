@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -112,7 +113,39 @@ func NewConfigDefaults() *Config {
 	}
 }
 
+var projectRootMarkers = []string{
+	".raptor.yaml", ".raptor.yml", ".raptor.conf",
+	".raptor.dev.yaml", ".raptor.dev.yml", ".raptor.dev.conf",
+	".raptor.test.yaml", ".raptor.test.yml", ".raptor.test.conf",
+	".raptor.prod.yaml", ".raptor.prod.yml", ".raptor.prod.conf",
+}
+
+func findProjectRoot() (string, bool) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", false
+	}
+	for {
+		for _, name := range projectRootMarkers {
+			if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
+				return dir, true
+			}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", false
+		}
+		dir = parent
+	}
+}
+
 func loadConfig(log *slog.Logger, configFiles []string) (*Config, error) {
+	if root, ok := findProjectRoot(); ok {
+		if err := os.Chdir(root); err != nil {
+			log.Warn("Failed to change to project root", "root", root, "error", err)
+		}
+	}
+
 	c := NewConfigDefaults()
 	c.log = log
 
