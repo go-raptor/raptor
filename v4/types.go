@@ -23,6 +23,9 @@ type HandlerFunc = core.HandlerFunc
 var (
 	WrapHandler     = core.WrapHandler
 	WrapHandlerFunc = core.WrapHandlerFunc
+	Use             = core.Use
+	UseOnly         = core.UseOnly
+	UseExcept       = core.UseExcept
 	UseStd          = core.UseStd
 	UseStdOnly      = core.UseStdOnly
 	UseStdExcept    = core.UseStdExcept

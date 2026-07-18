@@ -31,6 +31,10 @@ func (h *Handler) compile(middlewares []MiddlewareInitializer) {
 	h.chain = chain
 }
 
+// wrapErr commits the error response at the layer where the error occurred,
+// so outer middleware (loggers, metrics) observe the final status after
+// next() returns. The tradeoff: outer middleware cannot replace an error
+// response an inner layer has already written.
 func wrapErr(fn HandlerFunc) HandlerFunc {
 	return func(ctx *Context) error {
 		err := fn(ctx)

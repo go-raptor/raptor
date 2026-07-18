@@ -159,7 +159,7 @@ func loadConfig(log *slog.Logger, configFiles []string) (*Config, error) {
 		log.Warn("Both dev and prod configuration files are present; dev values override prod")
 	}
 
-	c.applyEnvirontmentVariables()
+	c.applyEnvironmentVariables()
 	c.applyAppEnvironmentVariables("APP_")
 
 	return c, nil
@@ -232,30 +232,30 @@ func (c *Config) loadConfigFromFile(path string) error {
 	return nil
 }
 
-func (c *Config) applyEnvirontmentVariables() {
-	c.applyEnvirontmentVariable("GENERAL_LOG_LEVEL", &c.GeneralConfig.LogLevel)
+func (c *Config) applyEnvironmentVariables() {
+	c.applyEnvironmentVariable("GENERAL_LOG_LEVEL", &c.GeneralConfig.LogLevel)
 
-	c.applyEnvirontmentVariable("SERVER_ADDRESS", &c.ServerConfig.Address)
-	c.applyEnvirontmentVariable("SERVER_PORT", &c.ServerConfig.Port)
-	c.applyEnvirontmentVariable("SERVER_SHUTDOWN_TIMEOUT", &c.ServerConfig.ShutdownTimeout)
-	c.applyEnvirontmentVariable("SERVER_READ_TIMEOUT", &c.ServerConfig.ReadTimeout)
-	c.applyEnvirontmentVariable("SERVER_READ_HEADER_TIMEOUT", &c.ServerConfig.ReadHeaderTimeout)
-	c.applyEnvirontmentVariable("SERVER_WRITE_TIMEOUT", &c.ServerConfig.WriteTimeout)
-	c.applyEnvirontmentVariable("SERVER_IDLE_TIMEOUT", &c.ServerConfig.IdleTimeout)
-	c.applyEnvirontmentVariable("SERVER_MAX_HEADER_BYTES", &c.ServerConfig.MaxHeaderBytes)
-	c.applyEnvirontmentVariable("SERVER_MAX_BODY_BYTES", &c.ServerConfig.MaxBodyBytes)
-	c.applyEnvirontmentVariable("SERVER_IP_EXTRACTOR", &c.ServerConfig.IPExtractor)
-	c.applyEnvirontmentVariable("SERVER_TRUSTED_PROXIES", &c.ServerConfig.TrustedProxies)
+	c.applyEnvironmentVariable("SERVER_ADDRESS", &c.ServerConfig.Address)
+	c.applyEnvironmentVariable("SERVER_PORT", &c.ServerConfig.Port)
+	c.applyEnvironmentVariable("SERVER_SHUTDOWN_TIMEOUT", &c.ServerConfig.ShutdownTimeout)
+	c.applyEnvironmentVariable("SERVER_READ_TIMEOUT", &c.ServerConfig.ReadTimeout)
+	c.applyEnvironmentVariable("SERVER_READ_HEADER_TIMEOUT", &c.ServerConfig.ReadHeaderTimeout)
+	c.applyEnvironmentVariable("SERVER_WRITE_TIMEOUT", &c.ServerConfig.WriteTimeout)
+	c.applyEnvironmentVariable("SERVER_IDLE_TIMEOUT", &c.ServerConfig.IdleTimeout)
+	c.applyEnvironmentVariable("SERVER_MAX_HEADER_BYTES", &c.ServerConfig.MaxHeaderBytes)
+	c.applyEnvironmentVariable("SERVER_MAX_BODY_BYTES", &c.ServerConfig.MaxBodyBytes)
+	c.applyEnvironmentVariable("SERVER_IP_EXTRACTOR", &c.ServerConfig.IPExtractor)
+	c.applyEnvironmentVariable("SERVER_TRUSTED_PROXIES", &c.ServerConfig.TrustedProxies)
 
-	c.applyEnvirontmentVariable("DATABASE_HOST", &c.DatabaseConfig.Host)
-	c.applyEnvirontmentVariable("DATABASE_PORT", &c.DatabaseConfig.Port)
-	c.applyEnvirontmentVariable("DATABASE_USERNAME", &c.DatabaseConfig.Username)
-	c.applyEnvirontmentVariable("DATABASE_PASSWORD", &c.DatabaseConfig.Password)
-	c.applyEnvirontmentVariable("DATABASE_NAME", &c.DatabaseConfig.Name)
-	c.applyEnvirontmentVariable("DATABASE_AUTO_MIGRATE", &c.DatabaseConfig.AutoMigrate)
+	c.applyEnvironmentVariable("DATABASE_HOST", &c.DatabaseConfig.Host)
+	c.applyEnvironmentVariable("DATABASE_PORT", &c.DatabaseConfig.Port)
+	c.applyEnvironmentVariable("DATABASE_USERNAME", &c.DatabaseConfig.Username)
+	c.applyEnvironmentVariable("DATABASE_PASSWORD", &c.DatabaseConfig.Password)
+	c.applyEnvironmentVariable("DATABASE_NAME", &c.DatabaseConfig.Name)
+	c.applyEnvironmentVariable("DATABASE_AUTO_MIGRATE", &c.DatabaseConfig.AutoMigrate)
 }
 
-func (c *Config) applyEnvirontmentVariable(key string, value interface{}) {
+func (c *Config) applyEnvironmentVariable(key string, value interface{}) {
 	if env, ok := os.LookupEnv(key); ok {
 		c.log.Info("Applying environment variable", "key", key, "value", maskSensitiveData(key, env))
 		switch v := value.(type) {

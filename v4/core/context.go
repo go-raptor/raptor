@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/go-raptor/raptor/v4/errs"
@@ -30,6 +31,11 @@ type Context struct {
 
 const (
 	defaultMemory = 32 << 20 // 32 MB
+
+	// Below this size net/http buffers the whole response and computes
+	// Content-Length itself; above it, responses would go chunked unless
+	// the length is set explicitly.
+	chunkingThreshold = 2048
 )
 
 func NewContext(c *Core, r *http.Request, w http.ResponseWriter) *Context {
@@ -193,6 +199,9 @@ func (c *Context) JSONBlob(code int, b []byte) error {
 
 func (c *Context) Blob(code int, contentType string, b []byte) (err error) {
 	c.writeContentType(contentType)
+	if len(b) > chunkingThreshold {
+		c.response.Header().Set(HeaderContentLength, strconv.Itoa(len(b)))
+	}
 	c.response.WriteHeader(code)
 	_, err = c.response.Write(b)
 	return

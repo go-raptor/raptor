@@ -48,6 +48,7 @@ That single line loads your configuration, runs dependency injection, starts the
 - [The Raptor ecosystem](#the-raptor-ecosystem)
 - [Use cases](#use-cases)
 - [Performance](#performance)
+- [Security defaults](#security-defaults)
 - [Extensibility](#extensibility)
 - [Project status](#project-status)
 - [Contributing](#contributing)
@@ -100,7 +101,7 @@ raptor dev
 You'll see Raptor come to life:
 
 ```
-🟢 Raptor v4.2.1 is running on 127.0.0.1:3000! 🦖💨
+🟢 Raptor v4.2.5 is running on 127.0.0.1:3000! 🦖💨
 ```
 
 Call your first endpoint:
@@ -319,7 +320,7 @@ Services may implement optional lifecycle hooks, each called at the right moment
 | Hook                     | When it runs                                                           |
 | ------------------------ | ---------------------------------------------------------------------- |
 | `Init(*Resources) error` | Provided by the embedded `raptor.Service`; resources become available. |
-| `Setup() error`          | After resources are injected — ideal for warm-up and connections.      |
+| `Setup() error`          | After resources **and injected dependencies** are wired — ideal for warm-up and connections. |
 | `Cleanup() error`        | During graceful shutdown, in reverse registration order.               |
 | `Shutdown() error`       | During graceful shutdown, after `Cleanup`.                             |
 
@@ -382,9 +383,9 @@ Register middleware with the scope you want — globally, only on certain action
 ```go
 func Middlewares() raptor.Middlewares {
 	return raptor.Middlewares{
-		core.Use(&logger.LoggerMiddleware{}),                 // every request
-		core.UseExcept(&AuthMiddleware{}, "Auth.Login"),      // all but login
-		core.UseOnly(&AuditMiddleware{}, "Admin"),            // only the Admin controller
+		raptor.Use(&logger.LoggerMiddleware{}),                 // every request
+		raptor.UseExcept(&AuthMiddleware{}, "Auth.Login"),      // all but login
+		raptor.UseOnly(&AuditMiddleware{}, "Admin"),            // only the Admin controller
 	}
 }
 ```
@@ -392,7 +393,7 @@ func Middlewares() raptor.Middlewares {
 Already have a standard `net/http` middleware? Wrap it without changes:
 
 ```go
-core.UseStd(someStdMiddleware) // func(http.Handler) http.Handler
+raptor.UseStd(someStdMiddleware) // func(http.Handler) http.Handler
 ```
 
 ### Errors
@@ -425,6 +426,8 @@ app:
 ```
 
 Environment variables map onto the same keys (`SERVER_PORT`, `DATABASE_HOST`, `GENERAL_LOG_LEVEL`), and anything under `app:` (or `APP_*`) is available to your code as application config.
+
+The `server:` section also understands `max_body_bytes` (request body cap, default 8 MB, `0` disables), `trusted_proxies` (CIDRs allowed to set forwarding headers), `ip_extractor` (`direct`, `x-real-ip`, `x-forwarded-for`), and the timeout knobs (`read_timeout`, `read_header_timeout`, `write_timeout`, `idle_timeout`, `shutdown_timeout`, in seconds).
 
 ### The request lifecycle
 
@@ -527,14 +530,28 @@ These are not hypotheticals. Raptor runs in production today, backing applicatio
 Raptor is designed to stay out of the request's way. The performance story is architectural:
 
 - **Thin layer over `net/http`.** Routing uses the standard `http.ServeMux` (Go 1.22+). There is no bespoke router or parallel HTTP stack to pay for.
-- **Dependency injection resolved once, at startup.** Components are wired during boot, so there is **zero reflection on the request path** — handler calls are ordinary method calls.
+- **Dependency injection resolved once, at startup.** Components are wired during boot, so there is **no reflection-driven wiring on the request path** — requests dispatch through chains compiled ahead of time.
 - **Pooled request contexts.** `Context` objects are recycled via `sync.Pool` to keep per-request allocations low.
 - **O(1) service lookup** and **pre-compiled middleware chains.** Each route's middleware stack is assembled at startup, not rebuilt per request.
-- **Cached response plumbing.** The `http.ResponseController` is cached rather than reallocated.
+- **Lazy response plumbing.** The `http.ResponseController` is created only when a handler actually needs it (`Flush`, `Hijack`).
 
 **A tiny footprint, too.** Because a Raptor app is just Go, it compiles to a **single static binary** — no runtime, no interpreter, no shared libraries to install. There is nothing to deploy but the binary itself: drop it on a host and run it, or wrap it in a minimal container. In practice a complete API fits in a **5–10 MB image** (and a container isn't required at all), while memory stays low — a small service idles around **~10 MB of RAM**, and a production app serving both an API and a static frontend typically runs in **~30 MB**.
 
 > Formal, reproducible throughput benchmarks are on the roadmap. The footprint numbers above are typical figures from real apps built with Raptor; the architectural points describe the design rather than lab measurements — and we'd rather be honest about which is which.
+
+## Security defaults
+
+Raptor ships with production-safe behavior out of the box:
+
+- **No internal details on the wire.** Errors you return deliberately via `errs.*` reach the client as-is; anything else — unexpected `error` values, recovered panics — becomes a generic `500` while the full detail (with a stack trace for panics) goes to the server log.
+- **Request bodies are capped at 8 MB** (`server.max_body_bytes`; set `0` to disable). Oversized bodies get a clean `413`, and the limit covers JSON binding, form parsing, and wrapped `net/http` handlers alike.
+- **Header-read timeouts on by default** (`read_header_timeout: 10`), with `idle_timeout` and `max_header_bytes` also preconfigured; the server binds to `127.0.0.1` unless told otherwise.
+- **Proxy-aware client IPs, spoofing-resistant.** The `x-forwarded-for` and `x-real-ip` extractors only trust forwarding headers from loopback, link-local, and private ranges — or from the CIDRs you list in `server.trusted_proxies` when your load balancer lives elsewhere.
+- **Traversal-proof file serving.** `ctx.FileFromDir(dir, name)` confines paths to a root directory (built on `os.Root`); reserve `ctx.File` for paths you construct yourself.
+- **Graceful shutdown in the right order.** In-flight requests drain first; services and the database connector are torn down after, so no request ever runs against closed dependencies.
+- **Secrets stay out of logs.** Values of password/token/secret-like config keys — and URL-embedded credentials such as DSNs — are masked when configuration is logged.
+
+TLS termination is left to your reverse proxy or load balancer, which is where Raptor expects to run in production.
 
 ## Extensibility
 
@@ -543,11 +560,11 @@ Nothing in Raptor is a dead end:
 - **Write your own connector** by implementing the `connectors.DatabaseConnector` interface — bring any database you like.
 - **Write your own middleware** with the `Handle(ctx, next)` contract, or wrap any existing `net/http` middleware with `core.UseStd`.
 - **Use standard handlers** anywhere via the framework's `net/http` compatibility helpers.
-- **Swap the logger** with any `slog.Handler`, and **choose how client IPs are resolved** (`direct`, `x-real-ip`, or `x-forwarded-for`) through configuration.
+- **Swap the logger** with any `slog.Handler`, and **choose how client IPs are resolved** (`direct`, `x-real-ip`, or `x-forwarded-for`) through configuration — including which proxies to trust via `server.trusted_proxies`.
 
 ## Project status
 
-Raptor is actively developed. The current release is **v4.2.1**, requires **Go 1.26+**, and follows semantic versioning. Because it is a v4 module, the import path is:
+Raptor is actively developed. The current release is **v4.2.5**, requires **Go 1.26+**, and follows semantic versioning. Because it is a v4 module, the import path is:
 
 ```go
 import "github.com/go-raptor/raptor/v4"

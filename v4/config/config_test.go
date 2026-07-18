@@ -44,7 +44,7 @@ func TestInvalidEnvValueWarnsAndKeepsDefault(t *testing.T) {
 	c.log = testLogger(&buf)
 	t.Setenv("SERVER_PORT", "not-a-number")
 
-	c.applyEnvirontmentVariables()
+	c.applyEnvironmentVariables()
 
 	if c.ServerConfig.Port != DefaultServerConfigPort {
 		t.Fatalf("invalid value must keep the default port: got %d", c.ServerConfig.Port)

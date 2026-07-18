@@ -60,7 +60,7 @@ func New(components *core.Components, routes router.Routes, opts ...RaptorOption
 	resources.SetConfig(cfg)
 
 	r.Core = core.NewCore(resources)
-	r.Server = server.NewServer(&r.Core.Resources.Config.ServerConfig, r.Router.Mux)
+	r.Server = server.NewServer(&r.Core.Resources.Config.ServerConfig, r.Router.Mux, resources.Log)
 	r.configure(components)
 	r.registerRoutes(routes)
 
@@ -84,9 +84,10 @@ func WithLogHandler(handler func(*slog.LevelVar) slog.Handler) RaptorOption {
 }
 
 func (r *Raptor) Run() {
+	r.fatal(r.Server.Listen())
 	go func() {
-		if err := r.Server.Start(); err != nil && err != http.ErrServerClosed {
-			r.Core.Resources.Log.Error("Error while starting Raptor", "error", err)
+		if err := r.Server.Serve(); err != nil && err != http.ErrServerClosed {
+			r.Core.Resources.Log.Error("Error while running Raptor", "error", err)
 			os.Exit(1)
 		}
 	}()
