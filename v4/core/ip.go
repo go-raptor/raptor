@@ -1,12 +1,65 @@
 package core
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
 )
 
 type IPExtractor func(*http.Request) string
+
+// IPTrustFunc reports whether an IP belongs to a trusted proxy.
+type IPTrustFunc func(net.IP) bool
+
+func defaultTrustedIP(ip net.IP) bool {
+	return ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsPrivate()
+}
+
+// TrustedProxies builds an IPTrustFunc from CIDR entries (bare IPs are
+// accepted too). An empty list yields the default trust set: loopback,
+// link-local, and private ranges.
+func TrustedProxies(cidrs []string) (IPTrustFunc, error) {
+	nets := make([]*net.IPNet, 0, len(cidrs))
+	for _, cidr := range cidrs {
+		entry := strings.TrimSpace(cidr)
+		if entry == "" {
+			continue
+		}
+		if !strings.Contains(entry, "/") {
+			if ip := net.ParseIP(entry); ip != nil {
+				if ip.To4() != nil {
+					entry += "/32"
+				} else {
+					entry += "/128"
+				}
+			}
+		}
+		_, ipNet, err := net.ParseCIDR(entry)
+		if err != nil {
+			return nil, fmt.Errorf("invalid trusted proxy %q: %w", cidr, err)
+		}
+		nets = append(nets, ipNet)
+	}
+	if len(nets) == 0 {
+		return defaultTrustedIP, nil
+	}
+	return func(ip net.IP) bool {
+		for _, n := range nets {
+			if n.Contains(ip) {
+				return true
+			}
+		}
+		return false
+	}, nil
+}
+
+func trustFunc(trusted []IPTrustFunc) IPTrustFunc {
+	if len(trusted) > 0 && trusted[0] != nil {
+		return trusted[0]
+	}
+	return defaultTrustedIP
+}
 
 func ExtractIPDirect() IPExtractor {
 	return func(req *http.Request) string {
@@ -15,7 +68,8 @@ func ExtractIPDirect() IPExtractor {
 	}
 }
 
-func ExtractIPFromRealIPHeader() IPExtractor {
+func ExtractIPFromRealIPHeader(trusted ...IPTrustFunc) IPExtractor {
+	isTrusted := trustFunc(trusted)
 	return func(req *http.Request) string {
 		directIP, _, _ := net.SplitHostPort(req.RemoteAddr)
 
@@ -24,7 +78,7 @@ func ExtractIPFromRealIPHeader() IPExtractor {
 			return directIP
 		}
 
-		if ip := net.ParseIP(directIP); ip != nil && isTrustedIP(ip) {
+		if ip := net.ParseIP(directIP); ip != nil && isTrusted(ip) {
 			realIP = strings.Trim(realIP, "[]")
 			if net.ParseIP(realIP) != nil {
 				return realIP
@@ -35,7 +89,8 @@ func ExtractIPFromRealIPHeader() IPExtractor {
 	}
 }
 
-func ExtractIPFromXFFHeader() IPExtractor {
+func ExtractIPFromXFFHeader(trusted ...IPTrustFunc) IPExtractor {
+	isTrusted := trustFunc(trusted)
 	return func(req *http.Request) string {
 		directIP, _, _ := net.SplitHostPort(req.RemoteAddr)
 
@@ -48,12 +103,13 @@ func ExtractIPFromXFFHeader() IPExtractor {
 		// entries from rightmost to leftmost. Return the first non-trusted IP.
 		candidate := directIP
 		remaining := xff
+		var ip net.IP
 		for {
-			ip := net.ParseIP(strings.Trim(strings.TrimSpace(candidate), "[]"))
+			ip = net.ParseIP(strings.Trim(strings.TrimSpace(candidate), "[]"))
 			if ip == nil {
 				return directIP
 			}
-			if !isTrustedIP(ip) {
+			if !isTrusted(ip) {
 				return ip.String()
 			}
 			if remaining == "" {
@@ -68,14 +124,8 @@ func ExtractIPFromXFFHeader() IPExtractor {
 			}
 		}
 
-		// All IPs trusted; fall back to the leftmost XFF entry.
-		if i := strings.IndexByte(xff, ','); i >= 0 {
-			return strings.TrimSpace(xff[:i])
-		}
-		return strings.TrimSpace(xff)
+		// Every hop was trusted; ip holds the leftmost XFF entry, already
+		// parsed above — return it validated and normalized.
+		return ip.String()
 	}
-}
-
-func isTrustedIP(ip net.IP) bool {
-	return ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsPrivate()
 }

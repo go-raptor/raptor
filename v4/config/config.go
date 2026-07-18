@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -27,16 +28,17 @@ type GeneralConfig struct {
 }
 
 type ServerConfig struct {
-	Address           string `yaml:"address"`
-	Port              int    `yaml:"port"`
-	ShutdownTimeout   int    `yaml:"shutdown_timeout"`
-	ReadTimeout       int    `yaml:"read_timeout"`
-	ReadHeaderTimeout int    `yaml:"read_header_timeout"`
-	WriteTimeout      int    `yaml:"write_timeout"`
-	IdleTimeout       int    `yaml:"idle_timeout"`
-	MaxHeaderBytes    int    `yaml:"max_header_bytes"`
-	MaxBodyBytes      int64  `yaml:"max_body_bytes"`
-	IPExtractor       string `yaml:"ip_extractor"`
+	Address           string   `yaml:"address"`
+	Port              int      `yaml:"port"`
+	ShutdownTimeout   int      `yaml:"shutdown_timeout"`
+	ReadTimeout       int      `yaml:"read_timeout"`
+	ReadHeaderTimeout int      `yaml:"read_header_timeout"`
+	WriteTimeout      int      `yaml:"write_timeout"`
+	IdleTimeout       int      `yaml:"idle_timeout"`
+	MaxHeaderBytes    int      `yaml:"max_header_bytes"`
+	MaxBodyBytes      int64    `yaml:"max_body_bytes"`
+	IPExtractor       string   `yaml:"ip_extractor"`
+	TrustedProxies    []string `yaml:"trusted_proxies"`
 }
 
 type DatabaseConfig struct {
@@ -135,7 +137,7 @@ func loadConfig(log *slog.Logger, configFiles []string) (*Config, error) {
 	c := NewConfigDefaults()
 	c.log = log
 
-	loaded := false
+	var loadedFiles []string
 	for _, file := range configFiles {
 		err := c.loadConfigFromFile(file)
 		if os.IsNotExist(err) {
@@ -145,19 +147,31 @@ func loadConfig(log *slog.Logger, configFiles []string) (*Config, error) {
 			c.log.Error("Failed to load configuration file", "file", file, "error", err)
 			return c, err
 		} else {
-			loaded = true
+			loadedFiles = append(loadedFiles, file)
 			c.log.Info("Configuration loaded", "file", file)
 		}
 	}
 
-	if !loaded {
+	if len(loadedFiles) == 0 {
 		log.Warn("No configuration files found, using defaults")
+	}
+	if containsAny(loadedFiles, devConfigFiles) && containsAny(loadedFiles, prodConfigFiles) {
+		log.Warn("Both dev and prod configuration files are present; dev values override prod")
 	}
 
 	c.applyEnvirontmentVariables()
 	c.applyAppEnvironmentVariables("APP_")
 
 	return c, nil
+}
+
+func containsAny(haystack, needles []string) bool {
+	for _, needle := range needles {
+		if slices.Contains(haystack, needle) {
+			return true
+		}
+	}
+	return false
 }
 
 func MergeConfig(dst, src *Config) {
@@ -231,6 +245,7 @@ func (c *Config) applyEnvirontmentVariables() {
 	c.applyEnvirontmentVariable("SERVER_MAX_HEADER_BYTES", &c.ServerConfig.MaxHeaderBytes)
 	c.applyEnvirontmentVariable("SERVER_MAX_BODY_BYTES", &c.ServerConfig.MaxBodyBytes)
 	c.applyEnvirontmentVariable("SERVER_IP_EXTRACTOR", &c.ServerConfig.IPExtractor)
+	c.applyEnvirontmentVariable("SERVER_TRUSTED_PROXIES", &c.ServerConfig.TrustedProxies)
 
 	c.applyEnvirontmentVariable("DATABASE_HOST", &c.DatabaseConfig.Host)
 	c.applyEnvirontmentVariable("DATABASE_PORT", &c.DatabaseConfig.Port)
@@ -251,14 +266,20 @@ func (c *Config) applyEnvirontmentVariable(key string, value interface{}) {
 				*v = true
 			} else if env == "false" || env == "0" {
 				*v = false
+			} else {
+				c.log.Warn("Invalid environment variable value, ignoring", "key", key, "value", env)
 			}
 		case *int:
 			if number, err := strconv.Atoi(env); err == nil {
 				*v = number
+			} else {
+				c.log.Warn("Invalid environment variable value, ignoring", "key", key, "value", env)
 			}
 		case *int64:
 			if number, err := strconv.ParseInt(env, 10, 64); err == nil {
 				*v = number
+			} else {
+				c.log.Warn("Invalid environment variable value, ignoring", "key", key, "value", env)
 			}
 		case *[]string:
 			*v = strings.Split(env, ",")
@@ -296,5 +317,19 @@ func maskSensitiveData(key string, value interface{}) interface{} {
 		}
 	}
 
+	if hasURLUserinfo(valueStr) {
+		return "********"
+	}
+
 	return valueStr
+}
+
+// hasURLUserinfo reports whether value looks like a URL carrying
+// credentials (scheme://user:pass@host), e.g. a database DSN.
+func hasURLUserinfo(value string) bool {
+	if !strings.Contains(value, "://") || !strings.Contains(value, "@") {
+		return false
+	}
+	u, err := url.Parse(value)
+	return err == nil && u.User != nil
 }

@@ -2,7 +2,9 @@ package router
 
 import (
 	"fmt"
+	"maps"
 	"os"
+	"slices"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -30,7 +32,9 @@ func ParseRoutesYAML(content []byte) (Routes, error) {
 	}
 
 	var routes Routes
-	parseRoutes(config.Routes, "", &routes)
+	if err := parseRoutes(config.Routes, "", &routes); err != nil {
+		return nil, err
+	}
 	return routes, nil
 }
 
@@ -50,12 +54,17 @@ func ParseYAML(content []byte) Routes {
 	return routes
 }
 
-func parseRoutes(data map[string]any, parentPath string, routes *Routes) {
-	for key, value := range data {
-		if upper := strings.ToUpper(key); isHTTPMethod(upper) {
-			if descriptor, ok := value.(string); ok {
-				*routes = append(*routes, MethodRoute(upper, parentPath, descriptor)...)
+func parseRoutes(data map[string]any, parentPath string, routes *Routes) error {
+	// Keys are visited in sorted order so route lists are deterministic.
+	for _, key := range slices.Sorted(maps.Keys(data)) {
+		value := data[key]
+
+		if upper := strings.ToUpper(key); isHTTPMethod(upper) && !strings.HasPrefix(key, "/") {
+			descriptor, ok := value.(string)
+			if !ok {
+				return fmt.Errorf("routes YAML: %s under %q must map to a \"Controller.Action\" string", upper, displayPath(parentPath))
 			}
+			*routes = append(*routes, MethodRoute(upper, parentPath, descriptor)...)
 			continue
 		}
 
@@ -63,9 +72,21 @@ func parseRoutes(data map[string]any, parentPath string, routes *Routes) {
 
 		switch v := value.(type) {
 		case map[string]any:
-			parseRoutes(v, path, routes)
+			if err := parseRoutes(v, path, routes); err != nil {
+				return err
+			}
 		case string:
 			*routes = append(*routes, MethodRoute("ANY", path, v)...)
+		default:
+			return fmt.Errorf("routes YAML: invalid value for path %q (expected a nested map or a \"Controller.Action\" string)", path)
 		}
 	}
+	return nil
+}
+
+func displayPath(path string) string {
+	if path == "" {
+		return "/"
+	}
+	return path
 }

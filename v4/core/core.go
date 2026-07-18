@@ -32,11 +32,16 @@ func NewCore(resources *Resources) *Core {
 			return NewContext(core, nil, nil)
 		},
 	}
+	trusted, err := TrustedProxies(resources.Config.ServerConfig.TrustedProxies)
+	if err != nil {
+		resources.Log.Error("Invalid trusted_proxies configuration", "error", err)
+		panic(err)
+	}
 	switch strings.ToLower(resources.Config.ServerConfig.IPExtractor) {
 	case "x-forwarded-for":
-		core.IPExtractor = ExtractIPFromXFFHeader()
+		core.IPExtractor = ExtractIPFromXFFHeader(trusted)
 	case "x-real-ip":
-		core.IPExtractor = ExtractIPFromRealIPHeader()
+		core.IPExtractor = ExtractIPFromRealIPHeader(trusted)
 	default:
 		core.IPExtractor = ExtractIPDirect()
 	}
