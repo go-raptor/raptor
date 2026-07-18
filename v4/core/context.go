@@ -93,11 +93,7 @@ func (c *Context) Param(name string) string {
 }
 
 func (c *Context) Bind(v any) error {
-	body := c.request.Body
-	if max := c.core.Resources.Config.ServerConfig.MaxBodyBytes; max > 0 {
-		body = http.MaxBytesReader(c.response.Writer, body, max)
-	}
-	return json.NewDecoder(body).Decode(v)
+	return json.NewDecoder(c.request.Body).Decode(v)
 }
 
 func (c *Context) Query() url.Values {
@@ -254,6 +250,9 @@ func (c *Context) Data(data any, status ...int) error {
 	return c.JSON(code, data)
 }
 
+// Error writes err as a JSON error response. Deliberate *errs.Error values
+// keep their message and status; anything else is logged server-side and
+// redacted to a generic 500 so internal details never reach the client.
 func (c *Context) Error(err error) {
 	if c.response.Committed {
 		return
@@ -261,7 +260,13 @@ func (c *Context) Error(err error) {
 
 	var e *errs.Error
 	if !errors.As(err, &e) {
-		e = errs.NewErrorInternal(err.Error())
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			e = errs.NewErrorRequestEntityTooLarge("Request body too large")
+		} else {
+			c.core.Resources.Log.Error("Unhandled error in handler", "controller", c.controller, "action", c.action, "error", err)
+			e = errs.NewErrorInternal("Internal Server Error")
+		}
 	}
 	if writeErr := c.Data(e, e.Code); writeErr != nil {
 		c.core.Resources.Log.Error("Failed to write error response", "error", writeErr, "original", err)

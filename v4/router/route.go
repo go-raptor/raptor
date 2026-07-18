@@ -9,14 +9,13 @@ import (
 type Routes []Route
 
 type Route struct {
-	core           *core.Core
-	handler        *core.Handler
-	Store          map[string]any
-	Method         string
-	Path           string
-	Controller     string
-	Action         string
-	allowedMethods string
+	core       *core.Core
+	handler    *core.Handler
+	Store      map[string]any
+	Method     string
+	Path       string
+	Controller string
+	Action     string
 }
 
 func NewRoute(method, path, controller, action string, store map[string]any) Route {
@@ -30,15 +29,12 @@ func NewRoute(method, path, controller, action string, store map[string]any) Rou
 }
 
 func (r *Route) Pattern() string {
-	if r.Method == "ANY" {
+	if r.Method == "ANY" || r.Method == "*" {
 		return r.Path
 	}
 	return r.Method + " " + r.Path
 }
 
 func (r *Route) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if r.allowedMethods != "" {
-		w.Header().Set("Allow", r.allowedMethods)
-	}
 	r.core.Serve(w, req, r.handler, r.Controller, r.Action, r.Path, r.Store)
 }

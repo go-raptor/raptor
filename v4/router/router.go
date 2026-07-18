@@ -45,60 +45,59 @@ func (r *Router) RegisterRoutes(routes Routes, c *core.Core) error {
 	return r.registerErrorHandlers(c)
 }
 
+// registerErrorHandlers installs a catch-all fallback that renders 404s and,
+// when the path is served under other methods, 405s with an Allow header.
+// Skipped when the app registered its own catch-all route on "/".
 func (r *Router) registerErrorHandlers(c *core.Core) error {
-	pathMethods := make(map[string]map[string]struct{})
-	hasCatchAll := false
-
 	for _, route := range r.Routes {
 		if route.Pattern() == "/" {
-			hasCatchAll = true
+			return nil
 		}
-		if route.Method == "*" || route.Method == "ANY" {
+	}
+
+	r.Mux.Handle("/", &fallbackHandler{
+		mux:        r.Mux,
+		core:       c,
+		notFound:   c.Handlers["ErrorsController"]["NotFound"],
+		notAllowed: c.Handlers["ErrorsController"]["MethodNotAllowed"],
+	})
+	return nil
+}
+
+// fallbackHandler serves every request no registered pattern matched. It
+// probes the mux with each other standard method for the same path to
+// distinguish 405 (another method matches) from 404 (none does).
+type fallbackHandler struct {
+	mux        *http.ServeMux
+	core       *core.Core
+	notFound   *core.Handler
+	notAllowed *core.Handler
+}
+
+func (f *fallbackHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	if allow := f.allowedMethods(req); allow != "" {
+		w.Header().Set("Allow", allow)
+		f.core.Serve(w, req, f.notAllowed, "ErrorsController", "MethodNotAllowed", "/", nil)
+		return
+	}
+	f.core.Serve(w, req, f.notFound, "ErrorsController", "NotFound", "/", nil)
+}
+
+func (f *fallbackHandler) allowedMethods(req *http.Request) string {
+	var allowed []string
+	probe := new(http.Request)
+	*probe = *req
+	for _, method := range standardMethods {
+		if method == req.Method {
 			continue
 		}
-		if pathMethods[route.Path] == nil {
-			pathMethods[route.Path] = make(map[string]struct{})
-		}
-		pathMethods[route.Path][route.Method] = struct{}{}
-	}
-
-	for _, methods := range pathMethods {
-		if _, hasGet := methods["GET"]; hasGet {
-			methods["HEAD"] = struct{}{}
+		probe.Method = method
+		if _, pattern := f.mux.Handler(probe); pattern != "" && pattern != "/" {
+			allowed = append(allowed, method)
 		}
 	}
-
-	for path, allowed := range pathMethods {
-		allowedList := slices.Sorted(func(yield func(string) bool) {
-			for method := range allowed {
-				if !yield(method) {
-					return
-				}
-			}
-		})
-		allowedStr := strings.Join(allowedList, ", ")
-
-		notAllowed := c.Handlers["ErrorsController"]["MethodNotAllowed"]
-		for _, method := range standardMethods {
-			if _, exists := allowed[method]; exists {
-				continue
-			}
-			route := NewRoute(method, path, "ErrorsController", "MethodNotAllowed", nil)
-			route.core = c
-			route.handler = notAllowed
-			route.allowedMethods = allowedStr
-			r.Mux.Handle(route.Pattern(), &route)
-		}
-	}
-
-	if !hasCatchAll {
-		route := NewRoute("ANY", "/", "ErrorsController", "NotFound", nil)
-		route.core = c
-		route.handler = c.Handlers["ErrorsController"]["NotFound"]
-		r.Mux.Handle(route.Pattern(), &route)
-	}
-
-	return nil
+	slices.Sort(allowed)
+	return strings.Join(allowed, ", ")
 }
 
 func isHTTPMethod(method string) bool {

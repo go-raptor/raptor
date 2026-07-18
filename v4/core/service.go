@@ -43,6 +43,9 @@ func (s *Service) Shutdown() error {
 	return nil
 }
 
+// RegisterServices wires services in three phases: register them all,
+// inject dependencies into all of them, then run Setup hooks in
+// registration order — so Setup always sees fully injected dependencies.
 func (c *Core) RegisterServices(components *Components) error {
 	for _, service := range components.Services {
 		serviceName := reflect.TypeOf(service).Elem().Name()
@@ -58,6 +61,15 @@ func (c *Core) RegisterServices(components *Components) error {
 		}
 	}
 
+	for _, name := range c.serviceOrder {
+		if setup, ok := c.Services[name].(ServiceSetup); ok {
+			if err := setup.Setup(); err != nil {
+				c.Resources.Log.Error("Service setup failed", "service", name, "error", err)
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -66,16 +78,13 @@ func (c *Core) registerService(service ServiceInitializer, serviceName string) e
 		return err
 	}
 
+	if _, exists := c.Services[serviceName]; exists {
+		return fmt.Errorf("service %s is already registered (service type names must be unique, including across packages)", serviceName)
+	}
+
 	if err := service.Init(c.Resources); err != nil {
 		c.Resources.Log.Error("Service initialization failed", "service", serviceName, "error", err)
 		return err
-	}
-
-	if setup, ok := service.(ServiceSetup); ok {
-		if err := setup.Setup(); err != nil {
-			c.Resources.Log.Error("Service setup failed", "service", serviceName, "error", err)
-			return err
-		}
 	}
 
 	c.Services[serviceName] = service
@@ -137,13 +146,22 @@ func (c *Core) injectServices(component any, componentName, componentType string
 		}
 
 		serviceName := fieldType.Type.Elem().Name()
-		if service, exists := c.Services[serviceName]; exists {
+		service, exists := c.Services[serviceName]
+		if exists && reflect.TypeOf(service) == fieldType.Type {
+			if !field.CanSet() {
+				err := fmt.Errorf("%s: field %s must be exported to receive injected service %s", componentName, fieldType.Name, serviceName)
+				c.Resources.Log.Error(fmt.Sprintf("Error while injecting services into %s", componentType), componentType, componentName, "error", err)
+				return err
+			}
 			field.Set(reflect.ValueOf(service))
 			continue
 		}
 
 		if fieldType.Type.Implements(serviceInitializerType) {
 			err := fmt.Errorf("%s requires service %s, but it was not found", componentName, serviceName)
+			if exists {
+				err = fmt.Errorf("%s requires service %s of type %s, but the registered %s has type %s", componentName, serviceName, fieldType.Type, serviceName, reflect.TypeOf(service))
+			}
 			c.Resources.Log.Error(fmt.Sprintf("Error while injecting services into %s", componentType), componentType, componentName, "error", err)
 			return err
 		}

@@ -1,8 +1,9 @@
 package core
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
+	"runtime/debug"
 	"strings"
 	"sync"
 
@@ -54,6 +55,10 @@ func (c *Core) CompileHandlers() {
 
 // Serve dispatches a request through h's precompiled middleware chain.
 func (c *Core) Serve(w http.ResponseWriter, r *http.Request, h *Handler, controller, action, path string, store map[string]any) {
+	if max := c.Resources.Config.ServerConfig.MaxBodyBytes; max > 0 && r.Body != nil && r.Body != http.NoBody {
+		r.Body = http.MaxBytesReader(w, r.Body, max)
+	}
+
 	ctx := c.contextPool.Get().(*Context)
 	ctx.ResetAndInit(r, w, controller, action, path, store)
 	defer c.finishRequest(ctx)
@@ -65,9 +70,13 @@ func (c *Core) Serve(w http.ResponseWriter, r *http.Request, h *Handler, control
 
 func (c *Core) finishRequest(ctx *Context) {
 	if rec := recover(); rec != nil {
-		c.Resources.Log.Error("Panic recovered in handler", "controller", ctx.controller, "action", ctx.action, "panic", rec)
+		if err, ok := rec.(error); ok && errors.Is(err, http.ErrAbortHandler) {
+			c.contextPool.Put(ctx)
+			panic(rec)
+		}
+		c.Resources.Log.Error("Panic recovered in handler", "controller", ctx.controller, "action", ctx.action, "panic", rec, "stack", string(debug.Stack()))
 		if !ctx.response.Committed {
-			ctx.Error(errs.NewErrorInternal(fmt.Sprintf("%v", rec)))
+			ctx.Error(errs.NewErrorInternal("Internal Server Error"))
 		}
 	}
 	c.contextPool.Put(ctx)

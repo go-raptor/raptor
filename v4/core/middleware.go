@@ -83,6 +83,10 @@ func (c *Core) registerMiddleware(scoped ScopedMiddleware, middlewareName string
 
 	scoped.Middleware.Init(c.Resources)
 
+	if err := c.injectServices(scoped.Middleware, middlewareName, "middleware"); err != nil {
+		return err
+	}
+
 	if setup, ok := scoped.Middleware.(MiddlewareSetup); ok {
 		if err := setup.Setup(); err != nil {
 			c.Resources.Log.Error("Middleware setup failed", "middleware", middlewareName, "error", err)
@@ -91,11 +95,6 @@ func (c *Core) registerMiddleware(scoped ScopedMiddleware, middlewareName string
 	}
 
 	c.Middlewares = append(c.Middlewares, scoped.Middleware)
-
-	if err := c.injectServices(scoped.Middleware, middlewareName, "middleware"); err != nil {
-		return err
-	}
-
 	c.applyMiddleware(len(c.Middlewares)-1, scoped)
 	return nil
 }
@@ -196,11 +195,18 @@ type stdMiddlewareAdapter struct {
 
 func (a *stdMiddlewareAdapter) Handle(ctx *Context, next func(*Context) error) error {
 	var nextErr error
+	outer := ctx.Response()
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx.SetRequest(r)
+		if w != http.ResponseWriter(outer) {
+			// The middleware substituted the writer; route the rest of the
+			// chain's writes through it, restoring the original after.
+			ctx.SetResponse(NewResponse(w))
+			defer ctx.SetResponse(outer)
+		}
 		nextErr = next(ctx)
 	})
-	a.wrap(nextHandler).ServeHTTP(ctx.Response(), ctx.Request())
+	a.wrap(nextHandler).ServeHTTP(outer, ctx.Request())
 	return nextErr
 }
 

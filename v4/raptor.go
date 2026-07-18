@@ -3,6 +3,7 @@ package raptor
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -99,11 +100,14 @@ func (r *Raptor) waitForShutdown() {
 
 	<-quit
 	r.Core.Resources.Log.Warn("Shutting down Raptor...")
+	r.Shutdown()
+	r.Core.Resources.Log.Warn("Raptor exited, bye bye!")
+}
 
-	if err := r.Core.ShutdownServices(); err != nil {
-		r.Core.Resources.Log.Error("Error shutting down services", "error", err)
-	}
-
+// Shutdown gracefully stops the application: it drains in-flight requests
+// first, then tears down services, and finally closes the database
+// connector — so requests never run against already-closed dependencies.
+func (r *Raptor) Shutdown() {
 	timeout := time.Duration(r.Core.Resources.Config.ServerConfig.ShutdownTimeout) * time.Second
 	if timeout <= 0 {
 		timeout = time.Duration(config.DefaultServerConfigShutdownTimeout) * time.Second
@@ -118,7 +122,15 @@ func (r *Raptor) waitForShutdown() {
 		}
 	}
 
-	r.Core.Resources.Log.Warn("Raptor exited, bye bye!")
+	if err := r.Core.ShutdownServices(); err != nil {
+		r.Core.Resources.Log.Error("Error shutting down services", "error", err)
+	}
+
+	if closer, ok := r.Core.Resources.Database.(io.Closer); ok {
+		if err := closer.Close(); err != nil {
+			r.Core.Resources.Log.Error("Database close", "error", err)
+		}
+	}
 }
 
 func (r *Raptor) configure(components *core.Components) {

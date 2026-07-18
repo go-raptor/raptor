@@ -59,7 +59,7 @@ const (
 	DefaultServerConfigWriteTimeout      = 0
 	DefaultServerConfigIdleTimeout       = 120
 	DefaultServerConfigMaxHeaderBytes    = 1 << 20
-	DefaultServerConfigMaxBodyBytes      = int64(0)
+	DefaultServerConfigMaxBodyBytes      = int64(8 << 20) // explicit 0 disables the limit
 	DefaultServerConfigIPExtractor       = "direct"
 )
 

@@ -26,9 +26,12 @@ func (e *Error) Is(target error) bool {
 	return e.Code == t.Code
 }
 
+// WithCause returns a copy of e carrying cause, so shared sentinels
+// like ErrNotFound stay immutable and safe for concurrent use.
 func (e *Error) WithCause(cause error) *Error {
-	e.cause = cause
-	return e
+	err := *e
+	err.cause = cause
+	return &err
 }
 
 func NewError(code int, message string, attr ...any) *Error {

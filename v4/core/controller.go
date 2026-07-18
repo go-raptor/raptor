@@ -76,6 +76,11 @@ func (c *Core) registerController(controller ControllerInitializer, controllerNa
 	}
 
 	controller.Init(c.Resources)
+	c.registerControllerActions(reflect.ValueOf(controller), controllerName)
+
+	if err := c.injectServices(controller, controllerName, "controller"); err != nil {
+		return err
+	}
 
 	if setup, ok := controller.(ControllerSetup); ok {
 		if err := setup.Setup(); err != nil {
@@ -84,9 +89,7 @@ func (c *Core) registerController(controller ControllerInitializer, controllerNa
 		}
 	}
 
-	c.registerControllerActions(reflect.ValueOf(controller), controllerName)
-
-	return c.injectServices(controller, controllerName, "controller")
+	return nil
 }
 
 func (c *Core) validateController(controller any, controllerName string) error {
