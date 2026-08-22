@@ -1,7 +1,7 @@
 package core
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -99,7 +99,7 @@ func (c *Context) Param(name string) string {
 }
 
 func (c *Context) Bind(v any) error {
-	return json.NewDecoder(c.request.Body).Decode(v)
+	return json.UnmarshalRead(c.request.Body, v)
 }
 
 func (c *Context) Query() url.Values {
