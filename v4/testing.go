@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 
 	"github.com/go-raptor/raptor/v4/config"
 	"github.com/go-raptor/raptor/v4/core"
@@ -65,10 +66,11 @@ func WithHeader(key, value string) TestRequestOption {
 
 // WithRemoteAddr sets the client address. httptest gives every request
 // 192.0.2.1:1234, so without it a whole suite shares one ctx.RealIP() and
-// one bucket in any per-IP middleware. addr may omit the port.
+// one bucket in any per-IP middleware. addr may omit the port, and an IPv6
+// address may be bracketed or bare.
 func WithRemoteAddr(addr string) TestRequestOption {
 	if _, _, err := net.SplitHostPort(addr); err != nil {
-		addr = net.JoinHostPort(addr, "1234")
+		addr = net.JoinHostPort(strings.Trim(addr, "[]"), "1234")
 	}
 	return func(req *http.Request) {
 		req.RemoteAddr = addr

@@ -49,6 +49,7 @@ func TestWithRemoteAddrGivesEachClientItsOwnIP(t *testing.T) {
 		{"10.0.0.1:5000", "10.0.0.1"},
 		{"10.0.0.2", "10.0.0.2"},       // port optional
 		{"2001:db8::1", "2001:db8::1"}, // bare IPv6
+		{"[::1]", "::1"},               // bracketed IPv6
 	} {
 		rec := app.TestGet("/ip", raptor.WithRemoteAddr(tc.addr))
 		if rec.Code != http.StatusOK || rec.Body.String() != tc.want {

@@ -4,14 +4,14 @@
 
 ### Fixed
 
-- An `errs.Error` whose attrs cannot be encoded (an `error` value, a `time.Duration`, a func or a channel) no longer answers an empty `200`. The response is retried without `attrs`, keeping the status and message; if that fails too (e.g. a message with invalid UTF-8), a pre-encoded `{"code":500,"message":"Internal Server Error"}` is sent. Both errors are logged.
+- An `errs.Error` whose attrs cannot be encoded (an `error` value, a `time.Duration`, a func or a channel) no longer answers an empty `200`. The response is retried without `attrs`, keeping the status and message; invalid UTF-8 in the message (the built-in 404 echoes the request path, so a scanner probing `/x%ff` triggers this) is replaced with U+FFFD rather than turning the error into a 500. A pre-encoded `{"code":500,"message":"Internal Server Error"}` remains the last resort. Encoding failures are logged with the original error.
 - `raptor.NewTestApp(..., raptor.WithConfig(&config.Config{AppConfig: ...}))` no longer panics with "assignment to entry in nil map".
 
 ### Added
 
 - `DatabaseConfig.SSLMode` (`database.ssl_mode`, `DATABASE_SSL_MODE`), passed to the Postgres connectors as `sslmode`. **Default: `prefer`** — TLS when the server offers it, plaintext otherwise, so local databases keep working and managed ones get encryption. Set `disable` for the previous behavior, or `verify-full` for managed databases. Requires connectors `pgx` / `bun/postgres` v1.2.0+; older connectors ignore it and keep `sslmode=disable`.
 - `Context.BindWith(v, opts...)` decodes with `encoding/json/v2` options, e.g. `json.RejectUnknownMembers(true)`.
-- `raptor.WithRemoteAddr(addr)` test request option. Every httptest request otherwise comes from `192.0.2.1:1234`, so a suite shares one client IP and one bucket in any per-IP middleware. The port is optional.
+- `raptor.WithRemoteAddr(addr)` test request option. Every httptest request otherwise comes from `192.0.2.1:1234`, so a suite shares one client IP and one bucket in any per-IP middleware. The port is optional, and IPv6 addresses may be bracketed or bare.
 
 ### Docs
 

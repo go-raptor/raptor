@@ -296,8 +296,11 @@ var errorFallbackBody = []byte(`{"code":500,"message":"Internal Server Error"}`)
 // writeError always writes a response: one left untouched is finished by
 // net/http as an empty 200, which a client reads as success. Encoding runs
 // before anything is written, so each attempt starts from a clean response.
+// The retry drops attrs and replaces invalid UTF-8 in the message (which
+// often echoes the request path), so the status survives.
 func (c *Context) writeError(e *errs.Error, original error) {
-	for _, candidate := range []*errs.Error{e, {Code: e.Code, Message: e.Message}} {
+	retry := &errs.Error{Code: e.Code, Message: strings.ToValidUTF8(e.Message, "\uFFFD")}
+	for _, candidate := range []*errs.Error{e, retry} {
 		err := c.Data(candidate, candidate.Code)
 		if err == nil {
 			return

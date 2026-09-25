@@ -201,17 +201,27 @@ func TestUnencodableAttrsAreDroppedNot200(t *testing.T) {
 	}
 }
 
-func TestUnencodableMessageFallsBackToGeneric500(t *testing.T) {
+func TestInvalidUTF8MessageKeepsStatus(t *testing.T) {
 	app := newFaultApp(nil)
 
 	rec := app.TestGet("/invalid-utf8")
-	if rec.Code != http.StatusInternalServerError {
-		t.Fatalf("got %d, want 500", rec.Code)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("got %d, want 400: an unencodable message must not turn the error into a 500", rec.Code)
 	}
-	if got, want := rec.Body.String(), `{"code":500,"message":"Internal Server Error"}`; got != want {
+	if got, want := rec.Body.String(), "{\"code\":400,\"message\":\"bad byte \ufffd\"}"; got != want {
 		t.Fatalf("body = %s, want %s", got, want)
 	}
 	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
 		t.Fatalf("Content-Type = %q, want application/json", ct)
+	}
+}
+
+func TestNotFoundPathWithInvalidUTF8Is404(t *testing.T) {
+	app := newFaultApp(nil)
+
+	// Scanners send paths like this; the built-in NotFound message echoes the path.
+	rec := app.TestGet("/nope%ff")
+	if rec.Code != http.StatusNotFound || !strings.Contains(rec.Body.String(), `"code":404`) {
+		t.Fatalf("got %d %s, want a JSON 404", rec.Code, rec.Body)
 	}
 }
