@@ -103,7 +103,7 @@ raptor dev
 You'll see Raptor come to life:
 
 ```
-🟢 Raptor v4.3.2 is running on 127.0.0.1:3000! 🦖💨
+🟢 Raptor v4.4.0 is running on 127.0.0.1:3000! 🦖💨
 ```
 
 Call your first endpoint:
@@ -608,6 +608,7 @@ Ready-to-use middleware, each its own module — take only what you need. Repo: 
 | ----------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------- |
 | [`middlewares/logger`](https://github.com/go-raptor/middlewares)  | Structured request/response logging via `slog` (method, path, status, duration). | `go get github.com/go-raptor/middlewares/logger`  |
 | [`middlewares/cors`](https://github.com/go-raptor/middlewares)    | Configurable CORS, including origin patterns and preflight handling.             | `go get github.com/go-raptor/middlewares/cors`    |
+| [`middlewares/csrf`](https://github.com/go-raptor/middlewares)    | Rejects cross-origin writes using `http.CrossOriginProtection`.                  | `go get github.com/go-raptor/middlewares/csrf`    |
 | [`middlewares/limiter`](https://github.com/go-raptor/middlewares) | Token-bucket rate limiting per client IP.                                        | `go get github.com/go-raptor/middlewares/limiter` |
 
 ### Example app
@@ -667,7 +668,7 @@ Nothing in Raptor is a dead end:
 
 ## Project status
 
-Raptor is actively developed. The current release is **v4.3.2** and requires **Go 1.27+**, because Raptor uses `encoding/json/v2`. It follows semantic versioning. Because it is a v4 module, the import path is:
+Raptor is actively developed. The current release is **v4.4.0** and requires **Go 1.27+**, because Raptor uses `encoding/json/v2`. It follows semantic versioning. Because it is a v4 module, the import path is:
 
 ```go
 import "github.com/go-raptor/raptor/v4"
