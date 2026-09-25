@@ -127,3 +127,32 @@ func TestMergeConfigSkipsZeroValues(t *testing.T) {
 		t.Fatalf("zero src values must not clobber defaults: got %d", dst.ServerConfig.MaxBodyBytes)
 	}
 }
+
+func TestDatabaseSSLModeDefaultsToPrefer(t *testing.T) {
+	if got := NewConfigDefaults().DatabaseConfig.SSLMode; got != "prefer" {
+		t.Fatalf("default ssl_mode: got %q, want prefer", got)
+	}
+}
+
+func TestDatabaseSSLModeFromYAMLAndEnv(t *testing.T) {
+	dir := t.TempDir()
+	writeConfigFile(t, dir, ".raptor.yaml", "database:\n  name: app\n  ssl_mode: require\n")
+	t.Chdir(dir)
+
+	var buf bytes.Buffer
+	cfg, err := NewConfig(testLogger(&buf))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.DatabaseConfig.SSLMode != "require" {
+		t.Fatalf("ssl_mode from YAML: got %q", cfg.DatabaseConfig.SSLMode)
+	}
+
+	t.Setenv("DATABASE_SSL_MODE", "verify-full")
+	if cfg, err = NewConfig(testLogger(&buf)); err != nil {
+		t.Fatal(err)
+	}
+	if cfg.DatabaseConfig.SSLMode != "verify-full" {
+		t.Fatalf("DATABASE_SSL_MODE must override YAML: got %q", cfg.DatabaseConfig.SSLMode)
+	}
+}

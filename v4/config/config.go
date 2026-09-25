@@ -48,6 +48,7 @@ type DatabaseConfig struct {
 	Password    string `yaml:"password"`
 	Name        string `yaml:"name"`
 	AutoMigrate bool   `yaml:"auto_migrate"`
+	SSLMode     string `yaml:"ssl_mode"`
 }
 
 const (
@@ -63,6 +64,8 @@ const (
 	DefaultServerConfigMaxHeaderBytes    = 1 << 20
 	DefaultServerConfigMaxBodyBytes      = int64(8 << 20) // explicit 0 disables the limit
 	DefaultServerConfigIPExtractor       = "direct"
+
+	DefaultDatabaseConfigSSLMode = "prefer" // passed to Postgres connectors as sslmode
 )
 
 var (
@@ -103,8 +106,10 @@ func NewConfigDefaults() *Config {
 			MaxBodyBytes:      DefaultServerConfigMaxBodyBytes,
 			IPExtractor:       DefaultServerConfigIPExtractor,
 		},
-		DatabaseConfig: DatabaseConfig{},
-		AppConfig:      make(map[string]string),
+		DatabaseConfig: DatabaseConfig{
+			SSLMode: DefaultDatabaseConfigSSLMode,
+		},
+		AppConfig: make(map[string]string),
 	}
 }
 
@@ -252,6 +257,7 @@ func (c *Config) applyEnvironmentVariables() {
 	c.applyEnvironmentVariable("DATABASE_USERNAME", &c.DatabaseConfig.Username)
 	c.applyEnvironmentVariable("DATABASE_PASSWORD", &c.DatabaseConfig.Password)
 	c.applyEnvironmentVariable("DATABASE_NAME", &c.DatabaseConfig.Name)
+	c.applyEnvironmentVariable("DATABASE_SSL_MODE", &c.DatabaseConfig.SSLMode)
 	c.applyEnvironmentVariable("DATABASE_AUTO_MIGRATE", &c.DatabaseConfig.AutoMigrate)
 }
 
