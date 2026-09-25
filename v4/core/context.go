@@ -277,8 +277,31 @@ func (c *Context) Error(err error) {
 			e = errs.NewErrorInternal("Internal Server Error")
 		}
 	}
-	if writeErr := c.Data(e, e.Code); writeErr != nil {
-		c.core.Resources.Log.Error("Failed to write error response", "error", writeErr, "original", err)
+	c.writeError(e, err)
+}
+
+// errorFallbackBody is sent as-is when even a message-only error cannot be
+// encoded, e.g. a Message holding invalid UTF-8.
+var errorFallbackBody = []byte(`{"code":500,"message":"Internal Server Error"}`)
+
+// writeError always writes a response: one left untouched is finished by
+// net/http as an empty 200, which a client reads as success. Encoding runs
+// before anything is written, so each attempt starts from a clean response.
+func (c *Context) writeError(e *errs.Error, original error) {
+	for _, candidate := range []*errs.Error{e, {Code: e.Code, Message: e.Message}} {
+		err := c.Data(candidate, candidate.Code)
+		if err == nil {
+			return
+		}
+		if c.response.Committed {
+			// The write itself failed (client gone); retrying cannot help.
+			c.core.Resources.Log.Error("Failed to write error response", "error", err, "original", original)
+			return
+		}
+		c.core.Resources.Log.Error("Failed to encode error response", "error", err, "original", original, "attrs_dropped", candidate != e)
+	}
+	if err := c.Blob(http.StatusInternalServerError, MIMEApplicationJSON, errorFallbackBody); err != nil {
+		c.core.Resources.Log.Error("Failed to write error response", "error", err, "original", original)
 	}
 }
 

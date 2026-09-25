@@ -49,6 +49,15 @@ func (c *FaultController) Form(ctx *raptor.Context) error {
 	return ctx.Status(http.StatusOK)
 }
 
+func (c *FaultController) UnencodableAttrs(ctx *raptor.Context) error {
+	// errors.New values have no exported fields, which encoding/json/v2 refuses.
+	return errs.NewErrorUnprocessableEntity("Validation failed", "cause", errors.New("boom"))
+}
+
+func (c *FaultController) InvalidUTF8(ctx *raptor.Context) error {
+	return errs.NewErrorBadRequest("bad byte \xff")
+}
+
 func newFaultApp(logBuf *bytes.Buffer, opts ...raptor.RaptorOption) *raptor.Raptor {
 	if logBuf != nil {
 		opts = append(opts, raptor.WithLogHandler(func(level *slog.LevelVar) slog.Handler {
@@ -64,6 +73,8 @@ func newFaultApp(logBuf *bytes.Buffer, opts ...raptor.RaptorOption) *raptor.Rapt
 			router.Get("/abort", "Fault.Abort"),
 			router.Post("/bind", "Fault.BindRaw"),
 			router.Post("/form", "Fault.Form"),
+			router.Get("/unencodable", "Fault.UnencodableAttrs"),
+			router.Get("/invalid-utf8", "Fault.InvalidUTF8"),
 		),
 		opts...,
 	)
@@ -168,5 +179,39 @@ func TestFormOverLimitReturns413(t *testing.T) {
 func TestDefaultMaxBodyBytes(t *testing.T) {
 	if got := config.NewConfigDefaults().ServerConfig.MaxBodyBytes; got != 8<<20 {
 		t.Fatalf("default MaxBodyBytes: got %d, want %d (8 MB)", got, int64(8<<20))
+	}
+}
+
+func TestUnencodableAttrsAreDroppedNot200(t *testing.T) {
+	var logBuf bytes.Buffer
+	app := newFaultApp(&logBuf)
+
+	rec := app.TestGet("/unencodable")
+	if rec.Code == http.StatusOK {
+		t.Fatal("an error response that fails to encode must never answer 200")
+	}
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("got %d, want 422", rec.Code)
+	}
+	if got, want := rec.Body.String(), `{"code":422,"message":"Validation failed"}`; got != want {
+		t.Fatalf("body = %s, want %s", got, want)
+	}
+	if !strings.Contains(logBuf.String(), "Failed to encode error response") {
+		t.Fatalf("the encoding failure must be logged: %s", logBuf.String())
+	}
+}
+
+func TestUnencodableMessageFallsBackToGeneric500(t *testing.T) {
+	app := newFaultApp(nil)
+
+	rec := app.TestGet("/invalid-utf8")
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("got %d, want 500", rec.Code)
+	}
+	if got, want := rec.Body.String(), `{"code":500,"message":"Internal Server Error"}`; got != want {
+		t.Fatalf("body = %s, want %s", got, want)
+	}
+	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
+		t.Fatalf("Content-Type = %q, want application/json", ct)
 	}
 }
