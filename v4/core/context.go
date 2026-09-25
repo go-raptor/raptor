@@ -98,8 +98,17 @@ func (c *Context) Param(name string) string {
 	return c.request.PathValue(name)
 }
 
+// Bind decodes the JSON request body into v with encoding/json/v2 defaults:
+// member names match case-sensitively, unknown members are ignored, and
+// duplicate names, invalid UTF-8 and trailing data are errors.
 func (c *Context) Bind(v any) error {
 	return json.UnmarshalRead(c.request.Body, v)
+}
+
+// BindWith is Bind with encoding/json/v2 options, e.g.
+// json.RejectUnknownMembers(true) to fail on members v does not declare.
+func (c *Context) BindWith(v any, opts ...json.Options) error {
+	return json.UnmarshalRead(c.request.Body, v, opts...)
 }
 
 func (c *Context) Query() url.Values {
