@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/go-raptor/raptor/v4"
+	"github.com/go-raptor/raptor/v4/config"
 	"github.com/go-raptor/raptor/v4/errs"
 	"github.com/go-raptor/raptor/v4/router"
 )
@@ -56,5 +57,13 @@ func TestWithRemoteAddrGivesEachClientItsOwnIP(t *testing.T) {
 	}
 	if rec := app.TestGet("/ip", raptor.WithRemoteAddr("10.0.0.1:6000")); rec.Code != http.StatusTooManyRequests {
 		t.Fatalf("the same IP must share its bucket: got %d, want 429", rec.Code)
+	}
+}
+
+func TestNewTestAppAcceptsAppConfig(t *testing.T) {
+	app := raptor.NewTestApp(&raptor.Components{}, router.Routes{},
+		raptor.WithConfig(&config.Config{AppConfig: map[string]string{"feature": "on"}}))
+	if got := app.Core.Resources.Config.AppConfig["feature"]; got != "on" {
+		t.Fatalf("got %q, want on", got)
 	}
 }

@@ -197,6 +197,9 @@ func MergeConfig(dst, src *Config) {
 		dstField := dstVal.Field(i)
 
 		if fieldName == "AppConfig" && srcField.Len() > 0 {
+			if dstField.IsNil() {
+				dstField.Set(reflect.MakeMapWithSize(srcField.Type(), srcField.Len()))
+			}
 			for _, key := range srcField.MapKeys() {
 				dstField.SetMapIndex(key, srcField.MapIndex(key))
 			}

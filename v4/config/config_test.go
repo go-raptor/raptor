@@ -156,3 +156,11 @@ func TestDatabaseSSLModeFromYAMLAndEnv(t *testing.T) {
 		t.Fatalf("DATABASE_SSL_MODE must override YAML: got %q", cfg.DatabaseConfig.SSLMode)
 	}
 }
+
+func TestMergeConfigIntoNilAppConfig(t *testing.T) {
+	dst := &Config{}
+	MergeConfig(dst, &Config{AppConfig: map[string]string{"feature": "on"}})
+	if got := dst.AppConfig["feature"]; got != "on" {
+		t.Fatalf("AppConfig must merge into a nil map: got %q", got)
+	}
+}
