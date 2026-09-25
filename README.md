@@ -471,7 +471,7 @@ app:
 
 Environment variables map onto the same keys (`SERVER_PORT`, `DATABASE_HOST`, `GENERAL_LOG_LEVEL`), and anything under `app:` (or `APP_*`) is available to your code as application config.
 
-Keep the password out of tracked files: set `DATABASE_PASSWORD` in the environment. `ssl_mode` (`DATABASE_SSL_MODE`, v4.4.0+) is passed to the Postgres connectors as libpq's `sslmode`. `prefer`, the default, uses TLS when the server offers it. `disable` never uses TLS. `require` insists on TLS without verifying the certificate. `verify-full` also verifies it, and is the right choice for managed databases. Connectors older than pgx and bun/postgres v1.2.0 ignore the setting and connect without TLS.
+Keep the password out of tracked files: set `DATABASE_PASSWORD` in the environment. `ssl_mode` (`DATABASE_SSL_MODE`, v4.4.0+) is passed to the Postgres connectors as libpq's `sslmode`. `prefer`, the default, uses TLS when the server offers it. `disable` never uses TLS. `require` insists on TLS without verifying the certificate. `verify-full` also verifies it, and is the right choice for managed databases; if your provider signs with its own CA (Amazon RDS does), point `PGSSLROOTCERT` at its CA bundle. Connectors older than pgx and bun/postgres v1.2.0 ignore the setting and connect without TLS.
 
 The `server:` section also understands `max_body_bytes` (request body cap, default 8 MB, `0` disables), `trusted_proxies` (CIDRs allowed to set forwarding headers), `ip_extractor` (`direct`, `x-real-ip`, `x-forwarded-for`), and the timeout knobs (`read_timeout`, `read_header_timeout`, `write_timeout`, `idle_timeout`, `shutdown_timeout`, in seconds).
 
