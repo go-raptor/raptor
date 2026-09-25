@@ -2,6 +2,7 @@ package raptor
 
 import (
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 
@@ -59,6 +60,18 @@ func (r *Raptor) TestRequest(method, path string, body io.Reader, opts ...TestRe
 func WithHeader(key, value string) TestRequestOption {
 	return func(req *http.Request) {
 		req.Header.Set(key, value)
+	}
+}
+
+// WithRemoteAddr sets the client address. httptest gives every request
+// 192.0.2.1:1234, so without it a whole suite shares one ctx.RealIP() and
+// one bucket in any per-IP middleware. addr may omit the port.
+func WithRemoteAddr(addr string) TestRequestOption {
+	if _, _, err := net.SplitHostPort(addr); err != nil {
+		addr = net.JoinHostPort(addr, "1234")
+	}
+	return func(req *http.Request) {
+		req.RemoteAddr = addr
 	}
 }
 
