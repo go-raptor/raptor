@@ -1,6 +1,40 @@
 # Changelog
 
-## Unreleased
+## Unreleased (v4.4.0)
+
+### Fixed
+
+- An `errs.Error` whose attrs cannot be encoded (an `error` value, a `time.Duration`, a func or a channel) no longer answers an empty `200`. The response is retried without `attrs`, keeping the status and message; if that fails too (e.g. a message with invalid UTF-8), a pre-encoded `{"code":500,"message":"Internal Server Error"}` is sent. Both errors are logged.
+- `raptor.NewTestApp(..., raptor.WithConfig(&config.Config{AppConfig: ...}))` no longer panics with "assignment to entry in nil map".
+
+### Added
+
+- `DatabaseConfig.SSLMode` (`database.ssl_mode`, `DATABASE_SSL_MODE`), passed to the Postgres connectors as `sslmode`. **Default: `prefer`** — TLS when the server offers it, plaintext otherwise, so local databases keep working and managed ones get encryption. Set `disable` for the previous behavior, or `verify-full` for managed databases. Requires connectors `pgx` / `bun/postgres` v1.2.0+; older connectors ignore it and keep `sslmode=disable`.
+- `Context.BindWith(v, opts...)` decodes with `encoding/json/v2` options, e.g. `json.RejectUnknownMembers(true)`.
+- `raptor.WithRemoteAddr(addr)` test request option. Every httptest request otherwise comes from `192.0.2.1:1234`, so a suite shares one client IP and one bucket in any per-IP middleware. The port is optional.
+
+### Docs
+
+- README: current version and Go 1.27 requirement; `encoding/json/v2` semantics of `Bind`/`Data`; test helpers with a two-user example (compiled in `v4/example_test.go`); file serving and why request-derived paths go through `FileFromDir`; catch-all routes on `/` replacing the 404/405 fallback; `ssl_mode`.
+
+## v4.3.2 — 2026-08-22
+
+### Changed
+
+- Requires Go 1.27. `Bind`, `Data` and `JSON` now use `encoding/json/v2`:
+  - member names match case-sensitively; a mis-cased key is silently dropped;
+  - duplicate member names, invalid UTF-8 and trailing data are rejected;
+  - nil slices and maps encode as `[]` and `{}`;
+  - `omitempty` omits empty JSON values; `omitzero` omits Go zero values;
+  - `time.Duration` (no default encoding) and `format:` tag options fail.
+
+## v4.3.1 — 2026-08-15
+
+### Changed
+
+- YAML parsing moved from `gopkg.in/yaml.v3` to its maintained fork `go.yaml.in/yaml/v3`. Config files are unaffected.
+
+## v4.3.0 — 2026-07-18
 
 ### Security
 

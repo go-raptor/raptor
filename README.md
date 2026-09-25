@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://pkg.go.dev/github.com/go-raptor/raptor/v4"><img src="https://pkg.go.dev/badge/github.com/go-raptor/raptor/v4.svg" alt="Go Reference"></a>
   <a href="https://github.com/go-raptor/raptor/tags"><img src="https://img.shields.io/github/v/tag/go-raptor/raptor?label=release&sort=semver&color=00ADD8" alt="Latest release"></a>
-  <img src="https://img.shields.io/badge/Go-1.26%2B-00ADD8?logo=go&logoColor=white" alt="Go 1.26+">
+  <img src="https://img.shields.io/badge/Go-1.27%2B-00ADD8?logo=go&logoColor=white" alt="Go 1.27+">
   <a href="https://goreportcard.com/report/github.com/go-raptor/raptor/v4"><img src="https://goreportcard.com/badge/github.com/go-raptor/raptor/v4" alt="Go Report Card"></a>
   <a href="LICENCE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
 </p>
@@ -43,8 +43,10 @@ That single line loads your configuration, runs dependency injection, starts the
   - [Routing](#routing)
   - [Middleware](#middleware)
   - [Errors](#errors)
+  - [Serving files](#serving-files)
   - [Configuration](#configuration)
   - [The request lifecycle](#the-request-lifecycle)
+  - [Testing](#testing)
 - [The Raptor ecosystem](#the-raptor-ecosystem)
 - [Use cases](#use-cases)
 - [Performance](#performance)
@@ -101,7 +103,7 @@ raptor dev
 You'll see Raptor come to life:
 
 ```
-🟢 Raptor v4.2.5 is running on 127.0.0.1:3000! 🦖💨
+🟢 Raptor v4.3.2 is running on 127.0.0.1:3000! 🦖💨
 ```
 
 Call your first endpoint:
@@ -300,6 +302,27 @@ func (c *UsersController) Show(ctx *raptor.Context) error {
 
 Common `Context` methods include `Bind`, `Param`, `Query`/`QueryParam`, `Cookie`, `RealIP`, `Get`/`Set` (request-scoped storage), and responders such as `Data`, `JSON`, `String`, `Status`, `NoContent`, and `Redirect`. `ctx.Data(v)` writes JSON with `200 OK`; pass a status for anything else: `ctx.Data(v, http.StatusCreated)`.
 
+#### JSON binding and encoding
+
+`Bind`, `Data` and `JSON` use Go 1.27's `encoding/json/v2`, which is stricter than the v1 package:
+
+- Member names match **case-sensitively**: `{"Email": …}` does not fill a field tagged `json:"email"`. The key is silently dropped, so tag every field and send exactly those names.
+- Duplicate member names, invalid UTF-8 and trailing data after the value are errors.
+- Nil slices and maps encode as `[]` and `{}`, not `null`.
+- `omitempty` omits a field whose JSON value is empty (`""`, `[]`, `{}`, `null`). `omitzero` omits Go zero values such as `0`, `false` or a zero `time.Time`.
+- `time.Duration` has no default encoding and `format:` tag options are not enabled, so both fail. Encode durations yourself, e.g. as seconds in an `int64`.
+
+`Bind` ignores unknown members. To reject them, or pass any other json/v2 option, use `BindWith` (v4.4.0+):
+
+```go
+if err := ctx.BindWith(&req, json.RejectUnknownMembers(true)); err != nil {
+	if errors.Is(err, json.ErrUnknownName) {
+		return errs.NewErrorBadRequest("Unknown field")
+	}
+	return errs.NewErrorBadRequest("Invalid JSON")
+}
+```
+
 ### Services and lifecycle
 
 Services embed `raptor.Service`, which gives them access to shared **resources** — the structured logger, the loaded config, and the database connector:
@@ -361,6 +384,8 @@ routes := router.CollectRoutes(
 
 Unmatched paths and methods are handled by a built-in errors controller, returning clean `404` and `405` responses automatically.
 
+A route on `/` itself (`router.Any("/", "SPA.Index")`, or `/: SPA.Index` in YAML) matches every path. Raptor then skips its built-in 404/405 fallback, and that route receives every unmatched request. The SPA controller works this way. Pair it with `/api/v1/{path...}: Errors.NotFound` so unknown API paths still get a JSON 404; `Errors` is the built-in errors controller. See [controllers/spa](https://github.com/go-raptor/controllers).
+
 ### Middleware
 
 Middleware embeds `raptor.Middleware` and implements `Handle(ctx, next)`:
@@ -407,6 +432,23 @@ return errs.NewErrorNotFound("user not found")
 
 The `errs` package ships constructors for the full range of 4xx/5xx statuses (`NewErrorBadRequest`, `NewErrorUnauthorized`, `NewErrorForbidden`, `NewErrorConflict`, `NewErrorUnprocessableEntity`, `NewErrorTooManyRequests`, `NewErrorInternal`, …), plus `NewError(code, message, attrs...)` for anything custom. Attach structured attributes for richer responses, or wrap an underlying cause with `.WithCause(err)`.
 
+Attrs are sent to the client as-is, so keep them encodable and free of internals. If they can't be encoded (an `error` value, a `time.Duration`, a func), Raptor logs the failure and sends the error without `attrs`, keeping the same status and message. A client never gets an empty `200`.
+
+### Serving files
+
+`ctx.FileFromDir(dir, name)` serves `name` from inside `dir` and refuses to leave it. `..` segments, absolute paths and symlinks pointing outside all get a 404, because it's built on `os.Root`. Use it for any name that comes from the request.
+
+`ctx.File(path)` serves exactly the path it's given. `ctx.Attachment(path, name)` and `ctx.Inline(path, name)` are `File` plus a `Content-Disposition` header, so none of the three contains the path. Use them only for paths your code builds. For a download named by the request, set the header yourself and use `FileFromDir`:
+
+```go
+func (c *FilesController) Download(ctx *raptor.Context) error {
+	name := ctx.Param("name")
+	ctx.Response().Header().Set("Content-Disposition",
+		mime.FormatMediaType("attachment", map[string]string{"filename": name}))
+	return ctx.FileFromDir("storage/uploads", name)
+}
+```
+
 ### Configuration
 
 Configuration is read from `.raptor.yaml` (with environment-specific variants like `.raptor.dev.yaml` and `.raptor.prod.yaml`), overlaid with environment variables, and optionally overridden in code:
@@ -420,12 +462,16 @@ server:
 database:
   host: localhost
   port: 5432
+  username: myapp
   name: myapp
+  ssl_mode: prefer
 app:
   cors_allow_origins: "http://localhost:5173"
 ```
 
 Environment variables map onto the same keys (`SERVER_PORT`, `DATABASE_HOST`, `GENERAL_LOG_LEVEL`), and anything under `app:` (or `APP_*`) is available to your code as application config.
+
+Keep the password out of tracked files: set `DATABASE_PASSWORD` in the environment. `ssl_mode` (`DATABASE_SSL_MODE`, v4.4.0+) is passed to the Postgres connectors as libpq's `sslmode`. `prefer`, the default, uses TLS when the server offers it. `disable` never uses TLS. `require` insists on TLS without verifying the certificate. `verify-full` also verifies it, and is the right choice for managed databases. Connectors older than pgx and bun/postgres v1.2.0 ignore the setting and connect without TLS.
 
 The `server:` section also understands `max_body_bytes` (request body cap, default 8 MB, `0` disables), `trusted_proxies` (CIDRs allowed to set forwarding headers), `ip_extractor` (`direct`, `x-real-ip`, `x-forwarded-for`), and the timeout knobs (`read_timeout`, `read_header_timeout`, `write_timeout`, `idle_timeout`, `shutdown_timeout`, in seconds).
 
@@ -440,6 +486,61 @@ flowchart LR
     services --> action
     action -->|"ctx.Data / ctx.JSON / errs"| resp["Response"]
     resp -->|"JSON"| client
+```
+
+### Testing
+
+`raptor.NewTestApp` boots the whole app (dependency injection, middleware, routes) without opening a port. It loads `.raptor.yaml` and `.raptor.test.yaml`, never the dev or prod files, logs only errors, and skips migrations. Drive it with the request helpers, which return an `*httptest.ResponseRecorder`:
+
+| Helper | Purpose |
+| --- | --- |
+| `app.TestGet(path, opts...)`, `app.TestDelete(path, opts...)` | Request without a body |
+| `app.TestPost(path, body, opts...)`, `TestPut`, `TestPatch` | Request with a body; sets `Content-Type: application/json` when `body` is not nil |
+| `app.TestRequest(method, path, body, opts...)` | Any method |
+| `raptor.WithHeader(key, value)` | Set a request header: a session cookie, a bearer token, `Sec-Fetch-Site` |
+| `raptor.WithRemoteAddr(addr)` | Set the client address (v4.4.0+) |
+| `raptor.GetService[T](app)` | The live service instance, for seeding data or asserting state |
+| `raptor.WithConfig(&config.Config{...})` | Override configuration for this app |
+
+Every request comes from httptest's `192.0.2.1:1234`. With `ip_extractor: direct`, a whole suite therefore shares one `ctx.RealIP()` and one bucket in any per-IP middleware, so a strict login limiter (burst 5) answers 429 from the sixth login onward. Give each simulated client its own address with `raptor.WithRemoteAddr("10.0.0.2")`; the port is optional.
+
+Ownership bugs hide in single-user tests, so test with two users. Here `NotesController` scopes every lookup to the user that `TokenAuthMiddleware` puts in the context (the full example is in [`v4/example_test.go`](v4/example_test.go)):
+
+```go
+func TestNotesAreScopedToTheirOwner(t *testing.T) {
+	app := raptor.NewTestApp(&raptor.Components{
+		Services:    raptor.Services{&NotesService{}},
+		Controllers: raptor.Controllers{&NotesController{}},
+		Middlewares: raptor.Middlewares{raptor.Use(&TokenAuthMiddleware{})},
+	}, router.CollectRoutes(
+		router.Post("/notes", "Notes.Create"),
+		router.Get("/notes/{id}", "Notes.Show"),
+	))
+	alice := raptor.WithHeader("Authorization", "Bearer alice")
+	bob := raptor.WithHeader("Authorization", "Bearer bob")
+
+	rec := app.TestPost("/notes", strings.NewReader(`{"text":"hi"}`), alice)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create: got %d %s", rec.Code, rec.Body)
+	}
+	var note struct {
+		ID int `json:"id"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &note); err != nil {
+		t.Fatal(err)
+	}
+
+	path := fmt.Sprintf("/notes/%d", note.ID)
+	if rec := app.TestGet(path, alice); rec.Code != http.StatusOK {
+		t.Fatalf("owner read: got %d", rec.Code)
+	}
+	if rec := app.TestGet(path, bob); rec.Code != http.StatusNotFound {
+		t.Fatalf("another user's note must be a 404, got %d", rec.Code)
+	}
+	if svc := raptor.GetService[NotesService](app); svc == nil || len(svc.notes) != 1 {
+		t.Fatal("GetService must return the live NotesService")
+	}
+}
 ```
 
 ## The Raptor ecosystem
@@ -543,12 +644,14 @@ Raptor is designed to stay out of the request's way. The performance story is ar
 
 Raptor ships with production-safe behavior out of the box:
 
+- **Errors never degrade to an empty 200.** If an error's attrs can't be encoded, it is sent without them; if even that fails, a generic JSON 500 goes out.
 - **No internal details on the wire.** Errors you return deliberately via `errs.*` reach the client as-is; anything else — unexpected `error` values, recovered panics — becomes a generic `500` while the full detail (with a stack trace for panics) goes to the server log.
 - **Request bodies are capped at 8 MB** (`server.max_body_bytes`; set `0` to disable). Oversized bodies get a clean `413`, and the limit covers JSON binding, form parsing, and wrapped `net/http` handlers alike.
 - **Header-read timeouts on by default** (`read_header_timeout: 10`), with `idle_timeout` and `max_header_bytes` also preconfigured; the server binds to `127.0.0.1` unless told otherwise.
 - **Proxy-aware client IPs, spoofing-resistant.** The `x-forwarded-for` and `x-real-ip` extractors only trust forwarding headers from loopback, link-local, and private ranges — or from the CIDRs you list in `server.trusted_proxies` when your load balancer lives elsewhere.
 - **Traversal-proof file serving.** `ctx.FileFromDir(dir, name)` confines paths to a root directory (built on `os.Root`); reserve `ctx.File` for paths you construct yourself.
 - **Graceful shutdown in the right order.** In-flight requests drain first; services and the database connector are torn down after, so no request ever runs against closed dependencies.
+- **Opportunistic TLS to Postgres.** `database.ssl_mode` defaults to `prefer`; set `verify-full` in production.
 - **Secrets stay out of logs.** Values of password/token/secret-like config keys — and URL-embedded credentials such as DSNs — are masked when configuration is logged.
 
 TLS termination is left to your reverse proxy or load balancer, which is where Raptor expects to run in production.
@@ -564,7 +667,7 @@ Nothing in Raptor is a dead end:
 
 ## Project status
 
-Raptor is actively developed. The current release is **v4.2.5**, requires **Go 1.26+**, and follows semantic versioning. Because it is a v4 module, the import path is:
+Raptor is actively developed. The current release is **v4.3.2** and requires **Go 1.27+**, because Raptor uses `encoding/json/v2`. It follows semantic versioning. Because it is a v4 module, the import path is:
 
 ```go
 import "github.com/go-raptor/raptor/v4"
