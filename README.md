@@ -218,7 +218,6 @@ import (
 	"net/http"
 
 	"github.com/go-raptor/raptor/v4"
-	"github.com/go-raptor/raptor/v4/errs"
 	"github.com/you/myapp/app/services"
 )
 
@@ -240,7 +239,7 @@ func (c *HelloController) AddGreetings(ctx *raptor.Context) error {
 		Greeting string `json:"greeting"`
 	}
 	if err := ctx.Bind(&request); err != nil {
-		return errs.NewErrorBadRequest("invalid request")
+		return err // 400 for malformed JSON, 415 for a non-JSON body
 	}
 	c.Hello.AddGreeting(request.Greeting)
 	return ctx.Status(http.StatusCreated)
@@ -319,9 +318,11 @@ if err := ctx.BindWith(&req, json.RejectUnknownMembers(true)); err != nil {
 	if errors.Is(err, json.ErrUnknownName) {
 		return errs.NewErrorBadRequest("Unknown field")
 	}
-	return errs.NewErrorBadRequest("Invalid JSON")
+	return err // 400, 413 or 415
 }
 ```
+
+`Bind` and `BindWith` (v4.5.0+) require a JSON body: a `Content-Type` of `application/json` or any `application/*+json` type, with parameters such as `charset` allowed. Anything else gets `415`. The check is a CSRF defense: a cross-site HTML form can post `text/plain` that happens to be valid JSON, but it can't send `application/json` without a CORS preflight. Malformed JSON is a `400` and an oversized body a `413`. The decode error stays reachable with `errors.Is` and `errors.As`, so a handler can return a `Bind` error unchanged.
 
 ### Services and lifecycle
 
@@ -436,7 +437,27 @@ Attrs are sent to the client as-is, so keep them encodable and free of internals
 
 ### Serving files
 
-`ctx.FileFromDir(dir, name)` serves `name` from inside `dir` and refuses to leave it. `..` segments, absolute paths and symlinks pointing outside all get a 404, because it's built on `os.Root`. Use it for any name that comes from the request.
+`ctx.FileFromDir(dir, name)` serves `name` from inside `dir` and refuses to leave it. `..` segments, absolute paths and symlinks pointing outside all get a 404, because it's built on `os.Root`. Use it for any name that comes from the request. It opens `dir` on every call. To serve many files, open the root once in a controller's `Setup` and call `ctx.FileFromRoot(root, name)` (v4.5.0+). `os.Root` is safe for concurrent use:
+
+```go
+type AssetsController struct {
+	raptor.Controller
+	root *os.Root
+}
+
+func (c *AssetsController) Setup() error {
+	root, err := os.OpenRoot("public")
+	c.root = root
+	return err
+}
+
+func (c *AssetsController) Show(ctx *raptor.Context) error {
+	ctx.Response().Header().Set("Cache-Control", "public, max-age=3600")
+	return ctx.FileFromRoot(c.root, ctx.Param("name"))
+}
+```
+
+Only regular files are served. A missing file, a directory, a FIFO or a device returns `errs.ErrNotFound`, which Raptor renders as `{"code":404,"message":"Not Found"}`. Like every error response, it drops `Cache-Control`, `ETag`, `Last-Modified`, `Content-Encoding`, `Content-Length` and `Content-Disposition`, so the `Cache-Control` above never reaches a 404, and a download's `Content-Disposition` never turns an error into a saved file. File responses use `sendfile` when the connection allows it.
 
 `ctx.File(path)` serves exactly the path it's given. `ctx.Attachment(path, name)` and `ctx.Inline(path, name)` are `File` plus a `Content-Disposition` header, so none of the three contains the path. Use them only for paths your code builds. For a download named by the request, set the header yourself and use `FileFromDir`:
 
@@ -474,6 +495,15 @@ Environment variables map onto the same keys (`SERVER_PORT`, `DATABASE_HOST`, `G
 Keep the password out of tracked files: set `DATABASE_PASSWORD` in the environment. `ssl_mode` (`DATABASE_SSL_MODE`, v4.4.0+) is passed to the Postgres connectors as libpq's `sslmode`. `prefer`, the default, uses TLS when the server offers it. `disable` never uses TLS. `require` insists on TLS without verifying the certificate. `verify-full` also verifies it, and is the right choice for managed databases; if your provider signs with its own CA (Amazon RDS does), point `PGSSLROOTCERT` at its CA bundle. Connectors older than pgx and bun/postgres v1.2.0 ignore the setting and connect without TLS.
 
 The `server:` section also understands `max_body_bytes` (request body cap, default 8 MB, `0` disables), `trusted_proxies` (CIDRs allowed to set forwarding headers), `ip_extractor` (`direct`, `x-real-ip`, `x-forwarded-for`), and the timeout knobs (`read_timeout`, `read_header_timeout`, `write_timeout`, `idle_timeout`, `shutdown_timeout`, in seconds).
+
+`read_timeout` and `write_timeout` default to `0` (off), so only request headers are time-limited (`read_header_timeout`, 10 s). That's deliberate: a global read timeout fails slow uploads, and a write timeout cuts off large downloads and streamed responses. Behind a reverse proxy, which normally buffers request bodies, slow clients never reach Raptor. If Raptor faces clients directly, set both timeouts, and give a handler that needs longer its own deadline:
+
+```go
+rc := http.NewResponseController(ctx.Response())
+if err := rc.SetReadDeadline(time.Now().Add(10 * time.Minute)); err != nil {
+	return err
+}
+```
 
 ### The request lifecycle
 
@@ -636,6 +666,7 @@ Raptor is designed to stay out of the request's way. The performance story is ar
 - **Pooled request contexts.** `Context` objects are recycled via `sync.Pool` to keep per-request allocations low.
 - **O(1) service lookup** and **pre-compiled middleware chains.** Each route's middleware stack is assembled at startup, not rebuilt per request.
 - **Lazy response plumbing.** The `http.ResponseController` is created only when a handler actually needs it (`Flush`, `Hijack`).
+- **Zero-copy file responses.** `File`, `FileFromDir`, `FileFromRoot`, `Stream`, and `http.ServeContent` on `ctx.Response()` reach net/http's `sendfile` path.
 
 **A tiny footprint, too.** Because a Raptor app is just Go, it compiles to a **single static binary** — no runtime, no interpreter, no shared libraries to install. There is nothing to deploy but the binary itself: drop it on a host and run it, or wrap it in a minimal container. In practice a complete API fits in a **5–10 MB image** (and a container isn't required at all), while memory stays low — a small service idles around **~10 MB of RAM**, and a production app serving both an API and a static frontend typically runs in **~30 MB**.
 
@@ -647,13 +678,15 @@ Raptor ships with production-safe behavior out of the box:
 
 - **Errors never degrade to an empty 200.** If an error's attrs can't be encoded, it is sent without them; if even that fails, a generic JSON 500 goes out.
 - **No internal details on the wire.** Errors you return deliberately via `errs.*` reach the client as-is; anything else — unexpected `error` values, recovered panics — becomes a generic `500` while the full detail (with a stack trace for panics) goes to the server log.
+- **Error responses are always JSON.** They carry `Content-Type: application/json` and `X-Content-Type-Options: nosniff`, and drop the caching and download headers a handler set for the success path.
+- **JSON bodies must say so.** `Bind` answers `415` unless the body is declared `application/json`, so a cross-site form can't post JSON.
 - **Request bodies are capped at 8 MB** (`server.max_body_bytes`; set `0` to disable). Oversized bodies get a clean `413`, and the limit covers JSON binding, form parsing, and wrapped `net/http` handlers alike.
 - **Header-read timeouts on by default** (`read_header_timeout: 10`), with `idle_timeout` and `max_header_bytes` also preconfigured; the server binds to `127.0.0.1` unless told otherwise.
 - **Proxy-aware client IPs, spoofing-resistant.** The `x-forwarded-for` and `x-real-ip` extractors only trust forwarding headers from loopback, link-local, and private ranges — or from the CIDRs you list in `server.trusted_proxies` when your load balancer lives elsewhere.
-- **Traversal-proof file serving.** `ctx.FileFromDir(dir, name)` confines paths to a root directory (built on `os.Root`); reserve `ctx.File` for paths you construct yourself.
+- **Traversal-proof file serving.** `ctx.FileFromDir(dir, name)` and `ctx.FileFromRoot(root, name)` confine paths to a root directory (built on `os.Root`) and serve only regular files; reserve `ctx.File` for paths you construct yourself.
 - **Graceful shutdown in the right order.** In-flight requests drain first; services and the database connector are torn down after, so no request ever runs against closed dependencies.
 - **Opportunistic TLS to Postgres.** `database.ssl_mode` defaults to `prefer`; set `verify-full` in production.
-- **Secrets stay out of logs.** Values of password/token/secret-like config keys — and URL-embedded credentials such as DSNs — are masked when configuration is logged.
+- **Secrets stay out of logs.** Values of password, token, secret, credential, key and similar config keys — and URL-embedded credentials such as DSNs — are masked when configuration is logged.
 
 TLS termination is left to your reverse proxy or load balancer, which is where Raptor expects to run in production.
 

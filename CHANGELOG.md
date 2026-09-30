@@ -1,5 +1,44 @@
 # Changelog
 
+## Unreleased
+
+### Upgrading
+
+- `Bind` and `BindWith` require `Content-Type: application/json` or an `application/*+json` type; other bodies get `415`. Clients posting JSON without the header (e.g. `curl -d` without `-H 'Content-Type: application/json'`) must add it. To accept any body, decode `ctx.Request().Body` yourself.
+- Malformed JSON in `Bind`/`BindWith` is a `400` (an `errs.Error` wrapping the decode error) instead of a logged `500`.
+- `File`, `FileFromDir`, `Attachment` and `Inline` return `errs.ErrNotFound` for a missing path, a directory or any non-regular file instead of writing a bare 404 and returning nil. The body changes from empty to `{"code":404,"message":"Not Found"}`. Return the error, or handle it with `errors.Is(err, errs.ErrNotFound)`.
+- Error responses drop `Cache-Control`, `ETag`, `Last-Modified`, `Content-Encoding`, `Content-Length` and `Content-Disposition`, and always carry `Content-Type: application/json` and `X-Content-Type-Options: nosniff`. Headers describing the error itself, such as `Retry-After`, `Allow` and `WWW-Authenticate`, are kept.
+- An `errs.Error` with a status outside 400–599 is sent as a `500` and logged.
+- A `*raptor.Context` used after its handler returned sees `Request() == nil` instead of another request's data. Pass goroutines what they need (`ctx.Request().Context()`, parsed values), never the Context.
+
+### Security
+
+- Error responses kept a `Content-Type` the handler had set, e.g. `text/html`, while the message may echo request input (the built-in 404 echoes the path). They are now always JSON with `nosniff`.
+- Caching headers set for a successful response leaked onto errors, so a CDN could cache a 404 for as long as the file would have been cached.
+- Multipart temp files were left on disk when a middleware replaced the request (`ctx.SetRequest(r.WithContext(...))`) before the form was parsed. Raptor now removes them.
+- File serving skips FIFOs, sockets and devices; a FIFO in a served directory could hang the request.
+- `Attachment` and `Inline` encode the filename per RFC 6266 (`filename*` for non-ASCII), so the header never carries raw non-ASCII bytes or line breaks.
+- Config values whose keys contain `pass`, `credential`, `private`, `salt` or `dsn` are masked in startup logs.
+
+### Performance
+
+- `core.Response` implements `io.ReaderFrom`, so `File`, `FileFromDir`, `FileFromRoot`, `Stream` and `http.ServeContent(ctx.Response(), …)` use net/http's sendfile path: an 8 MB file over loopback takes 35% less time (2.78 ms → 1.80 ms) and 82% fewer bytes allocated.
+- The 404/405 fallback probes only methods that routes use: 4.9 µs → 3.3 µs and 52 → 33 allocs per unmatched request in the benchmark app.
+- `ctx.RealIP()` is computed once per request instead of once per caller.
+- JSON responses encode into pooled buffers: one allocation fewer per response.
+
+### Added
+
+- `Context.FileFromRoot(root *os.Root, name string)` serves from a root opened once, e.g. in `Setup`.
+
+### Fixed
+
+- `Run` shuts down services and closes the database when the server fails, instead of exiting from the serve goroutine. A second Ctrl-C during shutdown exits immediately.
+
+### Docs
+
+- README: why `read_timeout`/`write_timeout` default to off, and per-handler deadlines with `http.ResponseController`.
+
 ## v4.4.0 — 2026-09-25
 
 ### Fixed
