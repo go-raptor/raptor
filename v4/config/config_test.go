@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func testLogger(buf *bytes.Buffer) *slog.Logger {
@@ -173,5 +174,44 @@ func TestMaskSensitiveDataCoversCommonSecretKeys(t *testing.T) {
 	}
 	if got := maskSensitiveData("APP_NAME", "teacher"); got != "teacher" {
 		t.Errorf("APP_NAME must not be masked, got %v", got)
+	}
+}
+
+func TestAppConfigGetters(t *testing.T) {
+	c := NewConfigDefaults()
+	c.AppConfig = map[string]string{"workers": "4", "big": "9000000000", "secure": "false", "timeout": "90s", "name": "teacher", "bad": "two", "empty": ""}
+
+	if v := c.AppString("name", "x"); v != "teacher" {
+		t.Errorf("AppString = %q", v)
+	}
+	if v := c.AppString("missing", "x"); v != "x" {
+		t.Errorf("AppString default = %q", v)
+	}
+	if v, err := c.AppInt("workers", 2); err != nil || v != 4 {
+		t.Errorf("AppInt = %d, %v", v, err)
+	}
+	if v, err := c.AppInt("missing", 2); err != nil || v != 2 {
+		t.Errorf("AppInt default = %d, %v", v, err)
+	}
+	if v, err := c.AppInt("empty", 2); err != nil || v != 2 {
+		t.Errorf("an empty value takes the default: %d, %v", v, err)
+	}
+	if _, err := c.AppInt("bad", 2); err == nil || !strings.Contains(err.Error(), "bad") {
+		t.Errorf("a malformed value must be an error naming the key: %v", err)
+	}
+	if v, err := c.AppInt64("big", 0); err != nil || v != 9_000_000_000 {
+		t.Errorf("AppInt64 = %d, %v", v, err)
+	}
+	if v, err := c.AppBool("secure", true); err != nil || v {
+		t.Errorf("AppBool = %v, %v", v, err)
+	}
+	if _, err := c.AppBool("bad", true); err == nil {
+		t.Error("AppBool must reject a non-boolean")
+	}
+	if v, err := c.AppDuration("timeout", time.Second); err != nil || v != 90*time.Second {
+		t.Errorf("AppDuration = %v, %v", v, err)
+	}
+	if _, err := c.AppDuration("bad", time.Second); err == nil {
+		t.Error("AppDuration must reject a non-duration")
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"go.yaml.in/yaml/v3"
 )
@@ -344,4 +345,77 @@ func hasURLUserinfo(value string) bool {
 	}
 	u, err := url.Parse(value)
 	return err == nil && u.User != nil
+}
+
+// appValue returns the app config value for key, and whether it is set to
+// something non-empty.
+func (c *Config) appValue(key string) (string, bool) {
+	v, ok := c.AppConfig[key]
+	return v, ok && v != ""
+}
+
+// AppString returns the app config value for key, or def when it is missing
+// or empty.
+func (c *Config) AppString(key, def string) string {
+	if v, ok := c.appValue(key); ok {
+		return v
+	}
+	return def
+}
+
+// AppInt returns the app config value for key as an int, or def when it is
+// missing or empty. A value that doesn't parse is an error naming the key,
+// so a service's Setup can refuse to start instead of running with a
+// setting silently ignored.
+func (c *Config) AppInt(key string, def int) (int, error) {
+	v, ok := c.appValue(key)
+	if !ok {
+		return def, nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return def, fmt.Errorf("app config %s: %w", key, err)
+	}
+	return n, nil
+}
+
+// AppInt64 is AppInt for int64 values.
+func (c *Config) AppInt64(key string, def int64) (int64, error) {
+	v, ok := c.appValue(key)
+	if !ok {
+		return def, nil
+	}
+	n, err := strconv.ParseInt(v, 10, 64)
+	if err != nil {
+		return def, fmt.Errorf("app config %s: %w", key, err)
+	}
+	return n, nil
+}
+
+// AppBool is AppInt for booleans: 1, t, true, 0, f, false and their
+// upper-case forms.
+func (c *Config) AppBool(key string, def bool) (bool, error) {
+	v, ok := c.appValue(key)
+	if !ok {
+		return def, nil
+	}
+	b, err := strconv.ParseBool(v)
+	if err != nil {
+		return def, fmt.Errorf("app config %s: %w", key, err)
+	}
+	return b, nil
+}
+
+// AppDuration is AppInt for durations in time.ParseDuration's form, such as
+// "90s" or "5m".
+func (c *Config) AppDuration(key string, def time.Duration) (time.Duration, error) {
+	v, ok := c.appValue(key)
+	if !ok {
+		return def, nil
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil {
+		return def, fmt.Errorf("app config %s: %w", key, err)
+	}
+	return d, nil
 }
