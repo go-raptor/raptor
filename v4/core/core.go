@@ -66,15 +66,17 @@ func (c *Core) Serve(w http.ResponseWriter, r *http.Request, h *Handler, control
 
 	ctx := c.contextPool.Get().(*Context)
 	ctx.ResetAndInit(r, w, controller, action, path, store)
-	defer c.finishRequest(ctx)
+	defer c.finishRequest(ctx, r)
 
 	if err := h.chain(ctx); err != nil {
 		ctx.Error(err)
 	}
 }
 
-func (c *Core) finishRequest(ctx *Context) {
-	if rec := recover(); rec != nil {
+func (c *Core) finishRequest(ctx *Context, original *http.Request) {
+	rec := recover()
+	removeSwappedMultipart(ctx.request, original)
+	if rec != nil {
 		if err, ok := rec.(error); ok && errors.Is(err, http.ErrAbortHandler) {
 			c.contextPool.Put(ctx)
 			panic(rec)
@@ -85,4 +87,14 @@ func (c *Core) finishRequest(ctx *Context) {
 		}
 	}
 	c.contextPool.Put(ctx)
+}
+
+// removeSwappedMultipart deletes the temp files of a multipart form parsed
+// on a request a middleware substituted (r.WithContext and the like):
+// net/http cleans up only the form on the request it passed in.
+func removeSwappedMultipart(current, original *http.Request) {
+	if current == nil || current == original || current.MultipartForm == nil || current.MultipartForm == original.MultipartForm {
+		return
+	}
+	current.MultipartForm.RemoveAll()
 }
