@@ -101,14 +101,38 @@ func (c *Context) Param(name string) string {
 // Bind decodes the JSON request body into v with encoding/json/v2 defaults:
 // member names match case-sensitively, unknown members are ignored, and
 // duplicate names, invalid UTF-8 and trailing data are errors.
+//
+// The body must be declared as JSON (application/json or application/*+json),
+// or Bind returns a 415. That check is a CSRF defense: a cross-site form can
+// post text/plain that happens to be valid JSON, but not application/json
+// without a CORS preflight. Malformed JSON is a 400 and an oversized body a
+// 413; the decode error stays reachable through errors.Is and errors.As.
 func (c *Context) Bind(v any) error {
-	return json.UnmarshalRead(c.request.Body, v)
+	return c.BindWith(v)
 }
 
 // BindWith is Bind with encoding/json/v2 options, e.g.
 // json.RejectUnknownMembers(true) to fail on members v does not declare.
 func (c *Context) BindWith(v any, opts ...json.Options) error {
-	return json.UnmarshalRead(c.request.Body, v, opts...)
+	if !isJSONContentType(c.request.Header.Get(HeaderContentType)) {
+		return errs.NewErrorUnsupportedMediaType("Expected an application/json body")
+	}
+	if err := json.UnmarshalRead(c.request.Body, v, opts...); err != nil {
+		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
+			return err // Error renders it as a 413
+		}
+		return errs.NewErrorBadRequest("Invalid JSON body").WithCause(err)
+	}
+	return nil
+}
+
+func isJSONContentType(value string) bool {
+	mediaType, _, err := mime.ParseMediaType(value)
+	if err != nil {
+		return false
+	}
+	return mediaType == MIMEApplicationJSON ||
+		strings.HasPrefix(mediaType, "application/") && strings.HasSuffix(mediaType, "+json")
 }
 
 func (c *Context) Query() url.Values {
