@@ -137,3 +137,32 @@ func TestFinishedContextKeepsNoRequestData(t *testing.T) {
 		t.Fatal("a pooled context still holds the finished request's stored values")
 	}
 }
+
+func (c *StateController) IP(ctx *raptor.Context) error {
+	first, second := ctx.RealIP(), ctx.RealIP()
+	swapped := ctx.Request().Clone(ctx.Request().Context())
+	swapped.RemoteAddr = "198.51.100.7:1234"
+	ctx.SetRequest(swapped)
+	return ctx.String(http.StatusOK, first+" "+second+" "+ctx.RealIP())
+}
+
+func TestRealIPComputedOncePerRequest(t *testing.T) {
+	app := raptor.NewTestApp(
+		&raptor.Components{Controllers: raptor.Controllers{&StateController{}}},
+		router.CollectRoutes(router.Get("/ip", "State.IP")),
+	)
+	calls := 0
+	extract := app.Core.IPExtractor
+	app.Core.IPExtractor = func(r *http.Request) string {
+		calls++
+		return extract(r)
+	}
+
+	rec := app.TestGet("/ip", raptor.WithRemoteAddr("203.0.113.9"))
+	if got, want := rec.Body.String(), "203.0.113.9 203.0.113.9 198.51.100.7"; got != want {
+		t.Fatalf("body %q, want %q: a replaced request must not reuse the old address", got, want)
+	}
+	if calls != 2 {
+		t.Fatalf("extractor ran %d times, want 2: once per request value", calls)
+	}
+}

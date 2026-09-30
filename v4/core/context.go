@@ -26,6 +26,9 @@ type Context struct {
 	path     string
 	query    url.Values
 
+	realIP    string
+	realIPSet bool
+
 	store      map[string]any
 	routeStore map[string]any
 
@@ -76,6 +79,7 @@ func (c *Context) Request() *http.Request {
 
 func (c *Context) SetRequest(r *http.Request) {
 	c.request = r
+	c.realIPSet = false // the new request may carry another peer or headers
 }
 
 func (c *Context) Response() *Response {
@@ -91,8 +95,16 @@ func (c *Context) IsWebSocket() bool {
 	return strings.EqualFold(upgrade, "websocket")
 }
 
+// RealIP returns the client address per the configured ip_extractor. It
+// is computed once per request: the logger, the rate limiter and handlers
+// all ask for it, and behind a proxy each extraction parses the
+// X-Forwarded-For chain.
 func (c *Context) RealIP() string {
-	return c.core.IPExtractor(c.request)
+	if !c.realIPSet {
+		c.realIP = c.core.IPExtractor(c.request)
+		c.realIPSet = true
+	}
+	return c.realIP
 }
 
 func (c *Context) Path() string {
@@ -392,6 +404,7 @@ func (c *Context) ResetAndInit(r *http.Request, w http.ResponseWriter, controlle
 	if len(c.store) > 0 {
 		clear(c.store)
 	}
+	c.realIP, c.realIPSet = "", false
 }
 
 // release drops the finished request's references, so a Context idle in
@@ -405,4 +418,5 @@ func (c *Context) release() {
 	c.handler = nil
 	c.routeStore = nil
 	clear(c.store)
+	c.realIP, c.realIPSet = "", false
 }
