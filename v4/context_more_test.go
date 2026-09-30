@@ -1,6 +1,7 @@
 package raptor_test
 
 import (
+	"encoding/json/v2"
 	"net/http"
 	"strconv"
 	"strings"
@@ -164,5 +165,47 @@ func TestRealIPComputedOncePerRequest(t *testing.T) {
 	}
 	if calls != 2 {
 		t.Fatalf("extractor ran %d times, want 2: once per request value", calls)
+	}
+}
+
+type ParamsController struct {
+	raptor.Controller
+}
+
+func (c *ParamsController) Show(ctx *raptor.Context) error {
+	id, err := ctx.ParamInt64("id")
+	if err != nil {
+		return err
+	}
+	course, err := ctx.QueryInt64("courseId")
+	if err != nil {
+		return err
+	}
+	return ctx.Data(map[string]int64{"id": id, "course": course})
+}
+
+func TestTypedParams(t *testing.T) {
+	app := raptor.NewTestApp(
+		&raptor.Components{Controllers: raptor.Controllers{&ParamsController{}}},
+		router.CollectRoutes(router.Get("/things/{id}", "Params.Show")),
+	)
+
+	// json/v2 doesn't sort map keys, so compare values, not bytes.
+	rec := app.TestGet("/things/42?courseId=-7")
+	var got map[string]int64
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); rec.Code != http.StatusOK || err != nil || got["id"] != 42 || got["course"] != -7 {
+		t.Fatalf("valid params: %d %s (%v)", rec.Code, rec.Body, err)
+	}
+	for _, path := range []string{
+		"/things/abc?courseId=1",
+		"/things/99999999999999999999?courseId=1",
+		"/things/1.5?courseId=1",
+		"/things/42",
+		"/things/42?courseId=",
+		"/things/42?courseId=x",
+	} {
+		if rec := app.TestGet(path); rec.Code != http.StatusBadRequest {
+			t.Errorf("%s: got %d %s, want 400", path, rec.Code, rec.Body)
+		}
 	}
 }

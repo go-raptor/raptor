@@ -186,6 +186,30 @@ func (c *Context) QueryString() string {
 	return c.request.URL.RawQuery
 }
 
+// ParamInt64 parses the path parameter name as a base-10 int64. A value
+// that doesn't parse is a 400, so a handler can return the error as is.
+func (c *Context) ParamInt64(name string) (int64, error) {
+	v, err := strconv.ParseInt(c.Param(name), 10, 64)
+	if err != nil {
+		return 0, errs.NewErrorBadRequest("Invalid path parameter " + name)
+	}
+	return v, nil
+}
+
+// QueryInt64 parses the query parameter name as a base-10 int64. A missing
+// or malformed value is a 400.
+func (c *Context) QueryInt64(name string) (int64, error) {
+	raw := c.QueryParam(name)
+	if raw == "" {
+		return 0, errs.NewErrorBadRequest("Missing query parameter " + name)
+	}
+	v, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0, errs.NewErrorBadRequest("Invalid query parameter " + name)
+	}
+	return v, nil
+}
+
 func (c *Context) FormValue(name string) string {
 	return c.request.FormValue(name)
 }
