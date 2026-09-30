@@ -42,6 +42,7 @@ const (
 	HeaderSetCookie           = "Set-Cookie"
 	HeaderIfModifiedSince     = "If-Modified-Since"
 	HeaderLastModified        = "Last-Modified"
+	HeaderETag                = "ETag"
 	HeaderLocation            = "Location"
 	HeaderRetryAfter          = "Retry-After"
 	HeaderUpgrade             = "Upgrade"

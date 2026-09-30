@@ -58,6 +58,27 @@ func (c *FaultController) InvalidUTF8(ctx *raptor.Context) error {
 	return errs.NewErrorBadRequest("bad byte \xff")
 }
 
+func (c *FaultController) PreparedThenFailed(ctx *raptor.Context) error {
+	h := ctx.Response().Header()
+	h.Set("Content-Type", "text/html")
+	h.Set("Cache-Control", "public, max-age=31536000")
+	h.Set("ETag", `"v1"`)
+	h.Set("Last-Modified", "Mon, 02 Jan 2006 15:04:05 GMT")
+	h.Set("Content-Encoding", "gzip")
+	h.Set("Content-Length", "999")
+	h.Set("Content-Disposition", `attachment; filename="report.pdf"`)
+	h.Set("Retry-After", "30")
+	return errs.NewErrorBadRequest("<script>alert(1)</script>")
+}
+
+func (c *FaultController) CodeZero(ctx *raptor.Context) error {
+	return &errs.Error{Code: 0, Message: "zero"}
+}
+
+func (c *FaultController) CodeOK(ctx *raptor.Context) error {
+	return errs.NewError(http.StatusOK, "not an error")
+}
+
 func newFaultApp(logBuf *bytes.Buffer, opts ...raptor.RaptorOption) *raptor.Raptor {
 	if logBuf != nil {
 		opts = append(opts, raptor.WithLogHandler(func(level *slog.LevelVar) slog.Handler {
@@ -75,6 +96,9 @@ func newFaultApp(logBuf *bytes.Buffer, opts ...raptor.RaptorOption) *raptor.Rapt
 			router.Post("/form", "Fault.Form"),
 			router.Get("/unencodable", "Fault.UnencodableAttrs"),
 			router.Get("/invalid-utf8", "Fault.InvalidUTF8"),
+			router.Get("/prepared", "Fault.PreparedThenFailed"),
+			router.Get("/code-zero", "Fault.CodeZero"),
+			router.Get("/code-ok", "Fault.CodeOK"),
 		),
 		opts...,
 	)
@@ -223,5 +247,43 @@ func TestNotFoundPathWithInvalidUTF8Is404(t *testing.T) {
 	rec := app.TestGet("/nope%ff")
 	if rec.Code != http.StatusNotFound || !strings.Contains(rec.Body.String(), `"code":404`) {
 		t.Fatalf("got %d %s, want a JSON 404", rec.Code, rec.Body)
+	}
+}
+
+func TestErrorResponseDropsSuccessHeaders(t *testing.T) {
+	app := newFaultApp(nil)
+
+	rec := app.TestGet("/prepared")
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("got %d, want 400", rec.Code)
+	}
+	for _, h := range []string{"Cache-Control", "ETag", "Last-Modified", "Content-Encoding", "Content-Length", "Content-Disposition"} {
+		if v := rec.Header().Get(h); v != "" {
+			t.Errorf("%s = %q survived onto the error response", h, v)
+		}
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("Content-Type = %q: an error message may echo input and must never be served as HTML", ct)
+	}
+	if v := rec.Header().Get("X-Content-Type-Options"); v != "nosniff" {
+		t.Errorf("X-Content-Type-Options = %q, want nosniff", v)
+	}
+	if v := rec.Header().Get("Retry-After"); v != "30" {
+		t.Errorf("Retry-After = %q: headers describing the error itself must survive", v)
+	}
+}
+
+func TestErrorWithNonErrorStatusBecomes500(t *testing.T) {
+	var logBuf bytes.Buffer
+	app := newFaultApp(&logBuf)
+
+	for _, path := range []string{"/code-zero", "/code-ok"} {
+		rec := app.TestGet(path)
+		if rec.Code != http.StatusInternalServerError || !strings.Contains(rec.Body.String(), `"code":500`) {
+			t.Errorf("GET %s: got %d %s, want a JSON 500", path, rec.Code, rec.Body)
+		}
+	}
+	if strings.Contains(logBuf.String(), "Panic recovered") {
+		t.Fatalf("an invalid status must not reach net/http's WriteHeader panic: %s", logBuf.String())
 	}
 }

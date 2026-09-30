@@ -293,12 +293,28 @@ func (c *Context) Error(err error) {
 // encoded, e.g. a Message holding invalid UTF-8.
 var errorFallbackBody = []byte(`{"code":500,"message":"Internal Server Error"}`)
 
+// staleErrorHeaders describe the successful response a handler was
+// preparing. Left on an error they let a CDN cache it, or make a browser
+// save it as a download. net/http drops the same set before http.Error.
+var staleErrorHeaders = []string{
+	HeaderCacheControl, HeaderContentEncoding, HeaderETag, HeaderLastModified,
+	HeaderContentLength, HeaderContentDisposition,
+}
+
 // writeError always writes a response: one left untouched is finished by
 // net/http as an empty 200, which a client reads as success. Encoding runs
 // before anything is written, so each attempt starts from a clean response.
 // The retry drops attrs and replaces invalid UTF-8 in the message (which
 // often echoes the request path), so the status survives.
 func (c *Context) writeError(e *errs.Error, original error) {
+	if e.Code < 400 || e.Code > 599 {
+		// net/http panics on codes outside 100–999, and a 2xx or 3xx would
+		// tell the client the request worked.
+		c.core.Resources.Log.Error("Error response with a non-error status, sending 500", "code", e.Code, "original", original)
+		e = errs.NewErrorInternal("Internal Server Error")
+	}
+	c.resetErrorHeaders()
+
 	retry := &errs.Error{Code: e.Code, Message: strings.ToValidUTF8(e.Message, "\uFFFD")}
 	for _, candidate := range []*errs.Error{e, retry} {
 		err := c.Data(candidate, candidate.Code)
@@ -315,6 +331,19 @@ func (c *Context) writeError(e *errs.Error, original error) {
 	if err := c.Blob(http.StatusInternalServerError, MIMEApplicationJSON, errorFallbackBody); err != nil {
 		c.core.Resources.Log.Error("Failed to write error response", "error", err, "original", original)
 	}
+}
+
+// resetErrorHeaders removes the success-path headers and forces a JSON
+// content type: writeContentType keeps a type the handler already set, and
+// an error message may echo request input, so a preset text/html would
+// turn it into markup.
+func (c *Context) resetErrorHeaders() {
+	h := c.response.Header()
+	for _, key := range staleErrorHeaders {
+		h.Del(key)
+	}
+	h.Set(HeaderContentType, MIMEApplicationJSON)
+	h.Set(HeaderXContentTypeOptions, "nosniff")
 }
 
 func (c *Context) Handler() HandlerFunc {
