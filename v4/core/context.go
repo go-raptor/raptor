@@ -25,8 +25,11 @@ type Context struct {
 	core     *Core
 	request  *http.Request
 	response *Response
-	path     string
-	query    url.Values
+	// ownResponse is the Response Raptor created for this Context; response
+	// differs from it while a middleware's substituted writer is in use.
+	ownResponse *Response
+	path        string
+	query       url.Values
 
 	realIP    string
 	realIPSet bool
@@ -49,10 +52,12 @@ const (
 )
 
 func NewContext(c *Core, r *http.Request, w http.ResponseWriter) *Context {
+	response := NewResponse(w)
 	return &Context{
-		request:  r,
-		response: NewResponse(w),
-		core:     c,
+		request:     r,
+		response:    response,
+		ownResponse: response,
+		core:        c,
 	}
 }
 
@@ -356,9 +361,9 @@ var errorFallbackBody = []byte(`{"code":500,"message":"Internal Server Error"}`)
 
 // staleErrorHeaders describe the successful response a handler was
 // preparing. Left on an error they let a CDN cache it, or make a browser
-// save it as a download. net/http drops the same set before http.Error.
+// save it as a download.
 var staleErrorHeaders = []string{
-	HeaderCacheControl, HeaderContentEncoding, HeaderETag, HeaderLastModified,
+	HeaderCacheControl, HeaderETag, HeaderLastModified,
 	HeaderContentLength, HeaderContentDisposition,
 }
 
@@ -402,6 +407,13 @@ func (c *Context) resetErrorHeaders() {
 	h := c.response.Header()
 	for _, key := range staleErrorHeaders {
 		h.Del(key)
+	}
+	// A writer substituted downstream, such as a compressing middleware,
+	// encodes the error body too, so its Content-Encoding must stay; net/http's
+	// http.Error keeps it for the same reason. Without one, the encoding was
+	// set for content the error replaces.
+	if c.response == c.ownResponse {
+		h.Del(HeaderContentEncoding)
 	}
 	h.Set(HeaderContentType, MIMEApplicationJSON)
 	h.Set(HeaderXContentTypeOptions, "nosniff")

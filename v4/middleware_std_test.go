@@ -2,12 +2,14 @@ package raptor_test
 
 import (
 	"bytes"
+	"compress/gzip"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
 
 	"github.com/go-raptor/raptor/v4"
+	"github.com/go-raptor/raptor/v4/errs"
 	"github.com/go-raptor/raptor/v4/router"
 )
 
@@ -21,6 +23,10 @@ func (c *StdController) Text(ctx *raptor.Context) error {
 
 func (c *StdController) Header(ctx *raptor.Context) error {
 	return ctx.String(http.StatusOK, ctx.Request().Header.Get("X-From-Middleware"))
+}
+
+func (c *StdController) Fail(ctx *raptor.Context) error {
+	return errs.NewErrorBadRequest("bad input")
 }
 
 func (c *StdController) Stream(ctx *raptor.Context) error {
@@ -46,6 +52,7 @@ func newStdApp(mw func(http.Handler) http.Handler) *raptor.Raptor {
 			router.Get("/text", "Std.Text"),
 			router.Get("/header", "Std.Header"),
 			router.Get("/stream", "Std.Stream"),
+			router.Get("/fail", "Std.Fail"),
 		),
 	)
 }
@@ -106,5 +113,44 @@ func TestUseStdWriterSeesCopiedBody(t *testing.T) {
 	rec := app.TestGet("/stream")
 	if body := rec.Body.String(); body != "HELLO" {
 		t.Fatalf("a copy bypassed the middleware's writer: body %q, want %q", body, "HELLO")
+	}
+}
+
+type gzipWriter struct {
+	http.ResponseWriter
+	zw *gzip.Writer
+}
+
+func (w *gzipWriter) Write(b []byte) (int, error) {
+	return w.zw.Write(b)
+}
+
+// A compressing middleware sets Content-Encoding before next and gzips
+// everything written through its writer, errors included, so an error
+// response must keep the header or the client cannot read the body.
+func TestUseStdCompressionKeepsContentEncodingOnErrors(t *testing.T) {
+	app := newStdApp(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Encoding", "gzip")
+			zw := gzip.NewWriter(w)
+			defer zw.Close()
+			next.ServeHTTP(&gzipWriter{ResponseWriter: w, zw: zw}, r)
+		})
+	})
+
+	rec := app.TestGet("/fail")
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("got %d, want 400", rec.Code)
+	}
+	if ce := rec.Header().Get("Content-Encoding"); ce != "gzip" {
+		t.Fatalf("Content-Encoding %q on a gzip body: the client cannot read the error", ce)
+	}
+	zr, err := gzip.NewReader(rec.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := io.ReadAll(zr)
+	if err != nil || !strings.Contains(string(body), "bad input") {
+		t.Fatalf("decompressed body %q, %v", body, err)
 	}
 }
