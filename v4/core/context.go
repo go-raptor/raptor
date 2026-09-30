@@ -376,7 +376,7 @@ func (c *Context) Error(err error) {
 		if errors.As(err, &maxBytesErr) {
 			e = errs.NewErrorRequestEntityTooLarge("Request body too large")
 		} else {
-			c.core.Resources.Log.Error("Unhandled error in handler", "controller", c.controller, "action", c.action, "error", err)
+			c.core.Resources.Log.Error("Unhandled error in handler", c.logAttrs("error", err)...)
 			e = errs.NewErrorInternal("Internal Server Error")
 		}
 	}
@@ -447,6 +447,20 @@ func (c *Context) resetErrorHeaders() {
 	h.Set(HeaderCacheControl, "no-store")
 	h.Set(HeaderContentType, MIMEApplicationJSON)
 	h.Set(HeaderXContentTypeOptions, "nosniff")
+}
+
+// requestIDKey is where the requestid middleware stores the request's ID
+// (ctx.Set); Raptor adds it to its own error and panic lines.
+const requestIDKey = "request_id"
+
+// logAttrs are the attributes Raptor's own log lines about this request
+// carry: controller, action and, when the requestid middleware ran, its ID.
+func (c *Context) logAttrs(extra ...any) []any {
+	attrs := append([]any{"controller", c.controller, "action", c.action}, extra...)
+	if id, ok := c.Get(requestIDKey).(string); ok && id != "" {
+		attrs = append(attrs, requestIDKey, id)
+	}
+	return attrs
 }
 
 func (c *Context) Handler() HandlerFunc {

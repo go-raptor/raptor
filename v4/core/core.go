@@ -95,7 +95,7 @@ func (c *Core) finishRequest(ctx *Context, original *http.Request) {
 			c.releaseContext(ctx)
 			panic(rec)
 		}
-		c.Resources.Log.Error("Panic recovered in handler", "controller", ctx.controller, "action", ctx.action, "panic", rec, "stack", string(debug.Stack()))
+		c.Resources.Log.Error("Panic recovered in handler", ctx.logAttrs("panic", rec, "stack", string(debug.Stack()))...)
 		if !ctx.response.Committed {
 			ctx.Error(errs.NewErrorInternal("Internal Server Error"))
 		}

@@ -295,3 +295,29 @@ func TestErrorWithNonErrorStatusBecomes500(t *testing.T) {
 		t.Fatalf("an invalid status must not reach net/http's WriteHeader panic: %s", logBuf.String())
 	}
 }
+
+type setRequestID struct{ raptor.Middleware }
+
+func (m *setRequestID) Handle(ctx *raptor.Context, next func(*raptor.Context) error) error {
+	ctx.Set("request_id", "req-123")
+	return next(ctx)
+}
+
+func TestErrorAndPanicLinesCarryRequestID(t *testing.T) {
+	var logBuf bytes.Buffer
+	app := raptor.NewTestApp(
+		&raptor.Components{
+			Controllers: raptor.Controllers{&FaultController{}},
+			Middlewares: raptor.Middlewares{raptor.Use(&setRequestID{})},
+		},
+		router.CollectRoutes(router.Get("/boom", "Fault.Boom"), router.Get("/panic", "Fault.Panics")),
+		raptor.WithLogHandler(func(level *slog.LevelVar) slog.Handler {
+			return slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: level})
+		}),
+	)
+	app.TestGet("/boom")
+	app.TestGet("/panic")
+	if n := strings.Count(logBuf.String(), "request_id=req-123"); n != 2 {
+		t.Fatalf("both the unhandled-error and the panic line need request_id, found %d: %s", n, logBuf.String())
+	}
+}
