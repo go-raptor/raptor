@@ -146,6 +146,10 @@ func (c *Context) BindWith(v any, opts ...json.Options) error {
 }
 
 func isJSONContentType(value string) bool {
+	// What clients send almost always; skips ParseMediaType's allocations.
+	if strings.EqualFold(value, MIMEApplicationJSON) || strings.EqualFold(value, "application/json; charset=utf-8") {
+		return true
+	}
 	mediaType, _, err := mime.ParseMediaType(value)
 	if err != nil {
 		return false
