@@ -3,8 +3,8 @@ package core
 import (
 	"encoding/json/v2"
 	"errors"
-	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -231,10 +231,11 @@ func (c *Context) Inline(file, name string) error {
 	return c.contentDisposition(file, name, "inline")
 }
 
-var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
-
+// contentDisposition sets the header per RFC 6266: mime.FormatMediaType
+// quotes plain names and switches to filename* (RFC 2231) for non-ASCII or
+// control characters, so the header stays ASCII and cannot be split.
 func (c *Context) contentDisposition(file, name, dispositionType string) error {
-	c.response.Header().Set(HeaderContentDisposition, fmt.Sprintf(`%s; filename="%s"`, dispositionType, quoteEscaper.Replace(name)))
+	c.response.Header().Set(HeaderContentDisposition, mime.FormatMediaType(dispositionType, map[string]string{"filename": name}))
 	return c.File(file)
 }
 

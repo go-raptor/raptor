@@ -1,10 +1,13 @@
 package raptor_test
 
 import (
+	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
+	"unicode"
 
 	"github.com/go-raptor/raptor/v4"
 	"github.com/go-raptor/raptor/v4/router"
@@ -24,6 +27,10 @@ func (c *FileServingController) DownloadMissing(ctx *raptor.Context) error {
 	return ctx.Attachment(filepath.Join(c.dir, "missing.txt"), "report.txt")
 }
 
+func (c *FileServingController) Named(ctx *raptor.Context) error {
+	return ctx.Attachment(filepath.Join(c.dir, "hello.txt"), ctx.QueryParam("as"))
+}
+
 func newFilesApp(t *testing.T) *raptor.Raptor {
 	t.Helper()
 	dir := t.TempDir()
@@ -35,6 +42,7 @@ func newFilesApp(t *testing.T) *raptor.Raptor {
 		router.CollectRoutes(
 			router.Get("/cached/{name}", "FileServing.Cached"),
 			router.Get("/download-missing", "FileServing.DownloadMissing"),
+			router.Get("/named", "FileServing.Named"),
 		),
 	)
 }
@@ -77,5 +85,23 @@ func TestFileRangeRequest(t *testing.T) {
 	rec := app.TestGet("/cached/hello.txt", raptor.WithHeader("Range", "bytes=0-4"))
 	if rec.Code != http.StatusPartialContent || rec.Body.String() != "hello" {
 		t.Fatalf("got %d %q, want 206 %q", rec.Code, rec.Body.String(), "hello")
+	}
+}
+
+func TestAttachmentFilenameEncoding(t *testing.T) {
+	app := newFilesApp(t)
+
+	for _, name := range []string{"report.pdf", `quote "q" \ back.txt`, "čćž ünï.txt", "a\r\nb.txt"} {
+		rec := app.TestGet("/named?as=" + url.QueryEscape(name))
+		cd := rec.Header().Get("Content-Disposition")
+		for _, r := range cd {
+			if r > unicode.MaxASCII || r == '\r' || r == '\n' {
+				t.Fatalf("%q: header %q must be ASCII without line breaks", name, cd)
+			}
+		}
+		typ, params, err := mime.ParseMediaType(cd)
+		if err != nil || typ != "attachment" || params["filename"] != name {
+			t.Errorf("%q: header %q parses to %q %q (%v)", name, cd, typ, params["filename"], err)
+		}
 	}
 }
