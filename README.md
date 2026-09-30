@@ -322,7 +322,7 @@ if err := ctx.BindWith(&req, json.RejectUnknownMembers(true)); err != nil {
 }
 ```
 
-`Bind` and `BindWith` (v4.5.0+) require a JSON body: a `Content-Type` of `application/json` or any `application/*+json` type, with parameters such as `charset` allowed. Anything else gets `415`. The check is a CSRF defense: a cross-site HTML form can post `text/plain` that happens to be valid JSON, but it can't send `application/json` without a CORS preflight. Malformed JSON is a `400` and an oversized body a `413`. The decode error stays reachable with `errors.Is` and `errors.As`, so a handler can return a `Bind` error unchanged.
+`Bind` and `BindWith` (v4.5.0+) require a JSON body: a `Content-Type` of `application/json` or any `application/*+json` type, with parameters such as `charset` allowed. Anything else gets `415`; a request without a body skips the check and decodes as empty. The check is a CSRF defense: a cross-site HTML form can post `text/plain` that happens to be valid JSON, but it can't send `application/json` without a CORS preflight. Malformed JSON is a `400` and an oversized body a `413`. The decode error stays reachable with `errors.Is` and `errors.As`, so a handler can return a `Bind` error unchanged.
 
 ### Services and lifecycle
 
@@ -457,7 +457,7 @@ func (c *AssetsController) Show(ctx *raptor.Context) error {
 }
 ```
 
-Only regular files are served. A missing file, a directory, a FIFO or a device returns `errs.ErrNotFound`, which Raptor renders as `{"code":404,"message":"Not Found"}`. Like every error response, it drops `Cache-Control`, `ETag`, `Last-Modified`, `Content-Encoding`, `Content-Length` and `Content-Disposition`, so the `Cache-Control` above never reaches a 404, and a download's `Content-Disposition` never turns an error into a saved file. File responses use `sendfile` when the connection allows it.
+Only regular files are served. A missing file, a directory, a FIFO or a device returns `errs.ErrNotFound`, which Raptor renders as `{"code":404,"message":"Not Found"}`. Like every error response, it is marked `Cache-Control: no-store` and drops `ETag`, `Last-Modified`, `Expires`, `CDN-Cache-Control`, `Surrogate-Control`, `Content-Length` and `Content-Disposition` (and `Content-Encoding`, unless a compressing middleware encodes the error too). So the `Cache-Control` above never reaches a 404, and a download's `Content-Disposition` never turns an error into a saved file. File responses use `sendfile` when the connection allows it.
 
 `ctx.File(path)` serves exactly the path it's given. `ctx.Attachment(path, name)` and `ctx.Inline(path, name)` are `File` plus a `Content-Disposition` header, so none of the three contains the path. Use them only for paths your code builds. For a download named by the request, set the header yourself and use `FileFromDir`:
 
@@ -678,7 +678,7 @@ Raptor ships with production-safe behavior out of the box:
 
 - **Errors never degrade to an empty 200.** If an error's attrs can't be encoded, it is sent without them; if even that fails, a generic JSON 500 goes out.
 - **No internal details on the wire.** Errors you return deliberately via `errs.*` reach the client as-is; anything else — unexpected `error` values, recovered panics — becomes a generic `500` while the full detail (with a stack trace for panics) goes to the server log.
-- **Error responses are always JSON.** They carry `Content-Type: application/json` and `X-Content-Type-Options: nosniff`, and drop the caching and download headers a handler set for the success path.
+- **Error responses are always JSON and never cached.** They carry `Content-Type: application/json`, `X-Content-Type-Options: nosniff` and `Cache-Control: no-store`, and drop the caching and download headers a handler set for the success path.
 - **JSON bodies must say so.** `Bind` answers `415` unless the body is declared `application/json`, so a cross-site form can't post JSON.
 - **Request bodies are capped at 8 MB** (`server.max_body_bytes`; set `0` to disable). Oversized bodies get a clean `413`, and the limit covers JSON binding, form parsing, and wrapped `net/http` handlers alike.
 - **Header-read timeouts on by default** (`read_header_timeout: 10`), with `idle_timeout` and `max_header_bytes` also preconfigured; the server binds to `127.0.0.1` unless told otherwise.

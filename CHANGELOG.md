@@ -4,17 +4,17 @@
 
 ### Upgrading
 
-- `Bind` and `BindWith` require `Content-Type: application/json` or an `application/*+json` type; other bodies get `415`. Clients posting JSON without the header (e.g. `curl -d` without `-H 'Content-Type: application/json'`) must add it. To accept any body, decode `ctx.Request().Body` yourself.
+- `Bind` and `BindWith` require `Content-Type: application/json` or an `application/*+json` type whenever the request has a body; other bodies get `415`. A request without a body skips the check and decodes as empty, as before. Clients posting JSON without the header (e.g. `curl -d` without `-H 'Content-Type: application/json'`) must add it. To accept any body, decode `ctx.Request().Body` yourself.
 - Malformed JSON in `Bind`/`BindWith` is a `400` (an `errs.Error` wrapping the decode error) instead of a logged `500`.
-- `File`, `FileFromDir`, `Attachment` and `Inline` return `errs.ErrNotFound` for a missing path, a directory or any non-regular file instead of writing a bare 404 and returning nil. The body changes from empty to `{"code":404,"message":"Not Found"}`. Return the error, or handle it with `errors.Is(err, errs.ErrNotFound)`.
-- Error responses drop `Cache-Control`, `ETag`, `Last-Modified`, `Content-Encoding`, `Content-Length` and `Content-Disposition`, and always carry `Content-Type: application/json` and `X-Content-Type-Options: nosniff`. Headers describing the error itself, such as `Retry-After`, `Allow` and `WWW-Authenticate`, are kept.
+- `File`, `FileFromDir`, `Attachment` and `Inline` return `errs.ErrNotFound` for a missing path, a directory or any non-regular file instead of writing a bare 404 and returning nil. The body changes from empty to `{"code":404,"message":"Not Found"}`. Return the error, or handle it with `errors.Is(err, errs.ErrNotFound)`: a handler that ignores it (`ctx.File(p); return nil`) now answers an empty `200` for a missing file, where it used to answer `404`.
+- Error responses carry `Cache-Control: no-store`, `Content-Type: application/json` and `X-Content-Type-Options: nosniff`, and drop `ETag`, `Last-Modified`, `Expires`, `CDN-Cache-Control`, `Surrogate-Control`, `Content-Length` and `Content-Disposition`. `Content-Encoding` is dropped too, unless a middleware substituted the writer (a compressing middleware encodes the error as well and keeps it). Headers describing the error itself, such as `Retry-After`, `Allow` and `WWW-Authenticate`, are kept. To send a cacheable error, write it yourself with `ctx.JSON`.
 - An `errs.Error` with a status outside 400–599 is sent as a `500` and logged.
-- A `*raptor.Context` used after its handler returned sees `Request() == nil` instead of another request's data. Pass goroutines what they need (`ctx.Request().Context()`, parsed values), never the Context.
+- A `*raptor.Context` used after its handler returned has no request or response writer: `Request()` returns nil, and most methods (`Param`, `QueryParam`, `Cookie`, `RealIP`, `Bind`, `JSON`, …) panic with a nil pointer dereference. In a goroutine that panic is unrecovered and ends the process; before, such code silently read or wrote another request's data. Pass goroutines what they need (`ctx.Request().Context()`, parsed values), never the Context.
 
 ### Security
 
 - Error responses kept a `Content-Type` the handler had set, e.g. `text/html`, while the message may echo request input (the built-in 404 echoes the path). They are now always JSON with `nosniff`.
-- Caching headers set for a successful response leaked onto errors, so a CDN could cache a 404 for as long as the file would have been cached.
+- Caching headers set for a successful response leaked onto errors, so a CDN could cache a 404 for as long as the file would have been cached. Errors are now `no-store`, and `Expires`, `CDN-Cache-Control` and `Surrogate-Control` are dropped along with `Cache-Control`'s old value.
 - Multipart temp files were left on disk when a middleware replaced the request (`ctx.SetRequest(r.WithContext(...))`) before the form was parsed. Raptor now removes them.
 - File serving skips FIFOs, sockets and devices; a FIFO in a served directory could hang the request.
 - `Attachment` and `Inline` encode the filename per RFC 6266 (`filename*` for non-ASCII), so the header never carries raw non-ASCII bytes or line breaks.

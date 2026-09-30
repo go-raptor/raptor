@@ -19,8 +19,9 @@ import (
 // Context carries one request through its handler chain. Raptor pools
 // Contexts: when the handler returns, the Context is cleared and soon
 // serves another request, so never keep it or hand it to a goroutine that
-// outlives the handler. Copy out what the goroutine needs instead, such as
-// ctx.Request().Context() or a parsed param.
+// outlives the handler. A cleared Context has no request or writer, and
+// most of its methods panic. Copy out what the goroutine needs instead,
+// such as ctx.Request().Context() or a parsed param.
 type Context struct {
 	core     *Core
 	request  *http.Request
