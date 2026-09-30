@@ -5,6 +5,7 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -59,6 +60,14 @@ func (c *BindController) Cause(ctx *raptor.Context) error {
 	return ctx.NoContent()
 }
 
+func (c *BindController) Optional(ctx *raptor.Context) error {
+	var p bindPayload
+	if err := ctx.Bind(&p); err != nil && !errors.Is(err, io.ErrUnexpectedEOF) {
+		return err
+	}
+	return ctx.NoContent()
+}
+
 func newBindApp(logBuf *bytes.Buffer) *raptor.Raptor {
 	var opts []raptor.RaptorOption
 	if logBuf != nil {
@@ -71,6 +80,7 @@ func newBindApp(logBuf *bytes.Buffer) *raptor.Raptor {
 		router.CollectRoutes(
 			router.Post("/raw", "Bind.Raw"),
 			router.Post("/cause", "Bind.Cause"),
+			router.Post("/optional", "Bind.Optional"),
 		),
 		opts...,
 	)
@@ -133,5 +143,19 @@ func TestBindErrorKeepsDecodeCause(t *testing.T) {
 
 	if rec := app.TestPost("/cause", strings.NewReader(`{bad}`)); rec.Code != http.StatusNoContent {
 		t.Fatalf("got %d %s: errors.As must still find the jsontext.SyntacticError", rec.Code, rec.Body)
+	}
+}
+
+// A request without a body carries no payload to smuggle past the
+// Content-Type check, so an optional-body handler keeps working.
+func TestBindWithoutBodySkipsContentTypeCheck(t *testing.T) {
+	app := newBindApp(nil)
+
+	if rec := app.TestPost("/optional", nil); rec.Code != http.StatusNoContent {
+		t.Fatalf("no body, no Content-Type: got %d %s, want 204", rec.Code, rec.Body)
+	}
+	rec := app.TestPost("/optional", strings.NewReader(`{"name":"a"}`), raptor.WithHeader("Content-Type", "text/plain"))
+	if rec.Code != http.StatusUnsupportedMediaType {
+		t.Fatalf("a text/plain body must still get 415, got %d", rec.Code)
 	}
 }

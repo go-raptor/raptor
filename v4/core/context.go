@@ -126,7 +126,7 @@ func (c *Context) Param(name string) string {
 // member names match case-sensitively, unknown members are ignored, and
 // duplicate names, invalid UTF-8 and trailing data are errors.
 //
-// The body must be declared as JSON (application/json or application/*+json),
+// A body must be declared as JSON (application/json or application/*+json),
 // or Bind returns a 415. That check is a CSRF defense: a cross-site form can
 // post text/plain that happens to be valid JSON, but not application/json
 // without a CORS preflight. Malformed JSON is a 400 and an oversized body a
@@ -138,7 +138,10 @@ func (c *Context) Bind(v any) error {
 // BindWith is Bind with encoding/json/v2 options, e.g.
 // json.RejectUnknownMembers(true) to fail on members v does not declare.
 func (c *Context) BindWith(v any, opts ...json.Options) error {
-	if !isJSONContentType(c.request.Header.Get(HeaderContentType)) {
+	// A request without a body has no payload to smuggle, so it skips the
+	// check and decodes as empty, keeping optional-body handlers working.
+	hasBody := c.request.Body != nil && c.request.Body != http.NoBody
+	if hasBody && !isJSONContentType(c.request.Header.Get(HeaderContentType)) {
 		return errs.NewErrorUnsupportedMediaType("Expected an application/json body")
 	}
 	if err := json.UnmarshalRead(c.request.Body, v, opts...); err != nil {
