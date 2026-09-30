@@ -164,3 +164,20 @@ func TestHeadServedByGet(t *testing.T) {
 		t.Fatalf("HEAD /hello: got %d, want 200", rec.Code)
 	}
 }
+
+func TestMethodNotAllowedIgnoresAnyRoutesAndOtherPaths(t *testing.T) {
+	app := newRoutesApp(router.CollectRoutes(
+		router.Get("/items", "Routes.Hello"),
+		router.Delete("/items/{id}", "Routes.Create"),
+		router.Any("/anything", "Routes.Hello"),
+	))
+
+	rec := app.TestPost("/items", nil)
+	if rec.Code != http.StatusMethodNotAllowed || rec.Header().Get("Allow") != "GET, HEAD" {
+		t.Fatalf("POST /items: got %d Allow %q, want 405 %q", rec.Code, rec.Header().Get("Allow"), "GET, HEAD")
+	}
+	rec = app.TestGet("/nowhere")
+	if rec.Code != http.StatusNotFound || rec.Header().Get("Allow") != "" {
+		t.Fatalf("GET /nowhere: got %d Allow %q, want a plain 404", rec.Code, rec.Header().Get("Allow"))
+	}
+}

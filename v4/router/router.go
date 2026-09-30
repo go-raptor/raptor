@@ -60,6 +60,7 @@ func (r *Router) registerErrorHandlers(c *core.Core) error {
 		core:       c,
 		notFound:   c.Handlers["ErrorsController"]["NotFound"],
 		notAllowed: c.Handlers["ErrorsController"]["MethodNotAllowed"],
+		methods:    probeMethods(r.Routes),
 	})
 	return nil
 }
@@ -72,6 +73,7 @@ type fallbackHandler struct {
 	core       *core.Core
 	notFound   *core.Handler
 	notAllowed *core.Handler
+	methods    []string
 }
 
 func (f *fallbackHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -87,7 +89,7 @@ func (f *fallbackHandler) allowedMethods(req *http.Request) string {
 	var allowed []string
 	probe := new(http.Request)
 	*probe = *req
-	for _, method := range standardMethods {
+	for _, method := range f.methods {
 		if method == req.Method {
 			continue
 		}
@@ -96,8 +98,28 @@ func (f *fallbackHandler) allowedMethods(req *http.Request) string {
 			allowed = append(allowed, method)
 		}
 	}
-	slices.Sort(allowed)
 	return strings.Join(allowed, ", ")
+}
+
+// probeMethods lists, sorted, the methods worth probing for a 405: those
+// explicit routes use, plus HEAD wherever GET is used, since a GET pattern
+// also serves HEAD. A route without a method matches every method, so a
+// request that fell through to the fallback cannot match it.
+func probeMethods(routes Routes) []string {
+	var methods []string
+	for _, route := range routes {
+		if route.Method == "ANY" || route.Method == "*" {
+			continue
+		}
+		if !slices.Contains(methods, route.Method) {
+			methods = append(methods, route.Method)
+		}
+		if route.Method == http.MethodGet && !slices.Contains(methods, http.MethodHead) {
+			methods = append(methods, http.MethodHead)
+		}
+	}
+	slices.Sort(methods)
+	return methods
 }
 
 func isHTTPMethod(method string) bool {
