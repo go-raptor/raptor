@@ -2,6 +2,7 @@ package core
 
 import (
 	"bufio"
+	"io"
 	"net"
 	"net/http"
 )
@@ -47,6 +48,24 @@ func (r *Response) Write(b []byte) (n int, err error) {
 	}
 	n, err = r.Writer.Write(b)
 	r.Size += int64(n)
+	return
+}
+
+var _ io.ReaderFrom = (*Response)(nil)
+
+// ReadFrom lets io.Copy, and with it http.ServeContent, reach the writer's
+// own ReadFrom, which net/http implements with sendfile. It forwards to
+// Writer and never past it: a writer a middleware substituted (gzip, say)
+// stays in the path, and without a ReadFrom of its own it gets plain writes.
+func (r *Response) ReadFrom(src io.Reader) (n int64, err error) {
+	if !r.Committed {
+		if r.Status == 0 {
+			r.Status = http.StatusOK
+		}
+		r.WriteHeader(r.Status)
+	}
+	n, err = io.Copy(r.Writer, src)
+	r.Size += n
 	return
 }
 
