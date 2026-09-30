@@ -2,11 +2,15 @@ package raptor
 
 import (
 	"context"
+	"fmt"
 	"net"
+	"net/http"
 	"testing"
+	"time"
 
 	"github.com/go-raptor/connectors"
 	"github.com/go-raptor/raptor/v4/config"
+	"github.com/go-raptor/raptor/v4/router"
 )
 
 type closeRecorder struct{ closed bool }
@@ -92,4 +96,53 @@ func TestAppContextCancelledAfterDrainBeforeCleanup(t *testing.T) {
 	if !svc.sawCancelled {
 		t.Fatal("services must see the app context cancelled when they clean up")
 	}
+}
+
+// With shutdown_delay, the app keeps serving after BeginShutdown so load
+// balancers see readiness fail before the listener closes.
+func TestShutdownDelayServesNotReady(t *testing.T) {
+	probe, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := probe.Addr().(*net.TCPAddr).Port
+	probe.Close()
+	app := NewTestApp(&Components{}, router.CollectRoutes(
+		router.Get("/readyz", "Health.Ready"),
+		router.Get("/healthz", "Health.Live"),
+	), WithConfig(&config.Config{ServerConfig: config.ServerConfig{Address: "127.0.0.1", Port: port, ShutdownDelay: 1}}))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- app.serve(ctx) }()
+	base := fmt.Sprintf("http://127.0.0.1:%d", port)
+	waitServing(t, base+"/healthz")
+
+	cancel() // as SIGTERM does
+	time.Sleep(200 * time.Millisecond)
+	for path, want := range map[string]int{"/readyz": http.StatusServiceUnavailable, "/healthz": http.StatusOK} {
+		resp, err := http.Get(base + path)
+		if err != nil {
+			t.Fatalf("GET %s during the shutdown delay: %v", path, err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != want {
+			t.Errorf("GET %s during the shutdown delay: %d, want %d", path, resp.StatusCode, want)
+		}
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+}
+
+func waitServing(t *testing.T, url string) {
+	t.Helper()
+	for range 50 {
+		if resp, err := http.Get(url); err == nil {
+			resp.Body.Close()
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("%s never answered", url)
 }

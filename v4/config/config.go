@@ -32,6 +32,7 @@ type ServerConfig struct {
 	Address           string   `yaml:"address"`
 	Port              int      `yaml:"port"`
 	ShutdownTimeout   int      `yaml:"shutdown_timeout"`
+	ShutdownDelay     int      `yaml:"shutdown_delay"`
 	ReadTimeout       int      `yaml:"read_timeout"`
 	ReadHeaderTimeout int      `yaml:"read_header_timeout"`
 	WriteTimeout      int      `yaml:"write_timeout"`
@@ -247,6 +248,7 @@ func (c *Config) applyEnvironmentVariables() {
 	c.applyEnvironmentVariable("SERVER_ADDRESS", &c.ServerConfig.Address)
 	c.applyEnvironmentVariable("SERVER_PORT", &c.ServerConfig.Port)
 	c.applyEnvironmentVariable("SERVER_SHUTDOWN_TIMEOUT", &c.ServerConfig.ShutdownTimeout)
+	c.applyEnvironmentVariable("SERVER_SHUTDOWN_DELAY", &c.ServerConfig.ShutdownDelay)
 	c.applyEnvironmentVariable("SERVER_READ_TIMEOUT", &c.ServerConfig.ReadTimeout)
 	c.applyEnvironmentVariable("SERVER_READ_HEADER_TIMEOUT", &c.ServerConfig.ReadHeaderTimeout)
 	c.applyEnvironmentVariable("SERVER_WRITE_TIMEOUT", &c.ServerConfig.WriteTimeout)
