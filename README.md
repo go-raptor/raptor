@@ -331,7 +331,7 @@ if err := ctx.BindWith(&req, json.RejectUnknownMembers(true)); err != nil {
 }
 ```
 
-`Bind` and `BindWith` (v4.5.0+) require a JSON body: a `Content-Type` of `application/json` or any `application/*+json` type, with parameters such as `charset` allowed. Anything else gets `415`; a request without a body skips the check and decodes as empty. The check is a CSRF defense: a cross-site HTML form can post `text/plain` that happens to be valid JSON, but it can't send `application/json` without a CORS preflight. Malformed JSON is a `400` and an oversized body a `413`. The decode error stays reachable with `errors.Is` and `errors.As`, so a handler can return a `Bind` error unchanged.
+`Bind` and `BindWith` (v4.5.0+) require a JSON body: a `Content-Type` of `application/json` or any `application/*+json` type, with parameters such as `charset` allowed. Anything else gets `415`. A request without a body skips the check, but decoding nothing is still a `400`, so a handler whose body is optional binds only when there is one: `if ctx.Request().Body != http.NoBody`. Don't treat `io.ErrUnexpectedEOF` as "no body", since truncated JSON returns it too. The check is a CSRF defense: a cross-site HTML form can post `text/plain` that happens to be valid JSON, but it can't send `application/json` without a CORS preflight. Malformed JSON is a `400` and an oversized body a `413`. The decode error stays reachable with `errors.Is` and `errors.As`, so a handler can return a `Bind` error unchanged.
 
 ### Services and lifecycle
 

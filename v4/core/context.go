@@ -140,7 +140,9 @@ func (c *Context) Bind(v any) error {
 // json.RejectUnknownMembers(true) to fail on members v does not declare.
 func (c *Context) BindWith(v any, opts ...json.Options) error {
 	// A request without a body has no payload to smuggle, so it skips the
-	// check and decodes as empty, keeping optional-body handlers working.
+	// check. Decoding nothing still fails (400, with io.ErrUnexpectedEOF as
+	// the cause), so a handler whose body is optional binds only when
+	// Request().Body != http.NoBody.
 	hasBody := c.request.Body != nil && c.request.Body != http.NoBody
 	if hasBody && !isJSONContentType(c.request.Header.Get(HeaderContentType)) {
 		return errs.NewErrorUnsupportedMediaType("Expected an application/json body")
