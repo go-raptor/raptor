@@ -2,6 +2,7 @@ package raptor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -85,24 +86,43 @@ func WithLogHandler(handler func(*slog.LevelVar) slog.Handler) RaptorOption {
 
 func (r *Raptor) Run() {
 	r.fatal(r.Server.Listen())
-	go func() {
-		if err := r.Server.Serve(); err != nil && err != http.ErrServerClosed {
-			r.Core.Resources.Log.Error("Error while running Raptor", "error", err)
-			os.Exit(1)
-		}
-	}()
-	r.Core.Resources.Log.Info(fmt.Sprintf("🟢 Raptor %s is running on %s! 🦖💨", Version, r.Server.Address()))
-	r.waitForShutdown()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	// After the first signal, restore default handling so a second Ctrl-C
+	// ends a shutdown that hangs.
+	context.AfterFunc(ctx, stop)
+	if err := r.serve(ctx); err != nil {
+		os.Exit(1)
+	}
 }
 
-func (r *Raptor) waitForShutdown() {
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+// serve runs the server until ctx ends or the server fails, and shuts
+// down in order either way, so a failure still drains requests, runs
+// service cleanup and closes the database.
+func (r *Raptor) serve(ctx context.Context) error {
+	// Read the address before Serve starts: Serve binds lazily when Listen
+	// was not called, and that write must not race this read.
+	address := r.Server.Address()
+	serveErr := make(chan error, 1)
+	go func() {
+		// ErrServerClosed means Shutdown was called; that path is handled below.
+		if err := r.Server.Serve(); !errors.Is(err, http.ErrServerClosed) {
+			serveErr <- err
+		}
+	}()
+	r.Core.Resources.Log.Info(fmt.Sprintf("🟢 Raptor %s is running on %s! 🦖💨", Version, address))
 
-	<-quit
-	r.Core.Resources.Log.Warn("Shutting down Raptor...")
-	r.Shutdown()
-	r.Core.Resources.Log.Warn("Raptor exited, bye bye!")
+	select {
+	case <-ctx.Done():
+		r.Core.Resources.Log.Warn("Shutting down Raptor...")
+		r.Shutdown()
+		r.Core.Resources.Log.Warn("Raptor exited, bye bye!")
+		return nil
+	case err := <-serveErr:
+		r.Core.Resources.Log.Error("Error while running Raptor", "error", err)
+		r.Shutdown()
+		return err
+	}
 }
 
 // Shutdown gracefully stops the application: it drains in-flight requests
