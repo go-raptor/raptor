@@ -61,3 +61,35 @@ func TestServeFailureStillShutsDown(t *testing.T) {
 		t.Fatal("a serve failure must still shut down services and close the database")
 	}
 }
+
+// A request still draining must keep a working app context; services must
+// see it cancelled before their Cleanup runs.
+type ctxWatchService struct {
+	Service
+	sawCancelled bool
+}
+
+func (s *ctxWatchService) Cleanup() error {
+	s.sawCancelled = s.AppContext().Err() != nil
+	return nil
+}
+
+func TestAppContextCancelledAfterDrainBeforeCleanup(t *testing.T) {
+	svc := &ctxWatchService{}
+	app := NewTestApp(&Components{Services: Services{svc}}, nil)
+	if err := app.Core.Resources.AppContext().Err(); err != nil {
+		t.Fatalf("the app context must be live while serving: %v", err)
+	}
+	if app.Core.Resources.ShuttingDown() {
+		t.Fatal("not shutting down yet")
+	}
+
+	app.Shutdown()
+
+	if !app.Core.Resources.ShuttingDown() {
+		t.Fatal("ShuttingDown must report true once Shutdown began")
+	}
+	if !svc.sawCancelled {
+		t.Fatal("services must see the app context cancelled when they clean up")
+	}
+}

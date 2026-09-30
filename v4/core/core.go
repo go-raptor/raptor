@@ -58,6 +58,20 @@ func (c *Core) CompileHandlers() {
 	}
 }
 
+// BeginShutdown marks the app as shutting down; Raptor.Shutdown calls it
+// first, so readiness fails while requests drain.
+func (c *Core) BeginShutdown() {
+	c.Resources.shuttingDown.Store(true)
+}
+
+// CancelAppContext cancels Resources.AppContext; Raptor.Shutdown calls it
+// once requests have drained, before services clean up.
+func (c *Core) CancelAppContext() {
+	if c.Resources.cancelApp != nil {
+		c.Resources.cancelApp()
+	}
+}
+
 // Serve dispatches a request through h's precompiled middleware chain.
 func (c *Core) Serve(w http.ResponseWriter, r *http.Request, h *Handler, controller, action, path string, store map[string]any) {
 	if max := c.Resources.Config.ServerConfig.MaxBodyBytes; max > 0 && r.Body != nil && r.Body != http.NoBody {

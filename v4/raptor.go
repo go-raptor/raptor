@@ -125,10 +125,12 @@ func (r *Raptor) serve(ctx context.Context) error {
 	}
 }
 
-// Shutdown gracefully stops the application: it drains in-flight requests
-// first, then tears down services, and finally closes the database
+// Shutdown gracefully stops the application: it marks the app as shutting
+// down (readiness fails), drains in-flight requests, cancels the app
+// context, then tears down services, and finally closes the database
 // connector — so requests never run against already-closed dependencies.
 func (r *Raptor) Shutdown() {
+	r.Core.BeginShutdown()
 	timeout := time.Duration(r.Core.Resources.Config.ServerConfig.ShutdownTimeout) * time.Second
 	if timeout <= 0 {
 		timeout = time.Duration(config.DefaultServerConfigShutdownTimeout) * time.Second
@@ -142,6 +144,9 @@ func (r *Raptor) Shutdown() {
 			r.Core.Resources.Log.Error("Server force close", "error", err)
 		}
 	}
+
+	// Requests have drained: stop background work before services clean up.
+	r.Core.CancelAppContext()
 
 	if err := r.Core.ShutdownServices(); err != nil {
 		r.Core.Resources.Log.Error("Error shutting down services", "error", err)
