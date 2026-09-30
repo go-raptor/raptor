@@ -61,6 +61,9 @@ const (
 	HeaderServer              = "Server"
 	HeaderOrigin              = "Origin"
 	HeaderCacheControl        = "Cache-Control"
+	HeaderCDNCacheControl     = "CDN-Cache-Control"
+	HeaderSurrogateControl    = "Surrogate-Control"
+	HeaderExpires             = "Expires"
 	HeaderConnection          = "Connection"
 
 	// Access control

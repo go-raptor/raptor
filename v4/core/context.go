@@ -361,10 +361,11 @@ var errorFallbackBody = []byte(`{"code":500,"message":"Internal Server Error"}`)
 
 // staleErrorHeaders describe the successful response a handler was
 // preparing. Left on an error they let a CDN cache it, or make a browser
-// save it as a download.
+// save it as a download. Cache-Control is replaced, not just removed: a
+// 404 without it is heuristically cacheable.
 var staleErrorHeaders = []string{
-	HeaderCacheControl, HeaderETag, HeaderLastModified,
-	HeaderContentLength, HeaderContentDisposition,
+	HeaderExpires, HeaderCDNCacheControl, HeaderSurrogateControl,
+	HeaderETag, HeaderLastModified, HeaderContentLength, HeaderContentDisposition,
 }
 
 // writeError always writes a response: one left untouched is finished by
@@ -399,8 +400,8 @@ func (c *Context) writeError(e *errs.Error, original error) {
 	}
 }
 
-// resetErrorHeaders removes the success-path headers and forces a JSON
-// content type: writeContentType keeps a type the handler already set, and
+// resetErrorHeaders removes the success-path headers, marks the error
+// no-store and forces a JSON content type: writeContentType keeps a type the handler already set, and
 // an error message may echo request input, so a preset text/html would
 // turn it into markup.
 func (c *Context) resetErrorHeaders() {
@@ -415,6 +416,7 @@ func (c *Context) resetErrorHeaders() {
 	if c.response == c.ownResponse {
 		h.Del(HeaderContentEncoding)
 	}
+	h.Set(HeaderCacheControl, "no-store")
 	h.Set(HeaderContentType, MIMEApplicationJSON)
 	h.Set(HeaderXContentTypeOptions, "nosniff")
 }

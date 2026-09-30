@@ -67,6 +67,9 @@ func (c *FaultController) PreparedThenFailed(ctx *raptor.Context) error {
 	h.Set("Content-Encoding", "gzip")
 	h.Set("Content-Length", "999")
 	h.Set("Content-Disposition", `attachment; filename="report.pdf"`)
+	h.Set("Expires", "Thu, 01 Jan 2099 00:00:00 GMT")
+	h.Set("CDN-Cache-Control", "max-age=31536000")
+	h.Set("Surrogate-Control", "max-age=31536000")
 	h.Set("Retry-After", "30")
 	return errs.NewErrorBadRequest("<script>alert(1)</script>")
 }
@@ -257,10 +260,15 @@ func TestErrorResponseDropsSuccessHeaders(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("got %d, want 400", rec.Code)
 	}
-	for _, h := range []string{"Cache-Control", "ETag", "Last-Modified", "Content-Encoding", "Content-Length", "Content-Disposition"} {
+	for _, h := range []string{"ETag", "Last-Modified", "Content-Encoding", "Content-Length", "Content-Disposition", "Expires", "CDN-Cache-Control", "Surrogate-Control"} {
 		if v := rec.Header().Get(h); v != "" {
 			t.Errorf("%s = %q survived onto the error response", h, v)
 		}
+	}
+	// Deleting Cache-Control alone would leave a 404 heuristically cacheable
+	// and drop a no-store the app set on purpose.
+	if cc := rec.Header().Get("Cache-Control"); cc != "no-store" {
+		t.Errorf("Cache-Control = %q, want no-store on an error", cc)
 	}
 	if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
 		t.Errorf("Content-Type = %q: an error message may echo input and must never be served as HTML", ct)

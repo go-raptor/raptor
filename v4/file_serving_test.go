@@ -54,8 +54,8 @@ func TestMissingFileDropsSuccessCacheHeaders(t *testing.T) {
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("got %d, want 404", rec.Code)
 	}
-	if cc := rec.Header().Get("Cache-Control"); cc != "" {
-		t.Fatalf("Cache-Control %q on a 404 lets a CDN cache the miss", cc)
+	if cc := rec.Header().Get("Cache-Control"); cc != "no-store" {
+		t.Fatalf("Cache-Control %q on a 404 lets a CDN cache the miss, want no-store", cc)
 	}
 	if got, want := rec.Body.String(), `{"code":404,"message":"Not Found"}`; got != want {
 		t.Fatalf("body %s, want %s", got, want)
