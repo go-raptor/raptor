@@ -164,3 +164,14 @@ func TestMergeConfigIntoNilAppConfig(t *testing.T) {
 		t.Fatalf("AppConfig must merge into a nil map: got %q", got)
 	}
 }
+
+func TestMaskSensitiveDataCoversCommonSecretKeys(t *testing.T) {
+	for _, key := range []string{"APP_SMTP_PASS", "APP_DB_PASSWD", "APP_GPG_PASSPHRASE", "DATABASE_PASSWORD", "APP_GOOGLE_CREDENTIALS", "APP_PRIVATE_PEM", "APP_SIGNING_SALT", "APP_DATABASE_DSN"} {
+		if got := maskSensitiveData(key, "hunter2"); got != "********" {
+			t.Errorf("%s would be logged as %v", key, got)
+		}
+	}
+	if got := maskSensitiveData("APP_NAME", "teacher"); got != "teacher" {
+		t.Errorf("APP_NAME must not be masked, got %v", got)
+	}
+}

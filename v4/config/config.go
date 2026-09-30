@@ -312,15 +312,18 @@ func (c *Config) applyAppEnvironmentVariables(prefix string) {
 	}
 }
 
+// sensitiveKeyWords mark config keys whose values never reach the log.
+// "pass" also covers password, passwd and passphrase.
+var sensitiveKeyWords = []string{"pass", "token", "key", "secret", "auth", "credential", "private", "salt", "dsn"}
+
 func maskSensitiveData(key string, value interface{}) interface{} {
 	valueStr, ok := value.(string)
 	if !ok {
 		return value
 	}
 
-	sensitiveWords := []string{"password", "token", "key", "secret", "auth"}
 	keyLower := strings.ToLower(key)
-	for _, word := range sensitiveWords {
+	for _, word := range sensitiveKeyWords {
 		if strings.Contains(keyLower, word) {
 			return "********"
 		}
