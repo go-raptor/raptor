@@ -67,6 +67,13 @@ func (c *Core) RegisterControllers(components *Components) error {
 		}
 	}
 
+	// The built-in HealthController yields to an app's own.
+	if _, ok := c.Handlers["HealthController"]; !ok {
+		if err := c.registerController(&HealthController{}, "HealthController"); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
