@@ -103,7 +103,7 @@ raptor dev
 You'll see Raptor come to life:
 
 ```
-🟢 Raptor v4.4.0 is running on 127.0.0.1:3000! 🦖💨
+🟢 Raptor v4.6.0 is running on 127.0.0.1:3000! 🦖💨
 ```
 
 Call your first endpoint:
@@ -639,16 +639,18 @@ Raptor is more than the core framework. The surrounding modules cover the parts 
 
 Install: `go install github.com/go-raptor/cli/cmd/raptor@latest` · Repo: [go-raptor/cli](https://github.com/go-raptor/cli)
 
-| Command                                     | What it does                                                                        |
-| ------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `raptor new <module-path>`                  | Scaffold a new project (structure, `go.mod`, `go mod tidy`).                        |
-| `raptor generate <type> <name>` (alias `g`) | Generate a `controller`, `service`, `middleware`, or `model`, with a matching test. |
-| `raptor dev` (aliases `serve`, `s`)         | Run a hot-reloading dev server that rebuilds on file changes.                       |
-| `raptor db migrate <...>`                   | Run database migrations (`up`, `down`, `status`, `create`, and more).               |
-| `raptor test [args]`                        | Thin wrapper around `go test`.                                                      |
-| `raptor version`                            | Print the CLI version.                                                              |
+| Command                                     | What it does                                                                                                                      |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `raptor new <module-path>`                  | Scaffold a new project (structure, `go.mod`, `go mod tidy`). Add `--spa` to serve a frontend from `public/` with controllers/spa. |
+| `raptor generate <type> <name>` (alias `g`) | Generate a `controller`, `service`, `middleware` or `model` with a matching test, or a whole `resource`.                          |
+| `raptor g resource <Name> <field:type>...`  | Scaffold a whole entity: Bun model, DTOs, zog schema, owner-scoped service, controller, routes, migration and integration tests.  |
+| `raptor dev` (aliases `serve`, `s`)         | Run a hot-reloading dev server that rebuilds on file changes.                                                                     |
+| `raptor db init <sqlite\|postgres>`         | Add a database connector and its config (the password comes from `DATABASE_PASSWORD`).                                            |
+| `raptor db migrate <...>`                   | Run database migrations (`up`, `down`, `status`, `create`, and more).                                                             |
+| `raptor test [args]`                        | Thin wrapper around `go test`.                                                                                                    |
+| `raptor version`                            | Print the CLI version.                                                                                                            |
 
-Generated controllers and services register themselves automatically; generated middleware is added to your middleware list with one line, and models are plain structs ready to extend.
+Generated controllers and services register themselves automatically. Generated middleware isn't registered, because its scope (`raptor.Use`, `UseOnly` or `UseExcept`) is your decision.
 
 ### Connectors
 
@@ -686,18 +688,22 @@ func (s *UsersService) Setup() error {
 | --------------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------ |
 | [`connectors/pgx`](https://github.com/go-raptor/connectors)           | `*pgxpool.Pool` (raw PostgreSQL via pgx)                      | `go get github.com/go-raptor/connectors/pgx`           |
 | [`connectors/bun/postgres`](https://github.com/go-raptor/connectors)  | `*bun.DB` (PostgreSQL via the Bun ORM)                        | `go get github.com/go-raptor/connectors/bun/postgres`  |
+| [`connectors/sqlite`](https://github.com/go-raptor/connectors)        | `*sql.DB` (SQLite, pure Go)                                   | `go get github.com/go-raptor/connectors/sqlite`        |
+| [`connectors/bun/sqlite`](https://github.com/go-raptor/connectors)    | `*bun.DB` (SQLite via the Bun ORM)                            | `go get github.com/go-raptor/connectors/bun/sqlite`    |
 | [`connectors/goosemigrator`](https://github.com/go-raptor/connectors) | Migrations via `pressly/goose` (used by the connectors above) | `go get github.com/go-raptor/connectors/goosemigrator` |
 
 ### Middlewares
 
 Ready-to-use middleware, each its own module — take only what you need. Repo: [go-raptor/middlewares](https://github.com/go-raptor/middlewares)
 
-| Middleware                                                        | What it does                                                                     | Install                                           |
-| ----------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------- |
-| [`middlewares/logger`](https://github.com/go-raptor/middlewares)  | Structured request/response logging via `slog` (method, path, status, duration). | `go get github.com/go-raptor/middlewares/logger`  |
-| [`middlewares/cors`](https://github.com/go-raptor/middlewares)    | Configurable CORS, including origin patterns and preflight handling.             | `go get github.com/go-raptor/middlewares/cors`    |
-| [`middlewares/csrf`](https://github.com/go-raptor/middlewares)    | Rejects cross-origin writes using `http.CrossOriginProtection`.                  | `go get github.com/go-raptor/middlewares/csrf`    |
-| [`middlewares/limiter`](https://github.com/go-raptor/middlewares) | Token-bucket rate limiting per client IP.                                        | `go get github.com/go-raptor/middlewares/limiter` |
+| Middleware                                                          | What it does                                                                     | Install                                             |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------- |
+| [`middlewares/logger`](https://github.com/go-raptor/middlewares)    | Structured request/response logging via `slog` (method, path, status, duration). | `go get github.com/go-raptor/middlewares/logger`    |
+| [`middlewares/cors`](https://github.com/go-raptor/middlewares)      | Configurable CORS, including origin patterns and preflight handling.             | `go get github.com/go-raptor/middlewares/cors`      |
+| [`middlewares/csrf`](https://github.com/go-raptor/middlewares)      | Rejects cross-origin writes using `http.CrossOriginProtection`.                  | `go get github.com/go-raptor/middlewares/csrf`      |
+| [`middlewares/limiter`](https://github.com/go-raptor/middlewares)   | Token-bucket rate limiting per client IP.                                        | `go get github.com/go-raptor/middlewares/limiter`   |
+| [`middlewares/requestid`](https://github.com/go-raptor/middlewares) | An ID per request, in the response, the logs and the request context.            | `go get github.com/go-raptor/middlewares/requestid` |
+| [`middlewares/secure`](https://github.com/go-raptor/middlewares)    | Browser security headers on every response.                                      | `go get github.com/go-raptor/middlewares/secure`    |
 
 ### Example app
 
@@ -759,7 +765,7 @@ Nothing in Raptor is a dead end:
 
 ## Project status
 
-Raptor is actively developed. The current release is **v4.4.0** and requires **Go 1.27+**, because Raptor uses `encoding/json/v2`. It follows semantic versioning. Because it is a v4 module, the import path is:
+Raptor is actively developed. The current release is **v4.6.0** and requires **Go 1.27+**, because Raptor uses `encoding/json/v2`. It follows semantic versioning. Because it is a v4 module, the import path is:
 
 ```go
 import "github.com/go-raptor/raptor/v4"

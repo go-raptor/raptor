@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Docs
+
+- README: the Quickstart banner and *Project status* name v4.6.0, and a test keeps them in step with `raptor.Version`. The ecosystem tables list `raptor g resource`, `raptor db init`, `raptor new --spa`, the sqlite connectors, and the requestid and secure middlewares.
+
 ## v4.6.0 — 2026-09-30
 
 ### Upgrading
