@@ -301,6 +301,15 @@ func (c *UsersController) Show(ctx *raptor.Context) error {
 
 Common `Context` methods include `Bind`, `Param`, `Query`/`QueryParam`, `Cookie`, `RealIP`, `Get`/`Set` (request-scoped storage), and responders such as `Data`, `JSON`, `String`, `Status`, `NoContent`, and `Redirect`. `ctx.Data(v)` writes JSON with `200 OK`; pass a status for anything else: `ctx.Data(v, http.StatusCreated)`.
 
+`ctx.ParamInt64("id")` and `ctx.QueryInt64("courseId")` (v4.6.0+) parse a numeric path or query parameter and return a `400` `errs.Error` naming it when it's missing, malformed or out of range, so a handler returns the error as is:
+
+```go
+id, err := ctx.ParamInt64("id")
+if err != nil {
+	return err
+}
+```
+
 #### JSON binding and encoding
 
 `Bind`, `Data` and `JSON` use Go 1.27's `encoding/json/v2`, which is stricter than the v1 package:
@@ -347,6 +356,47 @@ Services may implement optional lifecycle hooks, each called at the right moment
 | `Setup() error`          | After resources **and injected dependencies** are wired — ideal for warm-up and connections. |
 | `Cleanup() error`        | During graceful shutdown, in reverse registration order.               |
 | `Shutdown() error`       | During graceful shutdown, after `Cleanup`.                             |
+
+Shutdown runs in this order (v4.6.0+):
+1. `ShuttingDown()` turns true, so readiness checks fail.
+2. In-flight requests drain.
+3. `AppContext()` is cancelled.
+4. Services run `Cleanup` and `Shutdown`.
+5. The database connector closes.
+
+Background work and database calls that don't belong to a request should use `s.AppContext()` rather than `context.Background()`, so they stop on shutdown instead of holding it:
+
+```go
+func (s *ReportService) Setup() error {
+	go s.refreshLoop(s.AppContext()) // returns when ctx.Done() closes
+	return nil
+}
+```
+
+Typed getters read the `app:` config section (v4.6.0+). `AppString`, `AppInt`, `AppInt64`, `AppBool` and `AppDuration` return the default for a missing or empty key, and an error naming the key for a malformed value, so `Setup` can refuse to start:
+
+```go
+workers, err := s.Config.AppInt("report_workers", 2)
+if err != nil {
+	return err
+}
+```
+
+### Health checks
+
+Raptor registers a `HealthController` (v4.6.0+), unless your app defines its own. Route its actions:
+
+```yaml
+/healthz:
+  GET: Health.Live
+/readyz:
+  GET: Health.Ready
+```
+
+- `Live` answers `{"status":"ok"}` while the process serves requests.
+- `Ready` answers `503` from the moment shutdown begins, and whenever the database connector can `Ping` but the database doesn't answer within 2 seconds.
+
+Exclude the controller from authentication (`raptor.UseExcept(&AuthMiddleware{}, "Health")`), and from the logger if probe lines are noise.
 
 ### Routing
 
@@ -529,6 +579,9 @@ flowchart LR
 | `app.TestRequest(method, path, body, opts...)` | Any method |
 | `raptor.WithHeader(key, value)` | Set a request header: a session cookie, a bearer token, `Sec-Fetch-Site` |
 | `raptor.WithRemoteAddr(addr)` | Set the client address (v4.4.0+) |
+| `raptor.WithCookie(cookie)` | Add a cookie, such as the session a login response set (v4.6.0+) |
+| `raptor.JSONBody(t, v)` | Encode `v` as a request body (v4.6.0+) |
+| `raptor.DecodeJSON[T](t, rec, status)` | Assert the status, then decode the body into a `T` (v4.6.0+) |
 | `raptor.GetService[T](app)` | The live service instance, for seeding data or asserting state |
 | `raptor.WithConfig(&config.Config{...})` | Override configuration for this app |
 
