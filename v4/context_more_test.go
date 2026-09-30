@@ -114,3 +114,26 @@ func TestMiddlewareScopingAndOrder(t *testing.T) {
 		t.Fatalf("404 chain: got %v, want [global except-show] (middleware wraps error handlers)", got)
 	}
 }
+
+var leakedContext *raptor.Context
+
+func (c *StateController) Leak(ctx *raptor.Context) error {
+	ctx.Set("user", "alice")
+	leakedContext = ctx
+	return ctx.Status(http.StatusOK)
+}
+
+func TestFinishedContextKeepsNoRequestData(t *testing.T) {
+	app := raptor.NewTestApp(
+		&raptor.Components{Controllers: raptor.Controllers{&StateController{}}},
+		router.CollectRoutes(router.Get("/leak", "State.Leak")),
+	)
+
+	app.TestGet("/leak?q=1")
+	if leakedContext.Request() != nil {
+		t.Fatal("a pooled context still references the finished request")
+	}
+	if leakedContext.Get("user") != nil {
+		t.Fatal("a pooled context still holds the finished request's stored values")
+	}
+}

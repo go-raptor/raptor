@@ -14,6 +14,11 @@ import (
 	"github.com/go-raptor/raptor/v4/errs"
 )
 
+// Context carries one request through its handler chain. Raptor pools
+// Contexts: when the handler returns, the Context is cleared and soon
+// serves another request, so never keep it or hand it to a goroutine that
+// outlives the handler. Copy out what the goroutine needs instead, such as
+// ctx.Request().Context() or a parsed param.
 type Context struct {
 	core     *Core
 	request  *http.Request
@@ -387,4 +392,17 @@ func (c *Context) ResetAndInit(r *http.Request, w http.ResponseWriter, controlle
 	if len(c.store) > 0 {
 		clear(c.store)
 	}
+}
+
+// release drops the finished request's references, so a Context idle in
+// the pool keeps no body, writer or stored values alive. A Context used
+// after its handler returned sees a nil Request rather than another
+// request's data.
+func (c *Context) release() {
+	c.request = nil
+	c.response.init(nil)
+	c.query = nil
+	c.handler = nil
+	c.routeStore = nil
+	clear(c.store)
 }

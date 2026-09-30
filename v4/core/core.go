@@ -78,7 +78,7 @@ func (c *Core) finishRequest(ctx *Context, original *http.Request) {
 	removeSwappedMultipart(ctx.request, original)
 	if rec != nil {
 		if err, ok := rec.(error); ok && errors.Is(err, http.ErrAbortHandler) {
-			c.contextPool.Put(ctx)
+			c.releaseContext(ctx)
 			panic(rec)
 		}
 		c.Resources.Log.Error("Panic recovered in handler", "controller", ctx.controller, "action", ctx.action, "panic", rec, "stack", string(debug.Stack()))
@@ -86,6 +86,11 @@ func (c *Core) finishRequest(ctx *Context, original *http.Request) {
 			ctx.Error(errs.NewErrorInternal("Internal Server Error"))
 		}
 	}
+	c.releaseContext(ctx)
+}
+
+func (c *Core) releaseContext(ctx *Context) {
+	ctx.release()
 	c.contextPool.Put(ctx)
 }
 
