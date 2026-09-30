@@ -1,7 +1,11 @@
 package raptor_test
 
 import (
+	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"runtime"
+	"strings"
 	"sync"
 	"testing"
 
@@ -66,5 +70,55 @@ func TestNewTestAppAcceptsAppConfig(t *testing.T) {
 		raptor.WithConfig(&config.Config{AppConfig: map[string]string{"feature": "on"}}))
 	if got := app.Core.Resources.Config.AppConfig["feature"]; got != "on" {
 		t.Fatalf("got %q, want on", got)
+	}
+}
+
+type EchoController struct{ raptor.Controller }
+
+func (c *EchoController) Echo(ctx *raptor.Context) error {
+	var body map[string]string
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	cookie, _ := ctx.Cookie("session")
+	if cookie != nil {
+		body["session"] = cookie.Value
+	}
+	return ctx.Data(body, http.StatusCreated)
+}
+
+func TestJSONHelpers(t *testing.T) {
+	app := raptor.NewTestApp(
+		&raptor.Components{Controllers: raptor.Controllers{&EchoController{}}},
+		router.CollectRoutes(router.Post("/echo", "Echo.Echo")),
+	)
+	rec := app.TestPost("/echo", raptor.JSONBody(t, map[string]string{"name": "raptor"}),
+		raptor.WithCookie(&http.Cookie{Name: "session", Value: "s1"}))
+	got := raptor.DecodeJSON[map[string]string](t, rec, http.StatusCreated)
+	if got["name"] != "raptor" || got["session"] != "s1" {
+		t.Fatalf("got %v", got)
+	}
+}
+
+type recordingT struct{ failed string }
+
+func (r *recordingT) Helper() {}
+func (r *recordingT) Fatalf(format string, args ...any) {
+	r.failed = fmt.Sprintf(format, args...)
+	runtime.Goexit()
+}
+
+func TestDecodeJSONFailsOnWrongStatus(t *testing.T) {
+	rec := httptest.NewRecorder()
+	rec.WriteHeader(http.StatusTeapot)
+	rt := &recordingT{}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		raptor.DecodeJSON[map[string]any](rt, rec, http.StatusOK)
+	}()
+	<-done
+	if !strings.Contains(rt.failed, "418") {
+		t.Fatalf("DecodeJSON must fail on an unexpected status, got %q", rt.failed)
 	}
 }

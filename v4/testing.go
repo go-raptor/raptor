@@ -1,6 +1,8 @@
 package raptor
 
 import (
+	"bytes"
+	"encoding/json/v2"
 	"io"
 	"net"
 	"net/http"
@@ -95,4 +97,45 @@ func (r *Raptor) TestPatch(path string, body io.Reader, opts ...TestRequestOptio
 
 func (r *Raptor) TestDelete(path string, opts ...TestRequestOption) *httptest.ResponseRecorder {
 	return r.TestRequest(http.MethodDelete, path, nil, opts...)
+}
+
+// TestingT is the part of testing.TB the JSON test helpers use; *testing.T
+// and *testing.B satisfy it.
+type TestingT interface {
+	Helper()
+	Fatalf(format string, args ...any)
+}
+
+// JSONBody encodes v as a request body for TestRequest and its shorthands,
+// which send any body as application/json. It fails the test if v can't be
+// encoded.
+func JSONBody(t TestingT, v any) io.Reader {
+	t.Helper()
+	b, err := json.Marshal(v)
+	if err != nil {
+		t.Fatalf("JSONBody: %v", err)
+	}
+	return bytes.NewReader(b)
+}
+
+// DecodeJSON fails the test unless rec answered wantStatus, then decodes the
+// body into a T.
+func DecodeJSON[T any](t TestingT, rec *httptest.ResponseRecorder, wantStatus int) T {
+	t.Helper()
+	var v T
+	if rec.Code != wantStatus {
+		t.Fatalf("status %d, want %d; body: %s", rec.Code, wantStatus, rec.Body)
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &v); err != nil {
+		t.Fatalf("decode %T: %v; body: %s", v, err, rec.Body)
+	}
+	return v
+}
+
+// WithCookie adds a cookie to the test request, such as the session cookie
+// a login response set.
+func WithCookie(c *http.Cookie) TestRequestOption {
+	return func(req *http.Request) {
+		req.AddCookie(c)
+	}
 }
