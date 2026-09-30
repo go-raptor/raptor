@@ -359,10 +359,11 @@ Services may implement optional lifecycle hooks, each called at the right moment
 
 Shutdown runs in this order (v4.6.0+):
 1. `ShuttingDown()` turns true, so readiness checks fail.
-2. In-flight requests drain.
-3. `AppContext()` is cancelled.
-4. Services run `Cleanup` and `Shutdown`.
-5. The database connector closes.
+2. The app keeps serving for `server.shutdown_delay` seconds (default 0), so load balancers can stop routing here.
+3. The listener closes and in-flight requests drain.
+4. `AppContext()` is cancelled.
+5. Services run `Cleanup` and `Shutdown`.
+6. The database connector closes.
 
 Background work and database calls that don't belong to a request should use `s.AppContext()` rather than `context.Background()`, so they stop on shutdown instead of holding it:
 
@@ -372,6 +373,8 @@ func (s *ReportService) Setup() error {
 	return nil
 }
 ```
+
+`AppContext()` is already cancelled when `Cleanup` runs, so a final flush in `Cleanup` needs a fresh context of its own, such as `context.WithTimeout(context.Background(), 5*time.Second)`.
 
 Typed getters read the `app:` config section (v4.6.0+). `AppString`, `AppInt`, `AppInt64`, `AppBool` and `AppDuration` return the default for a missing or empty key, and an error naming the key for a malformed value, so `Setup` can refuse to start:
 
@@ -387,14 +390,16 @@ if err != nil {
 Raptor registers a `HealthController` (v4.6.0+), unless your app defines its own. Route its actions:
 
 ```yaml
-/healthz:
-  GET: Health.Live
-/readyz:
-  GET: Health.Ready
+routes:
+  /healthz:
+    GET: Health.Live
+  /readyz:
+    GET: Health.Ready
 ```
 
 - `Live` answers `{"status":"ok"}` while the process serves requests.
-- `Ready` answers `503` from the moment shutdown begins, and whenever the database connector can `Ping` but the database doesn't answer within 2 seconds.
+- `Ready` answers `503` from the moment shutdown begins, and whenever the database connector can `Ping` but the database doesn't answer within 2 seconds. A pool with every connection in use counts as reachable (pgx and bun/postgres v1.4.0+, sqlite and bun/sqlite v1.2.0+). Give the probe a timeout of at least 3 seconds.
+- Shutdown closes the listener as soon as it starts, so a load balancer only sees the `503` if `server.shutdown_delay` keeps the app serving for a while first. Set it to at least the time your load balancer needs to stop routing here: on Kubernetes, the readiness probe period times its failure threshold, plus a little. The alternative is a `preStop` sleep of the same length.
 
 Exclude the controller from authentication (`raptor.UseExcept(&AuthMiddleware{}, "Health")`), and from the logger if probe lines are noise.
 
@@ -544,7 +549,7 @@ Environment variables map onto the same keys (`SERVER_PORT`, `DATABASE_HOST`, `G
 
 Keep the password out of tracked files: set `DATABASE_PASSWORD` in the environment. `ssl_mode` (`DATABASE_SSL_MODE`, v4.4.0+) is passed to the Postgres connectors as libpq's `sslmode`. `prefer`, the default, uses TLS when the server offers it. `disable` never uses TLS. `require` insists on TLS without verifying the certificate. `verify-full` also verifies it, and is the right choice for managed databases; if your provider signs with its own CA (Amazon RDS does), point `PGSSLROOTCERT` at its CA bundle. Connectors older than pgx and bun/postgres v1.2.0 ignore the setting and connect without TLS.
 
-The `server:` section also understands `max_body_bytes` (request body cap, default 8 MB, `0` disables), `trusted_proxies` (CIDRs allowed to set forwarding headers), `ip_extractor` (`direct`, `x-real-ip`, `x-forwarded-for`), and the timeout knobs (`read_timeout`, `read_header_timeout`, `write_timeout`, `idle_timeout`, `shutdown_timeout`, in seconds).
+The `server:` section also understands `max_body_bytes` (request body cap, default 8 MB, `0` disables), `trusted_proxies` (CIDRs allowed to set forwarding headers), `ip_extractor` (`direct`, `x-real-ip`, `x-forwarded-for`), and the timeout knobs (`read_timeout`, `read_header_timeout`, `write_timeout`, `idle_timeout`, `shutdown_timeout`, and `shutdown_delay` from v4.6.0, in seconds).
 
 `read_timeout` and `write_timeout` default to `0` (off), so only request headers are time-limited (`read_header_timeout`, 10 s). That's deliberate: a global read timeout fails slow uploads, and a write timeout cuts off large downloads and streamed responses. Behind a reverse proxy, which normally buffers request bodies, slow clients never reach Raptor. If Raptor faces clients directly, set both timeouts, and give a handler that needs longer its own deadline:
 

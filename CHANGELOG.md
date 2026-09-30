@@ -2,12 +2,19 @@
 
 ## Unreleased
 
+### Upgrading
+
+- Every app now has a `HealthController`: Raptor registers the built-in one unless the app defines a controller of that name. Its actions only answer once routed, but global middlewares apply to it, and `UseOnly`/`UseExcept` scopes naming `Health` now validate.
+- `Resources` now contains an `atomic.Bool`. Pass it by pointer, as Raptor does; `go vet`'s copylocks check flags copying it by value.
+
 ### Added
+
+- `server.shutdown_delay` (`SERVER_SHUTDOWN_DELAY`, seconds, default 0) keeps serving, with readiness failing, before the listener closes, so load balancers stop routing to an instance before it drains.
 
 - `Context.ParamInt64` and `Context.QueryInt64` parse numeric path and query parameters, returning a `400` `errs.Error` that names the parameter when it's missing, malformed or out of range.
 - `Config.AppString`, `AppInt`, `AppInt64`, `AppBool` and `AppDuration` read the `app:` section with a default for a missing or empty key, and return an error naming the key for a malformed value.
 - `Resources.AppContext()` is cancelled once in-flight requests have drained, before services clean up, so background work and database calls can stop on shutdown. `Resources.ShuttingDown()` reports that shutdown has begun.
-- A built-in `HealthController` (registered unless the app has its own). `Live` answers `{"status":"ok"}`. `Ready` answers `503` once shutdown begins, or when a connector that implements `Ping(context.Context) error` can't reach the database within 2 seconds. Route them yourself, e.g. `/healthz` and `/readyz`.
+- A built-in `HealthController` (registered unless the app has its own). `Live` answers `{"status":"ok"}`. `Ready` answers `503` once shutdown begins (visible to load balancers during `server.shutdown_delay`), or when a connector that implements `Ping(context.Context) error` can't reach the database within 2 seconds. Route them yourself, e.g. `/healthz` and `/readyz`, and give probes a timeout of at least 3 seconds.
 - Test helpers `raptor.JSONBody`, `raptor.DecodeJSON[T]` and `raptor.WithCookie`.
 - Raptor's "Unhandled error in handler" and "Panic recovered in handler" lines carry `request_id` when the requestid middleware has set one.
 
