@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"encoding/json/v2"
 	"errors"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/go-raptor/raptor/v4/errs"
 )
@@ -232,15 +234,28 @@ func (c *Context) String(code int, s string) (err error) {
 	return c.Blob(code, MIMETextPlainCharsetUTF8, []byte(s))
 }
 
+// jsonBuffers reuse encoding space across responses; buffers that grew
+// past maxPooledJSONBuffer are dropped so one huge response doesn't pin
+// its memory in the pool.
+var jsonBuffers = sync.Pool{New: func() any { return new(bytes.Buffer) }}
+
+const maxPooledJSONBuffer = 64 << 10
+
 func (c *Context) JSON(code int, i any) error {
 	if b, ok := i.([]byte); ok {
 		return c.JSONBlob(code, b)
 	}
-	b, err := json.Marshal(i)
-	if err != nil {
+	buf := jsonBuffers.Get().(*bytes.Buffer)
+	buf.Reset()
+	defer func() {
+		if buf.Cap() <= maxPooledJSONBuffer {
+			jsonBuffers.Put(buf)
+		}
+	}()
+	if err := json.MarshalWrite(buf, i); err != nil {
 		return err
 	}
-	return c.Blob(code, MIMEApplicationJSON, b)
+	return c.Blob(code, MIMEApplicationJSON, buf.Bytes())
 }
 
 func (c *Context) JSONBlob(code int, b []byte) error {
