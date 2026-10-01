@@ -588,7 +588,7 @@ flowchart LR
 | `raptor.JSONBody(t, v)` | Encode `v` as a request body (v4.6.0+) |
 | `raptor.DecodeJSON[T](t, rec, status)` | Assert the status, then decode the body into a `T` (v4.6.0+) |
 | `raptor.GetService[T](app)` | The live service instance, for seeding data or asserting state |
-| `raptor.NewTestResources()`, `raptor.CancelAppContext(res)` | Resources to `Init` a service with, outside an app, and a shutdown of their app context (v4.6.1+) |
+| `raptor.NewTestResources()`, `raptor.CancelAppContext(res)` (v4.6.1+) | Resources to `Init` a service with, outside an app, and a shutdown of their app context |
 | `raptor.WithConfig(&config.Config{...})` | Override configuration for this app |
 
 Every request comes from httptest's `192.0.2.1:1234`. With `ip_extractor: direct`, a whole suite therefore shares one `ctx.RealIP()` and one bucket in any per-IP middleware, so a strict login limiter (burst 5) answers 429 from the sixth login onward. Give each simulated client its own address with `raptor.WithRemoteAddr("10.0.0.2")`; the port is optional.
@@ -653,7 +653,9 @@ func TestRefreshLoopStopsAtShutdown(t *testing.T) {
 }
 ```
 
-To test the whole shutdown (readiness failing, `Cleanup`, the database closing), call `app.Shutdown()` on a test app built for that test. Never call it on the app `TestMain` shares, since the other tests would run against a shut-down app.
+To test the whole shutdown (readiness failing, `Cleanup`, the database closing), call `app.Shutdown()` on a test app built for that test. Never call it on the app `TestMain` shares, since the other tests would run against a shut-down app. Two things to know about that second app:
+- It reads `.raptor.yaml`, so a `shutdown_delay` set there makes `Shutdown` sleep that long first. Set `shutdown_delay: 0` in `.raptor.test.yaml`, or `t.Setenv("SERVER_SHUTDOWN_DELAY", "0")`. `WithConfig` can't lower it to 0, because it skips zero values.
+- Every service's `Setup` runs again, against the same test database. A service that recovers or starts background work in `Setup` does so a second time next to the first app's, so build that app with only the services the test needs.
 
 ## The Raptor ecosystem
 
