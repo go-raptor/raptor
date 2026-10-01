@@ -103,7 +103,7 @@ raptor dev
 You'll see Raptor come to life:
 
 ```
-🟢 Raptor v4.6.0 is running on 127.0.0.1:3000! 🦖💨
+🟢 Raptor v4.6.1 is running on 127.0.0.1:3000! 🦖💨
 ```
 
 Call your first endpoint:
@@ -791,7 +791,7 @@ Nothing in Raptor is a dead end:
 
 ## Project status
 
-Raptor is actively developed. The current release is **v4.6.0** and requires **Go 1.27+**, because Raptor uses `encoding/json/v2`. It follows semantic versioning. Because it is a v4 module, the import path is:
+Raptor is actively developed. The current release is **v4.6.1** and requires **Go 1.27+**, because Raptor uses `encoding/json/v2`. It follows semantic versioning. Because it is a v4 module, the import path is:
 
 ```go
 import "github.com/go-raptor/raptor/v4"
