@@ -588,6 +588,7 @@ flowchart LR
 | `raptor.JSONBody(t, v)` | Encode `v` as a request body (v4.6.0+) |
 | `raptor.DecodeJSON[T](t, rec, status)` | Assert the status, then decode the body into a `T` (v4.6.0+) |
 | `raptor.GetService[T](app)` | The live service instance, for seeding data or asserting state |
+| `raptor.NewTestResources()`, `raptor.CancelAppContext(res)` | Resources to `Init` a service with, outside an app, and a shutdown of their app context (v4.6.1+) |
 | `raptor.WithConfig(&config.Config{...})` | Override configuration for this app |
 
 Every request comes from httptest's `192.0.2.1:1234`. With `ip_extractor: direct`, a whole suite therefore shares one `ctx.RealIP()` and one bucket in any per-IP middleware, so a strict login limiter (burst 5) answers 429 from the sixth login onward. Give each simulated client its own address with `raptor.WithRemoteAddr("10.0.0.2")`; the port is optional.
@@ -630,6 +631,29 @@ func TestNotesAreScopedToTheirOwner(t *testing.T) {
 	}
 }
 ```
+
+Background work should stop when shutdown cancels the app context. Test that on the service alone: give it test resources, start the work, and cancel their app context with `raptor.CancelAppContext` (v4.6.1+):
+
+```go
+func TestRefreshLoopStopsAtShutdown(t *testing.T) {
+	res := raptor.NewTestResources()
+	s := &ReportService{}
+	if err := s.Init(res); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan struct{})
+	go func() { s.refreshLoop(s.AppContext()); close(done) }()
+
+	raptor.CancelAppContext(res)
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("refreshLoop kept running after the app context was cancelled")
+	}
+}
+```
+
+To test the whole shutdown (readiness failing, `Cleanup`, the database closing), call `app.Shutdown()` on a test app built for that test. Never call it on the app `TestMain` shares, since the other tests would run against a shut-down app.
 
 ## The Raptor ecosystem
 

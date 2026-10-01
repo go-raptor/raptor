@@ -67,9 +67,7 @@ func (c *Core) BeginShutdown() {
 // CancelAppContext cancels Resources.AppContext; Raptor.Shutdown calls it
 // once requests have drained, before services clean up.
 func (c *Core) CancelAppContext() {
-	if c.Resources.cancelApp != nil {
-		c.Resources.cancelApp()
-	}
+	CancelAppContext(c.Resources)
 }
 
 // Serve dispatches a request through h's precompiled middleware chain.

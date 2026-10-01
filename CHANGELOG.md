@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- `raptor.CancelAppContext(res)` cancels the app context of resources from `raptor.NewTestResources()`, as shutdown does once requests drain, so a test can check that a service's background work stops. Before, a test had to build a `core.Core` to reach it. It is a function, not a `Resources` method, so no service, controller or middleware can end the app's context. `core.CancelAppContext` is the same function, which `Core.CancelAppContext` now calls.
+
 ### Docs
 
 - README: the Quickstart banner and *Project status* name v4.6.0, and a test keeps them in step with `raptor.Version`. The ecosystem tables list `raptor g resource`, `raptor db init`, `raptor new --spa`, the sqlite connectors, and the requestid and secure middlewares.

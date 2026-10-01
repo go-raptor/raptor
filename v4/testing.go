@@ -139,3 +139,14 @@ func WithCookie(c *http.Cookie) TestRequestOption {
 		req.AddCookie(c)
 	}
 }
+
+// CancelAppContext cancels res's app context, as Raptor's shutdown does once
+// requests have drained, so a test can check that a service's background work
+// stops. Pair it with NewTestResources and the service's Init. It is a function
+// rather than a Resources method because services, controllers and
+// middlewares embed Resources, and none of them should be able to end the
+// app's context. To test the whole shutdown, call Shutdown on a test app of
+// its own.
+func CancelAppContext(res *Resources) {
+	core.CancelAppContext(res)
+}

@@ -47,6 +47,15 @@ func (u *Resources) AppContext() context.Context {
 	return u.appCtx
 }
 
+// CancelAppContext cancels res's app context; a call on resources without
+// one, or a second call, does nothing. Shutdown reaches it through
+// Core.CancelAppContext, tests through raptor.CancelAppContext.
+func CancelAppContext(res *Resources) {
+	if res.cancelApp != nil {
+		res.cancelApp()
+	}
+}
+
 // ShuttingDown reports whether shutdown has begun. Readiness checks use it
 // to stop new traffic while requests drain.
 func (u *Resources) ShuttingDown() bool {
